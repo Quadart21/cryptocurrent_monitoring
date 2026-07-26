@@ -1,5 +1,6 @@
 import { Sidebar } from "@/components/shell/Sidebar";
 import { Topbar } from "@/components/shell/Topbar";
+import { SiteAdsChrome } from "@/components/ads/SiteAds";
 
 export function AppShell({
   children,
@@ -13,7 +14,9 @@ export function AppShell({
       <Sidebar />
       <div className="pl-[72px]">
         <Topbar title={title} />
-        <div className="px-4 py-6 sm:px-6 lg:px-8">{children}</div>
+        <SiteAdsChrome>
+          <div className="px-4 py-6 sm:px-6 lg:px-8">{children}</div>
+        </SiteAdsChrome>
       </div>
     </div>
   );

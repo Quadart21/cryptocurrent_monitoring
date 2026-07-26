@@ -1,16 +1,12 @@
 import { NextResponse } from "next/server";
 import { addExchangerApplication } from "@/lib/store";
+import {
+  saveExchangerLogo,
+  validateAndPrepareLogo,
+} from "@/lib/logo";
 import { validateFeedUrl } from "@/lib/sync-feeds";
 
 export const runtime = "nodejs";
-
-type Body = {
-  name?: string;
-  website?: string;
-  feedUrl?: string;
-  contact?: string;
-  description?: string;
-};
 
 function isHttpUrl(value: string): boolean {
   try {
@@ -21,19 +17,25 @@ function isHttpUrl(value: string): boolean {
   }
 }
 
+function newExchangerId(): string {
+  return `ex_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
 export async function POST(request: Request) {
-  let body: Body;
+  let form: FormData;
   try {
-    body = (await request.json()) as Body;
+    form = await request.formData();
   } catch {
-    return NextResponse.json({ error: "Некорректный JSON" }, { status: 400 });
+    return NextResponse.json({ error: "Некорректная форма" }, { status: 400 });
   }
 
-  const name = body.name?.trim() ?? "";
-  const website = body.website?.trim() ?? "";
-  const feedUrl = body.feedUrl?.trim() ?? "";
-  const contact = body.contact?.trim() ?? "";
-  const description = body.description?.trim() ?? "";
+  const name = String(form.get("name") ?? "").trim();
+  const website = String(form.get("website") ?? "").trim();
+  const feedUrl = String(form.get("feedUrl") ?? "").trim();
+  const contact = String(form.get("contact") ?? "").trim();
+  const description = String(form.get("description") ?? "").trim();
+  const logoField = form.get("logo");
+  const logoFile = logoField instanceof File ? logoField : null;
 
   if (name.length < 2) {
     return NextResponse.json({ error: "Укажите название обменника" }, { status: 400 });
@@ -54,10 +56,26 @@ export async function POST(request: Request) {
     );
   }
 
+  let preparedLogo: Awaited<ReturnType<typeof validateAndPrepareLogo>> = null;
+  try {
+    preparedLogo = await validateAndPrepareLogo(logoFile);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Некорректный логотип";
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
+
   try {
     const { pairCount } = await validateFeedUrl(feedUrl);
+    const id = newExchangerId();
+
+    let logoMeta: { format: "svg" | "png"; updatedAt: string } | null = null;
+    if (preparedLogo) {
+      logoMeta = await saveExchangerLogo(id, preparedLogo);
+    }
 
     const exchanger = await addExchangerApplication({
+      id,
       name,
       website,
       feedUrl,
@@ -66,6 +84,7 @@ export async function POST(request: Request) {
         description ||
         `Заявка на добавление. Курсы подтягиваются из XML-фида раз в минуту.`,
       pairCount,
+      logo: logoMeta,
     });
 
     return NextResponse.json({
@@ -77,7 +96,7 @@ export async function POST(request: Request) {
         status: exchanger.status,
         pairCount,
       },
-      message: `Заявка принята (на модерации). В фиде найдено направлений: ${pairCount}. После одобрения курсы появятся в мониторинге.`,
+      message: `Заявка принята (на модерации). В фиде найдено направлений: ${pairCount}. После одобрения курсы и логотип появятся в мониторинге.`,
     });
   } catch (error) {
     const message =

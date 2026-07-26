@@ -112,20 +112,38 @@ export function defaultAmountFor(code: string): number {
   return 1;
 }
 
-export function listCurrencies(): BcCurrency[] {
-  return Object.values(currencies).sort((a, b) => a.rank - b.rank || a.name.localeCompare(b.name, "ru"));
+export function listCurrencies(options?: { cash?: boolean }): BcCurrency[] {
+  return Object.values(currencies)
+    .filter((c) => {
+      if (options?.cash === true) return c.cash;
+      if (options?.cash === false) return !c.cash;
+      return true;
+    })
+    .sort((a, b) => a.rank - b.rank || a.name.localeCompare(b.name, "ru"));
 }
 
 export function listCities(): BcCity[] {
-  return Object.values(cities).sort((a, b) => a.rank - b.rank || a.name.localeCompare(b.name, "ru"));
+  return Object.values(cities).sort((a, b) =>
+    a.name.localeCompare(b.name, "ru", { sensitivity: "base" }),
+  );
 }
 
 export function listCountries(): BcCountry[] {
-  return Object.values(countries).sort((a, b) => a.rank - b.rank || a.name.localeCompare(b.name, "ru"));
+  return Object.values(countries).sort(
+    (a, b) => a.rank - b.rank || a.name.localeCompare(b.name, "ru"),
+  );
 }
 
 export function listGroups(): BcGroup[] {
   return groups as BcGroup[];
+}
+
+export function listOnlineCurrencies(): BcCurrency[] {
+  return listCurrencies({ cash: false });
+}
+
+export function listCashCurrencies(): BcCurrency[] {
+  return listCurrencies({ cash: true });
 }
 
 export function catalogMeta() {
@@ -150,4 +168,13 @@ export const POPULAR_FEED_PAIRS: [string, string][] = [
   ["ETH", "SBERRUB"],
   ["SBERRUB", "USDTTRC20"],
   ["BTC", "USDTTRC20"],
+];
+
+export const POPULAR_CASH_PAIRS: [string, string][] = [
+  ["USDTTRC20", "CASHRUB"],
+  ["BTC", "CASHRUB"],
+  ["USDTTRC20", "CASHUSD"],
+  ["ETH", "CASHUSD"],
+  ["CASHRUB", "USDTTRC20"],
+  ["CASHUSD", "CASHRUB"],
 ];

@@ -1,11 +1,5 @@
-import type { Metadata } from "next";
-import { AdminPanel } from "@/components/admin/AdminPanel";
+import { OverviewModule } from "@/components/admin/modules/OverviewModule";
 
-export const metadata: Metadata = {
-  title: "Ops",
-  robots: { index: false, follow: false },
-};
-
-export default function AdminPage() {
-  return <AdminPanel />;
+export default function AdminOverviewPage() {
+  return <OverviewModule />;
 }

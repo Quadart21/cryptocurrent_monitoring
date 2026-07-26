@@ -1,8 +1,19 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getActiveRates, getExchangerBySlug } from "@/lib/store";
-import { formatRating } from "@/lib/format";
+import { AchievementBadges } from "@/components/AchievementBadges";
+import { ExchangerLogoMark } from "@/components/ExchangerLogoMark";
+import {
+  ExchangerOutboundLink,
+  ExchangerPageViewBeacon,
+} from "@/components/ExchangerOutboundLink";
+import { ExchangerReviews } from "@/components/ExchangerReviews";
+import {
+  getActiveRates,
+  getExchangerBySlug,
+  resolveExchangerAchievements,
+} from "@/lib/store";
+import { formatRating, formatWorkingSince } from "@/lib/format";
 
 type Props = { params: Promise<{ slug: string }> };
 export const dynamic = "force-dynamic";
@@ -18,53 +29,72 @@ export default async function ExchangerPage({ params }: Props) {
   const ex = await getExchangerBySlug(slug);
   if (!ex) notFound();
 
-  const livePairs = (await getActiveRates()).filter(
-    (o) => o.exchangerId === ex.id,
-  ).length;
+  const [livePairs, badges] = await Promise.all([
+    getActiveRates().then((rates) =>
+      rates.filter((o) => o.exchangerId === ex.id).length,
+    ),
+    resolveExchangerAchievements(ex.achievementIds),
+  ]);
   const directions = Math.max(ex.pairCount, livePairs);
 
   return (
     <div className="space-y-6">
+      <ExchangerPageViewBeacon exchangerId={ex.id} />
       <Link href="/exchangers" className="text-sm text-ink-muted hover:text-accent">
         ← Все обменники
       </Link>
 
       <div className="card p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 className="font-display text-3xl font-semibold text-ink">
-              {ex.name}
-            </h1>
-            <p className="mt-2 max-w-2xl text-ink-muted">{ex.description}</p>
-            <p className="mt-2 break-all text-xs text-ink-muted">Фид: {ex.feedUrl}</p>
+          <div className="flex items-start gap-4">
+            <ExchangerLogoMark
+              name={ex.name}
+              exchangerId={ex.id}
+              logo={ex.logo}
+              size={64}
+            />
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="font-display text-3xl font-semibold text-ink">
+                  {ex.name}
+                </h1>
+                <AchievementBadges achievements={badges} size={22} />
+              </div>
+              <p className="mt-2 max-w-2xl text-ink-muted">{ex.description}</p>
+              <p className="mt-2 break-all text-xs text-ink-muted">
+                Фид: {ex.feedUrl}
+              </p>
+            </div>
           </div>
-          <a
-            href={ex.website}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-primary inline-flex w-fit rounded-2xl px-4 py-2.5 text-sm font-semibold"
-          >
-            Перейти на сайт
-          </a>
+          {ex.website ? (
+            <ExchangerOutboundLink
+              exchangerId={ex.id}
+              href={ex.website}
+              className="btn-primary inline-flex w-fit rounded-2xl px-4 py-2.5 text-sm font-semibold"
+            >
+              Перейти на сайт
+            </ExchangerOutboundLink>
+          ) : null}
         </div>
 
-        <dl className="mt-8 grid gap-4 sm:grid-cols-4">
+        <dl className="mt-8 grid gap-4 sm:grid-cols-3">
           {[
-            { label: "Рейтинг", value: `★ ${formatRating(ex.rating)}` },
+            {
+              label: "Рейтинг",
+              value: `★ ${formatRating(ex.rating, ex.reviews)}`,
+              hint: ex.reviews
+                ? `${ex.reviewsPositive} пол. / ${ex.reviewsNegative} отр.`
+                : "нет одобренных отзывов",
+            },
             {
               label: "Направлений",
               value: String(directions),
               hint: "активных пар в XML-фиде",
             },
             {
-              label: "Синхронизация",
-              value: ex.lastSyncAt
-                ? new Date(ex.lastSyncAt).toLocaleString("ru-RU")
-                : "ещё не было",
-            },
-            {
-              label: "Статус",
-              value: ex.status === "active" ? "Онлайн" : ex.status,
+              label: "В работе",
+              value: `Работает ${formatWorkingSince(ex.approvedAt)}`,
+              hint: "с момента одобрения на мониторинге",
             },
           ].map((item) => (
             <div
@@ -84,6 +114,8 @@ export default async function ExchangerPage({ params }: Props) {
           ))}
         </dl>
       </div>
+
+      <ExchangerReviews exchangerId={ex.id} exchangerName={ex.name} />
     </div>
   );
 }

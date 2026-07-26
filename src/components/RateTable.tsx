@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AchievementBadges } from "@/components/AchievementBadges";
 import { currencyDecimals } from "@/lib/bestchange/catalog";
 import { formatAmount, formatRating, formatReserve } from "@/lib/format";
 
@@ -12,6 +13,7 @@ export type LiveOffer = {
   maxAmount: number;
   receive: number;
   rank: number;
+  city?: string | null;
   exchanger: {
     id: string;
     slug: string;
@@ -21,6 +23,13 @@ export type LiveOffer = {
     reviews: number;
     verified: boolean;
     status: "online" | "offline" | "busy";
+    logoUrl?: string | null;
+    achievements?: Array<{
+      id: string;
+      name: string;
+      description: string;
+      svg: string;
+    }>;
   };
 };
 
@@ -92,14 +101,20 @@ export function RateTable({
                   </td>
                   <td className="px-4 py-4 sm:px-5">
                     <div className="flex flex-col gap-1">
-                      <Link
-                        href={`/exchangers/${offer.exchanger.slug}`}
-                        className="font-semibold text-ink hover:text-accent-deep"
-                      >
-                        {offer.exchanger.name}
-                      </Link>
+                      <div className="flex items-center gap-1.5">
+                        <Link
+                          href={`/exchangers/${offer.exchanger.slug}`}
+                          className="font-semibold text-ink hover:text-accent-deep"
+                        >
+                          {offer.exchanger.name}
+                        </Link>
+                        <AchievementBadges
+                          achievements={offer.exchanger.achievements ?? []}
+                          size={16}
+                        />
+                      </div>
                       <div className="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
-                        <span>★ {formatRating(offer.exchanger.rating)}</span>
+                        <span>★ {formatRating(offer.exchanger.rating, offer.exchanger.reviews)}</span>
                         <span>·</span>
                         <span>{offer.exchanger.reviews} отзывов</span>
                         {offer.exchanger.verified && (

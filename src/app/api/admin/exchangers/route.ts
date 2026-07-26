@@ -25,26 +25,29 @@ export async function PATCH(request: Request) {
     feedUrl?: string;
     contact?: string;
     description?: string;
-    rating?: number;
-    reviews?: number;
+    achievementIds?: string[];
     sync?: boolean;
+    logo?: { format: "svg" | "png"; updatedAt: string } | null;
   };
 
   if (!body.id) {
     return NextResponse.json({ error: "id required" }, { status: 400 });
   }
 
-  const updated = await updateExchanger(body.id, {
-    status: body.status,
-    verified: body.verified,
-    name: body.name,
-    website: body.website,
-    feedUrl: body.feedUrl,
-    contact: body.contact,
-    description: body.description,
-    rating: body.rating,
-    reviews: body.reviews,
-  });
+  const patch: Parameters<typeof updateExchanger>[1] = {};
+  if (body.status !== undefined) patch.status = body.status;
+  if (body.verified !== undefined) patch.verified = body.verified;
+  if (body.name !== undefined) patch.name = body.name.trim();
+  if (body.website !== undefined) patch.website = body.website.trim();
+  if (body.feedUrl !== undefined) patch.feedUrl = body.feedUrl.trim();
+  if (body.contact !== undefined) patch.contact = body.contact.trim();
+  if (body.description !== undefined) patch.description = body.description.trim();
+  if (body.achievementIds !== undefined) {
+    patch.achievementIds = body.achievementIds;
+  }
+  if (body.logo !== undefined) patch.logo = body.logo;
+
+  const updated = await updateExchanger(body.id, patch);
 
   if (!updated) {
     return NextResponse.json({ error: "not found" }, { status: 404 });

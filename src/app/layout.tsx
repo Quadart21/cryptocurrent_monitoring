@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Manrope, Unbounded } from "next/font/google";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { ConditionalShell } from "@/components/shell/ConditionalShell";
@@ -24,6 +25,8 @@ export const metadata: Metadata = {
     "Сравнивайте курсы проверенных обменников криптовалют. XML-фиды, рейтинг и справочники BestChange.",
 };
 
+const themeInit = `(function(){try{var t=localStorage.getItem('cryptomon-theme');if(t==='light'){document.documentElement.classList.remove('dark');document.documentElement.style.colorScheme='light';}else{document.documentElement.classList.add('dark');document.documentElement.style.colorScheme='dark';}}catch(e){}})();`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -35,14 +38,10 @@ export default function RootLayout({
       className={`${manrope.variable} ${unbounded.variable} dark h-full antialiased`}
       suppressHydrationWarning
     >
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('cryptomon-theme');if(t==='light'){document.documentElement.classList.remove('dark');document.documentElement.style.colorScheme='light';}else{document.documentElement.classList.add('dark');document.documentElement.style.colorScheme='dark';}}catch(e){}})();`,
-          }}
-        />
-      </head>
       <body className="min-h-full font-sans text-ink">
+        <Script id="cryptomon-theme-init" strategy="beforeInteractive">
+          {themeInit}
+        </Script>
         <ThemeProvider>
           <ConditionalShell>{children}</ConditionalShell>
         </ThemeProvider>

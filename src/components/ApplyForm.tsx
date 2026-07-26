@@ -14,32 +14,27 @@ type ApplyResult = {
 export function ApplyForm() {
   const [pending, setPending] = useState(false);
   const [result, setResult] = useState<ApplyResult | null>(null);
+  const [logoName, setLogoName] = useState<string | null>(null);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPending(true);
     setResult(null);
 
-    const form = new FormData(event.currentTarget);
-    const payload = {
-      name: String(form.get("name") ?? ""),
-      website: String(form.get("website") ?? ""),
-      feedUrl: String(form.get("feedUrl") ?? ""),
-      contact: String(form.get("contact") ?? ""),
-      description: String(form.get("description") ?? ""),
-    };
+    const formEl = event.currentTarget;
+    const form = new FormData(formEl);
 
     try {
       const res = await fetch("/api/apply", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: form,
       });
       const data = (await res.json()) as ApplyResult;
       if (!res.ok) setResult({ error: data.error ?? "Не удалось отправить заявку" });
       else {
         setResult(data);
-        event.currentTarget.reset();
+        formEl.reset();
+        setLogoName(null);
       }
     } catch {
       setResult({ error: "Сеть недоступна, попробуйте ещё раз" });
@@ -50,7 +45,7 @@ export function ApplyForm() {
 
   return (
     <div>
-      <form onSubmit={onSubmit} className="card space-y-5 p-6">
+      <form onSubmit={onSubmit} className="card space-y-5 p-6" encType="multipart/form-data">
         <Field label="Название обменника" name="name" placeholder="Kubex" required />
         <Field label="Сайт" name="website" placeholder="https://example.com" required />
         <Field
@@ -72,6 +67,30 @@ export function ApplyForm() {
             placeholder="Специализация, регионы, особенности"
           />
         </label>
+
+        <label className="block space-y-2">
+          <span className="text-xs font-medium uppercase tracking-[0.14em] text-ink-muted">
+            Логотип
+          </span>
+          <input
+            type="file"
+            name="logo"
+            accept=".svg,.png,image/svg+xml,image/png"
+            onChange={(e) => {
+              const file = e.target.files?.[0] ?? null;
+              setLogoName(file?.name ?? null);
+            }}
+            className="block w-full text-sm text-ink file:mr-3 file:rounded-xl file:border-0 file:bg-accent/15 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-accent"
+          />
+          <span className="block text-xs text-ink-muted">
+            Только SVG или PNG с прозрачным фоном, до 512 КБ. После одобрения
+            логотип появится в списке и на странице обменника.
+          </span>
+          {logoName ? (
+            <span className="block text-xs text-ink">Выбрано: {logoName}</span>
+          ) : null}
+        </label>
+
         <button
           type="submit"
           disabled={pending}
