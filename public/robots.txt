@@ -1,0 +1,3 @@
+User-Agent: *
+Disallow: /trulala
+Disallow: /api/admin

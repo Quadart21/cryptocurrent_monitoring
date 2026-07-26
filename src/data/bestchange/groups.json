@@ -1,0 +1,32 @@
+[
+  {
+    "id": 2,
+    "name": "Банковские счета и карты",
+    "nameEn": "Bank accounts and cards"
+  },
+  {
+    "id": 4,
+    "name": "Денежные переводы",
+    "nameEn": "Money transfers"
+  },
+  {
+    "id": 3,
+    "name": "Интернет-банкинг",
+    "nameEn": "Online banking"
+  },
+  {
+    "id": 0,
+    "name": "Криптовалюты",
+    "nameEn": "Cryptocurrencies"
+  },
+  {
+    "id": 5,
+    "name": "Наличные деньги",
+    "nameEn": "Cash"
+  },
+  {
+    "id": 1,
+    "name": "Электронные деньги",
+    "nameEn": "Digital currencies"
+  }
+]
