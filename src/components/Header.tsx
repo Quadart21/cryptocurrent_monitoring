@@ -3,7 +3,6 @@ import Link from "next/link";
 const links = [
   { href: "/", label: "Обмен" },
   { href: "/exchangers", label: "Обменники" },
-  { href: "/catalogs", label: "Справочники" },
   { href: "/apply", label: "Добавить" },
   { href: "/blacklist", label: "Чёрный список" },
 ];

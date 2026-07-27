@@ -16,7 +16,8 @@ export type {
 } from "@/lib/bestchange/dashboard-catalog-types";
 
 export function getDashboardCatalog(): DashboardCatalog {
-  const onlineCurrencies = listOnlineCurrencies().map((c) => ({
+  const onlineRaw = listOnlineCurrencies();
+  const onlineCurrencies = onlineRaw.map((c) => ({
     code: c.code,
     name: c.name,
   }));
@@ -24,7 +25,14 @@ export function getDashboardCatalog(): DashboardCatalog {
     code: c.code,
     name: c.name,
   }));
-  const cashModeCurrencies = [...cashCurrencies, ...onlineCurrencies];
+  // В «Наличных»: наличный фиат + крипта/прочее, без банков.
+  const BANK_GROUP_IDS = new Set([2, 3]);
+  const cashModeCurrencies = [
+    ...cashCurrencies,
+    ...onlineRaw
+      .filter((c) => !BANK_GROUP_IDS.has(c.groupId))
+      .map((c) => ({ code: c.code, name: c.name })),
+  ];
 
   const cities = [...listCities()]
     .map((c) => ({
