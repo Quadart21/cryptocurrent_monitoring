@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, count, eq, inArray, ne } from "drizzle-orm";
+import { and, count, desc, eq, inArray, ne, or, sql } from "drizzle-orm";
 import { getDb } from "@/db/index";
 import {
   achievements,
@@ -123,6 +123,9 @@ function mapExchanger(row: ExchangerRow): FeedExchanger {
     traffic: normalizeExchangerTraffic(row.traffic),
     ownerLogin: row.ownerLogin,
     ownerPasswordHash: row.ownerPasswordHash,
+    ownerEmail: row.ownerEmail ?? null,
+    ownerTotpSecret: row.ownerTotpSecret ?? null,
+    ownerTotpEnabled: Boolean(row.ownerTotpEnabled),
   };
 }
 
@@ -160,6 +163,8 @@ function mapReview(row: ReviewRow): ExchangerReview {
     moderatedAt: row.moderatedAt,
     ownerReply: row.ownerReply,
     ownerRepliedAt: row.ownerRepliedAt,
+    email: row.email ?? null,
+    emailVerifiedAt: row.emailVerifiedAt ?? null,
   };
 }
 
@@ -378,6 +383,63 @@ export async function getRatesCount(): Promise<number> {
   return row?.n ?? 0;
 }
 
+/**
+ * Top directions by live offer count among active (non-blacklisted) exchangers.
+ * Proxy for client demand: more competing offers ⇒ higher market demand.
+ */
+export async function getTopDemandPairs(options: {
+  mode: "online" | "cash";
+  limit?: number;
+}): Promise<[string, string][]> {
+  const limit = options.limit ?? 6;
+  const db = getDb();
+  const [exRows, blRows] = await Promise.all([
+    db
+      .select({
+        id: exchangers.id,
+        name: exchangers.name,
+        slug: exchangers.slug,
+      })
+      .from(exchangers)
+      .where(eq(exchangers.status, "active")),
+    db.select().from(blacklist),
+  ]);
+  const activeIds = exRows
+    .filter((e) => !isExchangerBlacklisted(e, blRows))
+    .map((e) => e.id);
+  if (!activeIds.length) return [];
+
+  const cashFilter = or(
+    sql`coalesce(${rates.city}, '') <> ''`,
+    sql`${rates.from} ILIKE 'CASH%'`,
+    sql`${rates.to} ILIKE 'CASH%'`,
+  );
+  const onlineFilter = and(
+    sql`coalesce(${rates.city}, '') = ''`,
+    sql`${rates.from} NOT ILIKE 'CASH%'`,
+    sql`${rates.to} NOT ILIKE 'CASH%'`,
+  );
+
+  const rows = await db
+    .select({
+      from: rates.from,
+      to: rates.to,
+      n: sql<number>`count(*)::int`,
+    })
+    .from(rates)
+    .where(
+      and(
+        inArray(rates.exchangerId, activeIds),
+        options.mode === "cash" ? cashFilter : onlineFilter,
+      ),
+    )
+    .groupBy(rates.from, rates.to)
+    .orderBy(desc(sql`count(*)`))
+    .limit(limit);
+
+  return rows.map((r) => [r.from, r.to] as [string, string]);
+}
+
 export async function getStore(): Promise<StoreData> {
   const db = getDb();
   const [
@@ -581,6 +643,7 @@ export async function addExchangerApplication(input: {
   logoData?: Buffer | null;
   ownerLogin: string;
   ownerPasswordHash: string;
+  ownerEmail: string;
 }): Promise<FeedExchanger> {
   const db = getDb();
   const slugBase = slugify(input.name);
@@ -590,6 +653,7 @@ export async function addExchangerApplication(input: {
     input.id ??
     `ex_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
   const ownerLogin = input.ownerLogin.trim().toLowerCase();
+  const ownerEmail = input.ownerEmail.trim().toLowerCase();
 
   const existing = await db
     .select({ slug: exchangers.slug, ownerLogin: exchangers.ownerLogin })
@@ -633,6 +697,9 @@ export async function addExchangerApplication(input: {
       traffic: emptyExchangerTraffic() as ExchangerTrafficJson,
       ownerLogin,
       ownerPasswordHash: input.ownerPasswordHash,
+      ownerEmail,
+      ownerTotpSecret: null,
+      ownerTotpEnabled: false,
     })
     .returning();
 
@@ -946,6 +1013,9 @@ export async function addReview(input: {
   orderId: string;
   text: string;
   qualityTagIds: string[];
+  email: string;
+  confirmTokenHash: string;
+  confirmExpiresAt: string;
 }): Promise<ExchangerReview> {
   const db = getDb();
   const [ex] = await db
@@ -964,25 +1034,83 @@ export async function addReview(input: {
     .where(eq(qualityTags.active, true));
   const activeTags = new Set(tags.map((t) => t.id));
   const qualityTagIds = input.qualityTagIds.filter((id) => activeTags.has(id));
+  const email = input.email.trim().toLowerCase();
 
-  const review: ExchangerReview = {
-    id: `rv_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
-    exchangerId: ex.id,
-    exchangerSlug: ex.slug,
-    exchangerName: ex.name,
-    sentiment: input.sentiment,
-    orderId: input.orderId.trim(),
-    text: input.text.trim(),
-    qualityTagIds,
-    status: "pending",
-    createdAt: new Date().toISOString(),
-    moderatedAt: null,
-    ownerReply: null,
-    ownerRepliedAt: null,
-  };
+  const id = `rv_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+  const createdAt = new Date().toISOString();
 
-  await db.insert(reviews).values(review);
-  return review;
+  const [row] = await db
+    .insert(reviews)
+    .values({
+      id,
+      exchangerId: ex.id,
+      exchangerSlug: ex.slug,
+      exchangerName: ex.name,
+      sentiment: input.sentiment,
+      orderId: input.orderId.trim(),
+      text: input.text.trim(),
+      qualityTagIds,
+      status: "awaiting_email",
+      createdAt,
+      moderatedAt: null,
+      ownerReply: null,
+      ownerRepliedAt: null,
+      email,
+      emailVerifiedAt: null,
+      confirmTokenHash: input.confirmTokenHash,
+      confirmExpiresAt: input.confirmExpiresAt,
+    })
+    .returning();
+
+  return mapReview(row);
+}
+
+export async function deleteReviewHard(id: string): Promise<void> {
+  const db = getDb();
+  await db.delete(reviews).where(eq(reviews.id, id));
+}
+
+/** Confirm review email by raw token. Moves awaiting_email → pending. */
+export async function confirmReviewEmail(
+  rawToken: string,
+): Promise<ExchangerReview | null> {
+  const token = rawToken.trim();
+  if (!token || token.length < 16) return null;
+
+  const { createHash } = await import("crypto");
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const db = getDb();
+  const now = new Date().toISOString();
+
+  const [row] = await db
+    .select()
+    .from(reviews)
+    .where(
+      and(
+        eq(reviews.confirmTokenHash, tokenHash),
+        eq(reviews.status, "awaiting_email"),
+      ),
+    )
+    .limit(1);
+
+  if (!row) return null;
+  if (row.confirmExpiresAt && row.confirmExpiresAt < now) {
+    await db.delete(reviews).where(eq(reviews.id, row.id));
+    return null;
+  }
+
+  const [updated] = await db
+    .update(reviews)
+    .set({
+      status: "pending",
+      emailVerifiedAt: now,
+      confirmTokenHash: null,
+      confirmExpiresAt: null,
+    })
+    .where(eq(reviews.id, row.id))
+    .returning();
+
+  return updated ? mapReview(updated) : null;
 }
 
 export async function replyToReview(
@@ -1046,6 +1174,27 @@ export async function setOwnerCredentials(
     .set({
       ownerLogin,
       ownerPasswordHash: input.ownerPasswordHash,
+    })
+    .where(eq(exchangers.id, id))
+    .returning();
+  return row ? mapExchanger(row) : null;
+}
+
+/** Issue temp password + enable TOTP after moderation approval. */
+export async function provisionOwnerAccessOnApproval(
+  id: string,
+  input: {
+    ownerPasswordHash: string;
+    totpSecret: string;
+  },
+): Promise<FeedExchanger | null> {
+  const db = getDb();
+  const [row] = await db
+    .update(exchangers)
+    .set({
+      ownerPasswordHash: input.ownerPasswordHash,
+      ownerTotpSecret: input.totpSecret,
+      ownerTotpEnabled: true,
     })
     .where(eq(exchangers.id, id))
     .returning();

@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { assertAdmin } from "@/lib/admin-guard";
 import {
+  extractEmail,
+  sendOwnerNewReviewEmail,
+} from "@/lib/owner-mail";
+import {
   deleteReview,
+  getExchangerById,
   listQualityTags,
   listReviews,
   moderateReview,
@@ -52,7 +57,34 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ review });
+  let mailWarning: string | null = null;
+
+  if (body.status === "approved") {
+    try {
+      const ex = await getExchangerById(review.exchangerId);
+      const to =
+        ex?.ownerEmail?.trim().toLowerCase() || extractEmail(ex?.contact);
+      if (!to) {
+        mailWarning =
+          "Отзыв одобрен, но email владельца не найден — уведомление не отправлено.";
+      } else {
+        await sendOwnerNewReviewEmail({
+          to,
+          exchangerName: review.exchangerName,
+          exchangerSlug: review.exchangerSlug,
+          sentiment: review.sentiment,
+          orderId: review.orderId,
+          text: review.text,
+        });
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "ошибка отправки";
+      mailWarning = `Отзыв одобрен, но письмо владельцу не ушло: ${message}`;
+    }
+  }
+
+  return NextResponse.json({ review, mailWarning });
 }
 
 export async function DELETE(request: Request) {

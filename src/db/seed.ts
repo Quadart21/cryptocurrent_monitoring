@@ -98,6 +98,9 @@ export const seedExchanger: FeedExchanger = {
   ownerLogin: "kubex",
   ownerPasswordHash:
     "f6488fe194edbdd61499874cfa9f82a3390859df4da15f770a3cce0327763832",
+  ownerEmail: "seed@gapsnap.local",
+  ownerTotpSecret: null,
+  ownerTotpEnabled: false,
 };
 
 export const seedAdPricing: AdPricingSettings = {
@@ -291,6 +294,9 @@ export async function ensureSeeded(db: Db): Promise<void> {
       traffic: seedExchanger.traffic,
       ownerLogin: seedExchanger.ownerLogin,
       ownerPasswordHash: seedExchanger.ownerPasswordHash,
+      ownerEmail: seedExchanger.ownerEmail,
+      ownerTotpSecret: null,
+      ownerTotpEnabled: false,
     });
 
     if (seedBlacklist.length) {

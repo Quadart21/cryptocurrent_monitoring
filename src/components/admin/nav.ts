@@ -51,6 +51,12 @@ export const ADMIN_NAV: AdminNavItem[] = [
     description: "Мета, robots, sitemap",
   },
   {
+    id: "email",
+    href: `${ADMIN_PATH}/email`,
+    label: "Email",
+    description: "Шаблоны, smtp.bz, журнал",
+  },
+  {
     id: "blacklist",
     href: `${ADMIN_PATH}/blacklist`,
     label: "Чёрный список",

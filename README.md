@@ -262,11 +262,29 @@ pg_restore -d "postgresql://gapsnap:CHANGE_ME_DB_PASSWORD@127.0.0.1:5432/gapsnap
 - `/trulala/achievements` — ачивки (SVG)
 - `/trulala/ads` — реклама
 - `/trulala/seo` — SEO
+- `/trulala/email` — email (шаблоны, smtp.bz, журнал)
 - `/trulala/blacklist` — чёрный список
 - `/trulala/sync` — синхронизация фидов
 
 Логин/пароль: `ADMIN_LOGIN` / `ADMIN_PASSWORD` в `.env`.  
 В production обязательны длинный `ADMIN_PASSWORD` и `SESSION_SECRET` (≥24 символов).
+
+### Email (smtp.bz)
+
+Подтверждение отзывов и письмо владельцу при одобрении обменника:
+
+```env
+SITE_URL=https://gapsnap.org
+SMTPBZ_API_KEY=ваш_ключ_из_кабинета
+SMTPBZ_FROM=noreply@ваш-домен   # верифицированный отправитель в smtp.bz
+SMTPBZ_FROM_NAME=GapSnap
+```
+
+Отправитель должен быть подтверждён в кабинете smtp.bz.
+
+При **Одобрить** в админке на `ownerEmail` уходят: логин, временный пароль, секрет 2FA (TOTP). Вход в `/cabinet` — пароль + код из Authenticator.
+
+При **одобрении отзыва** владельцу уходит письмо «новый отзыв — ответьте в кабинете».
 
 ---
 

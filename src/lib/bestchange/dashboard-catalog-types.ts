@@ -10,4 +10,8 @@ export type DashboardCatalog = {
   defaultOnlineTo: string;
   defaultCashFrom: string;
   defaultCashTo: string;
+  /** Top online shortcuts by live demand (offer count), with fallbacks. */
+  popularOnlinePairs: [string, string][];
+  /** Top cash shortcuts by live demand, with fallbacks. */
+  popularCashPairs: [string, string][];
 };

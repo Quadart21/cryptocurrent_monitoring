@@ -6,8 +6,9 @@ import {
 import {
   POPULAR_CASH_PAIRS,
   POPULAR_FEED_PAIRS,
+  mergePopularPairs,
 } from "@/lib/bestchange/popular-pairs";
-import { listExchangers } from "@/lib/store";
+import { getTopDemandPairs, listExchangers } from "@/lib/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,7 +28,11 @@ export async function GET(request: Request) {
   }
 
   const needle = norm(q);
-  const exchangers = await listExchangers({ publicOnly: true });
+  const [exchangers, liveOnline, liveCash] = await Promise.all([
+    listExchangers({ publicOnly: true }),
+    getTopDemandPairs({ mode: "online", limit: 8 }),
+    getTopDemandPairs({ mode: "cash", limit: 8 }),
+  ]);
 
   const matchedExchangers = exchangers
     .filter(
@@ -58,7 +63,10 @@ export async function GET(request: Request) {
       cash: c.cash,
     }));
 
-  const allPairs = [...POPULAR_FEED_PAIRS, ...POPULAR_CASH_PAIRS];
+  const allPairs = [
+    ...mergePopularPairs(liveOnline, POPULAR_FEED_PAIRS, 8),
+    ...mergePopularPairs(liveCash, POPULAR_CASH_PAIRS, 8),
+  ];
   const matchedPairs = allPairs
     .filter(([a, b]) => {
       const label = `${a} ${b} ${a}→${b}`.toLowerCase();

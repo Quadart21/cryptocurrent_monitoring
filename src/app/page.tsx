@@ -17,7 +17,7 @@ type Props = {
 };
 
 export default async function HomePage({ searchParams }: Props) {
-  const catalog = getDashboardCatalog();
+  const catalog = await getDashboardCatalog();
   const sp = await searchParams;
 
   const mode = sp.mode === "cash" ? "cash" : "online";

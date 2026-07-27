@@ -14,6 +14,13 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+function maskEmail(email: string): string {
+  const [user, domain] = email.split("@");
+  if (!user || !domain) return "***";
+  const shown = user.length <= 2 ? `${user[0] ?? "*"}*` : `${user.slice(0, 2)}***`;
+  return `${shown}@${domain}`;
+}
+
 export async function GET() {
   const denied = await assertAdmin();
   if (denied) return denied;
@@ -39,8 +46,10 @@ export async function GET() {
   ]);
 
   const tagMap = Object.fromEntries(qualityTags.map((t) => [t.id, t.label]));
-  const reviewsWithLabels = reviews.map((r) => ({
+  const visibleReviews = reviews.filter((r) => r.status !== "awaiting_email");
+  const reviewsWithLabels = visibleReviews.map((r) => ({
     ...r,
+    email: r.email ? maskEmail(r.email) : null,
     qualityLabels: r.qualityTagIds.map((id) => tagMap[id]).filter(Boolean),
   }));
 
@@ -53,14 +62,21 @@ export async function GET() {
       error: exchangers.filter((e) => e.status === "error").length,
       rates: ratesCount,
       blacklist: blacklist.length,
-      pendingReviews: reviews.filter((r) => r.status === "pending").length,
+      pendingReviews: visibleReviews.filter((r) => r.status === "pending").length,
       achievements: achievements.length,
       ads: ads.length,
     },
-    exchangers: exchangers.map(({ ownerPasswordHash: _hash, ...ex }) => ({
-      ...ex,
-      hasOwnerPassword: Boolean(_hash),
-    })),
+    exchangers: exchangers.map(
+      ({
+        ownerPasswordHash: _hash,
+        ownerTotpSecret: _totp,
+        ...ex
+      }) => ({
+        ...ex,
+        hasOwnerPassword: Boolean(_hash),
+        ownerTotpEnabled: Boolean(ex.ownerTotpEnabled),
+      }),
+    ),
     blacklist,
     reviews: reviewsWithLabels,
     qualityTags,

@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { POPULAR_FEED_PAIRS } from "@/lib/bestchange/popular-pairs";
 import type {
   DashboardCatalog,
   DashboardCityOption,
@@ -81,13 +80,9 @@ export function Dashboard({
         city: catalog.defaultCity,
       };
     }
-    const codes = new Set(catalog.onlineCurrencies.map((c) => c.code));
-    const preferred = POPULAR_FEED_PAIRS.find(
-      ([a, b]) => codes.has(a) && codes.has(b),
-    );
     return {
-      from: preferred?.[0] ?? catalog.defaultOnlineFrom,
-      to: preferred?.[1] ?? catalog.defaultOnlineTo,
+      from: catalog.defaultOnlineFrom,
+      to: catalog.defaultOnlineTo,
       city: "",
     };
   }
@@ -268,6 +263,11 @@ export function Dashboard({
           to={to}
           currencies={currencies}
           cities={cities}
+          popularPairs={
+            mode === "cash"
+              ? catalog.popularCashPairs
+              : catalog.popularOnlinePairs
+          }
           bestRate={offers[0]?.rate}
           offerCount={offers.length}
           onModeChange={onModeChange}

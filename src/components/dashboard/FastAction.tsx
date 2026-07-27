@@ -2,10 +2,6 @@
 
 import Link from "next/link";
 import {
-  POPULAR_CASH_PAIRS,
-  POPULAR_FEED_PAIRS,
-} from "@/lib/bestchange/popular-pairs";
-import {
   CityAutocomplete,
   type CityOption,
 } from "@/components/dashboard/CityAutocomplete";
@@ -21,6 +17,7 @@ type Props = {
   to: string;
   currencies: CurrencyOption[];
   cities: CityOption[];
+  popularPairs: [string, string][];
   bestRate?: number;
   offerCount: number;
   onModeChange: (mode: ExchangeMode) => void;
@@ -38,6 +35,7 @@ export function FastAction({
   to,
   currencies,
   cities,
+  popularPairs,
   bestRate,
   offerCount,
   onModeChange,
@@ -55,10 +53,7 @@ export function FastAction({
           { code: to, name: to },
         ];
 
-  const popular =
-    mode === "cash"
-      ? POPULAR_CASH_PAIRS.slice(0, 4)
-      : POPULAR_FEED_PAIRS.slice(0, 4);
+  const popular = popularPairs.slice(0, 4);
 
   const cityName = cities.find((c) => c.code === city)?.name ?? city;
 

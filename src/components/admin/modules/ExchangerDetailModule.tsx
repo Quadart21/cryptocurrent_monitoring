@@ -79,8 +79,19 @@ export function ExchangerDetailModule() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, ...body }),
       });
-      if (!res.ok) throw new Error("fail");
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        mailWarning?: string | null;
+      };
+      if (!res.ok) throw new Error(data.error ?? "fail");
       await refresh();
+      if (data.mailWarning) {
+        window.alert(data.mailWarning);
+      } else if (body.status === "active") {
+        window.alert(
+          "Обменник одобрен. Письмо с доступом и 2FA отправлено на email владельца.",
+        );
+      }
     } finally {
       setBusy(false);
     }

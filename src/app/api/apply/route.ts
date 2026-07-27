@@ -28,6 +28,7 @@ export async function POST(request: Request) {
   const website = String(form.get("website") ?? "").trim();
   const feedUrl = String(form.get("feedUrl") ?? "").trim();
   const contact = String(form.get("contact") ?? "").trim();
+  const ownerEmail = String(form.get("ownerEmail") ?? "").trim().toLowerCase();
   const description = String(form.get("description") ?? "").trim();
   const ownerLogin = String(form.get("ownerLogin") ?? "").trim().toLowerCase();
   const ownerPassword = String(form.get("ownerPassword") ?? "");
@@ -53,6 +54,12 @@ export async function POST(request: Request) {
   if (contact.length < 3) {
     return NextResponse.json(
       { error: "Укажите контакт (email или Telegram)" },
+      { status: 400 },
+    );
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ownerEmail) || ownerEmail.length > 254) {
+    return NextResponse.json(
+      { error: "Укажите корректный email владельца — на него придут доступ и 2FA" },
       { status: 400 },
     );
   }
@@ -113,6 +120,7 @@ export async function POST(request: Request) {
       logoData: preparedLogo?.bytes ?? null,
       ownerLogin,
       ownerPasswordHash,
+      ownerEmail,
     });
 
     return NextResponse.json({
@@ -124,7 +132,7 @@ export async function POST(request: Request) {
         status: exchanger.status,
         pairCount,
       },
-      message: `Заявка принята (на модерации). В фиде найдено направлений: ${pairCount}. После одобрения войдите в кабинет владельца (/cabinet) логином «${ownerLogin}», чтобы смотреть статистику и отвечать на отзывы.`,
+      message: `Заявка принята (на модерации). После одобрения на ${ownerEmail} придут логин, временный пароль и данные 2FA для кабинета /cabinet.`,
     });
   } catch (error) {
     const message =

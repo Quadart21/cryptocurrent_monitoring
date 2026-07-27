@@ -36,6 +36,7 @@ export function ExchangerReviews({
   const [reviews, setReviews] = useState<ApprovedReview[]>([]);
   const [sentiment, setSentiment] = useState<ReviewSentiment>("positive");
   const [orderId, setOrderId] = useState("");
+  const [email, setEmail] = useState("");
   const [text, setText] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -77,6 +78,7 @@ export function ExchangerReviews({
           exchangerId,
           sentiment,
           orderId,
+          email,
           text,
           qualityTagIds: selectedTags,
         }),
@@ -86,8 +88,9 @@ export function ExchangerReviews({
         setError(data.error ?? "Не удалось отправить отзыв");
         return;
       }
-      setMessage(data.message ?? "Отзыв отправлен на модерацию");
+      setMessage(data.message ?? "Отзыв отправлен");
       setOrderId("");
+      setEmail("");
       setText("");
       setSelectedTags([]);
       setSentiment("positive");
@@ -172,6 +175,25 @@ export function ExchangerReviews({
                 placeholder="Например, 128473"
                 className="w-full rounded-2xl border border-line bg-input px-3 py-3 text-sm outline-none focus:border-accent"
               />
+            </label>
+
+            <label className="block space-y-2">
+              <span className="text-xs font-medium uppercase tracking-[0.14em] text-ink-muted">
+                Email для подтверждения
+              </span>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+                placeholder="you@example.com"
+                className="w-full rounded-2xl border border-line bg-input px-3 py-3 text-sm outline-none focus:border-accent"
+              />
+              <span className="block text-xs text-ink-muted">
+                На этот адрес придёт ссылка. Без подтверждения отзыв не попадёт на
+                модерацию.
+              </span>
             </label>
 
             <label className="block space-y-2">

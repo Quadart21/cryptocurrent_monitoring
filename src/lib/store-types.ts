@@ -51,8 +51,13 @@ export type FeedExchanger = {
   traffic: ExchangerTraffic;
   /** Логин кабинета владельца (задаётся при заявке) */
   ownerLogin: string | null;
-  /** SHA-256 хеш пароля владельца */
+  /** SHA-256 / scrypt хеш пароля владельца */
   ownerPasswordHash: string | null;
+  /** Email владельца для писем (одобрение, 2FA) */
+  ownerEmail: string | null;
+  /** TOTP secret (base32), если 2FA включена */
+  ownerTotpSecret: string | null;
+  ownerTotpEnabled: boolean;
 };
 
 export type ExchangerAchievement = {
@@ -75,7 +80,11 @@ export type BlacklistItem = {
 };
 
 export type ReviewSentiment = "positive" | "negative";
-export type ReviewStatus = "pending" | "approved" | "rejected";
+export type ReviewStatus =
+  | "awaiting_email"
+  | "pending"
+  | "approved"
+  | "rejected";
 
 export type ReviewQualityTag = {
   id: string;
@@ -99,6 +108,9 @@ export type ExchangerReview = {
   /** Ответ владельца обменника */
   ownerReply: string | null;
   ownerRepliedAt: string | null;
+  /** Email автора (для подтверждения); не отдаём публично */
+  email: string | null;
+  emailVerifiedAt: string | null;
 };
 
 /** Виды рекламы */

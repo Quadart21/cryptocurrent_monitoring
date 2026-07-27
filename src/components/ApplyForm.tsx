@@ -56,6 +56,15 @@ export function ApplyForm() {
           required
         />
         <Field label="Контакт" name="contact" placeholder="email@ или @telegram" required />
+        <Field
+          label="Email владельца"
+          name="ownerEmail"
+          type="email"
+          placeholder="owner@example.com"
+          hint="На этот адрес после одобрения придут доступ в кабинет и 2FA"
+          required
+          autoComplete="email"
+        />
 
         <div className="rounded-2xl border border-line bg-bg-soft/40 p-4 space-y-4">
           <div>
@@ -63,11 +72,12 @@ export function ApplyForm() {
               Кабинет владельца
             </p>
             <p className="mt-1 text-xs text-ink-muted">
-              После одобрения заявки войдите на{" "}
+              Логин задаёте сейчас. После одобрения на email придут временный
+              пароль и секрет 2FA для входа на{" "}
               <Link href="/cabinet" className="text-accent underline underline-offset-2">
                 /cabinet
               </Link>
-              : статистика и ответы на отзывы. Профиль менять нельзя.
+              .
             </p>
           </div>
           <Field

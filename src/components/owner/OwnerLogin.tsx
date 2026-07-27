@@ -9,14 +9,25 @@ export function OwnerLogin() {
   const { busy, login } = useOwner();
   const [loginValue, setLoginValue] = useState("");
   const [password, setPassword] = useState("");
+  const [totpCode, setTotpCode] = useState("");
+  const [needsTotp, setNeedsTotp] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    const err = await login(loginValue, password);
-    if (err) setError(err);
-    else setPassword("");
+    const result = await login(loginValue, password, totpCode || undefined);
+    if (result?.needsTotp) {
+      setNeedsTotp(true);
+      setError(result.error);
+      return;
+    }
+    if (result?.error) {
+      setError(result.error);
+      return;
+    }
+    setPassword("");
+    setTotpCode("");
   }
 
   return (
@@ -36,8 +47,7 @@ export function OwnerLogin() {
             Вход
           </h1>
           <p className="mt-2 text-sm text-ink-muted">
-            Логин и пароль задаются при подаче заявки. После одобрения доступны
-            статистика и ответы на отзывы.
+            После одобрения заявки данные для входа и 2FA приходят на email.
           </p>
         </div>
         <label className="block space-y-2">
@@ -65,13 +75,30 @@ export function OwnerLogin() {
             className="w-full rounded-2xl border border-line bg-input px-3 py-3 text-sm outline-none focus:border-accent"
           />
         </label>
+        {(needsTotp || totpCode) && (
+          <label className="block space-y-2">
+            <span className="text-xs font-medium uppercase tracking-[0.14em] text-ink-muted">
+              Код 2FA
+            </span>
+            <input
+              value={totpCode}
+              onChange={(e) => setTotpCode(e.target.value)}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              placeholder="6 цифр"
+              maxLength={6}
+              required={needsTotp}
+              className="w-full rounded-2xl border border-line bg-input px-3 py-3 text-sm outline-none focus:border-accent"
+            />
+          </label>
+        )}
         {error && <p className="text-sm text-danger">{error}</p>}
         <button
           type="submit"
           disabled={busy}
           className="btn-primary w-full rounded-2xl px-4 py-3 text-sm font-semibold disabled:opacity-60"
         >
-          {busy ? "Входим…" : "Войти"}
+          {busy ? "Входим…" : needsTotp ? "Подтвердить 2FA" : "Войти"}
         </button>
       </form>
     </div>

@@ -15,6 +15,7 @@ import {
   findExchangerByOwnerLogin,
   setOwnerCredentials,
 } from "@/lib/store";
+import { verifyTotpCode } from "@/lib/totp";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,15 +27,16 @@ export async function POST(request: Request) {
   const limited = rateLimit(`owner-login:${clientIp(request)}`, 8, 60_000);
   if (!limited.ok) return rateLimitedResponse(limited.retryAfterSec);
 
-  let body: { login?: string; password?: string };
+  let body: { login?: string; password?: string; totpCode?: string };
   try {
-    body = (await request.json()) as { login?: string; password?: string };
+    body = (await request.json()) as typeof body;
   } catch {
     return NextResponse.json({ error: "Некорректный запрос" }, { status: 400 });
   }
 
   const login = String(body.login ?? "").trim().toLowerCase();
   const password = String(body.password ?? "");
+  const totpCode = String(body.totpCode ?? "").trim();
   if (login.length < 2 || password.length < 4) {
     return NextResponse.json(
       { error: "Укажите логин и пароль" },
@@ -56,6 +58,24 @@ export async function POST(request: Request) {
       { error: "Неверный логин или пароль" },
       { status: 401 },
     );
+  }
+
+  if (ex.ownerTotpEnabled && ex.ownerTotpSecret) {
+    if (!totpCode) {
+      return NextResponse.json(
+        {
+          needsTotp: true,
+          error: "Введите код из приложения-аутентификатора",
+        },
+        { status: 401 },
+      );
+    }
+    if (!verifyTotpCode(ex.ownerTotpSecret, totpCode)) {
+      return NextResponse.json(
+        { needsTotp: true, error: "Неверный код 2FA" },
+        { status: 401 },
+      );
+    }
   }
 
   let passwordHash = ex.ownerPasswordHash;

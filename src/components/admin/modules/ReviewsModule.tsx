@@ -44,8 +44,15 @@ export function ReviewsModule() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, status }),
       });
-      if (!res.ok) throw new Error("fail");
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        mailWarning?: string | null;
+      };
+      if (!res.ok) throw new Error(data.error ?? "fail");
       await refresh();
+      if (data.mailWarning) {
+        window.alert(data.mailWarning);
+      }
     } finally {
       setBusy(false);
     }

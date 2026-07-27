@@ -64,7 +64,11 @@ type OwnerContextValue = {
   exchanger: OwnerExchanger | null;
   reviews: OwnerReview[];
   refresh: () => Promise<boolean>;
-  login: (login: string, password: string) => Promise<string | null>;
+  login: (
+    login: string,
+    password: string,
+    totpCode?: string,
+  ) => Promise<{ error: string; needsTotp?: boolean } | null>;
   logout: () => Promise<void>;
 };
 
@@ -103,20 +107,32 @@ export function OwnerProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const login = useCallback(
-    async (loginValue: string, password: string) => {
+    async (loginValue: string, password: string, totpCode?: string) => {
       setBusy(true);
       try {
         const res = await fetch("/api/owner/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ login: loginValue, password }),
+          body: JSON.stringify({
+            login: loginValue,
+            password,
+            totpCode,
+          }),
         });
-        const body = (await res.json()) as { error?: string };
-        if (!res.ok) return body.error ?? "Неверный логин или пароль";
+        const body = (await res.json()) as {
+          error?: string;
+          needsTotp?: boolean;
+        };
+        if (!res.ok) {
+          return {
+            error: body.error ?? "Неверный логин или пароль",
+            needsTotp: Boolean(body.needsTotp),
+          };
+        }
         await refresh();
         return null;
       } catch {
-        return "Сеть недоступна";
+        return { error: "Сеть недоступна" };
       } finally {
         setBusy(false);
       }

@@ -2,20 +2,41 @@
 import { assertAdmin } from "@/lib/admin-guard";
 import { hashOwnerPassword } from "@/lib/owner-auth";
 import {
+  extractEmail,
+  sendOwnerApprovedEmail,
+} from "@/lib/owner-mail";
+import {
   deleteExchanger,
+  getExchangerById,
+  getSeoSettings,
   listExchangers,
+  provisionOwnerAccessOnApproval,
   setOwnerCredentials,
   updateExchanger,
 } from "@/lib/store";
 import { syncAllFeeds } from "@/lib/sync-feeds";
+import {
+  generateOwnerTempPassword,
+  generateTotpSecret,
+  totpAuthUri,
+} from "@/lib/totp";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(request: Request) {
+export async function GET() {
   const denied = await assertAdmin();
   if (denied) return denied;
-  return NextResponse.json({ exchangers: await listExchangers() });
+  const list = await listExchangers();
+  return NextResponse.json({
+    exchangers: list.map(
+      ({ ownerPasswordHash: _h, ownerTotpSecret: _t, ...ex }) => ({
+        ...ex,
+        hasOwnerPassword: Boolean(_h),
+        ownerTotpEnabled: Boolean(ex.ownerTotpEnabled),
+      }),
+    ),
+  });
 }
 
 export async function PATCH(request: Request) {
@@ -69,9 +90,17 @@ export async function PATCH(request: Request) {
       if (!updated) {
         return NextResponse.json({ error: "not found" }, { status: 404 });
       }
-      const { ownerPasswordHash: _h, ...safe } = updated;
+      const {
+        ownerPasswordHash: _h,
+        ownerTotpSecret: _t,
+        ...safe
+      } = updated;
       return NextResponse.json({
-        exchanger: { ...safe, hasOwnerPassword: true },
+        exchanger: {
+          ...safe,
+          hasOwnerPassword: true,
+          ownerTotpEnabled: updated.ownerTotpEnabled,
+        },
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "fail";
@@ -83,6 +112,11 @@ export async function PATCH(request: Request) {
       }
       return NextResponse.json({ error: message }, { status: 400 });
     }
+  }
+
+  const before = await getExchangerById(body.id);
+  if (!before) {
+    return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
   const patch: Parameters<typeof updateExchanger>[1] = {};
@@ -98,19 +132,70 @@ export async function PATCH(request: Request) {
   }
   if (body.logo !== undefined) patch.logo = body.logo;
 
-  const updated = await updateExchanger(body.id, patch);
-
+  let updated = await updateExchanger(body.id, patch);
   if (!updated) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
+  }
+
+  let mailWarning: string | null = null;
+  const becomingActive =
+    body.status === "active" && before.status !== "active";
+
+  if (becomingActive) {
+    const to =
+      updated.ownerEmail?.trim().toLowerCase() ||
+      extractEmail(updated.contact);
+    if (!to) {
+      mailWarning =
+        "Обменник одобрен, но email владельца не найден — письмо с доступом не отправлено.";
+    } else if (!updated.ownerLogin) {
+      mailWarning =
+        "Обменник одобрен, но логин кабинета не задан — письмо не отправлено.";
+    } else {
+      try {
+        const tempPassword = generateOwnerTempPassword();
+        const totpSecret = generateTotpSecret();
+        const passwordHash = await hashOwnerPassword(tempPassword);
+        const provisioned = await provisionOwnerAccessOnApproval(updated.id, {
+          ownerPasswordHash: passwordHash,
+          totpSecret,
+        });
+        if (provisioned) updated = provisioned;
+
+        const seo = await getSeoSettings();
+        const issuer = seo.siteName || "GapSnap";
+        await sendOwnerApprovedEmail({
+          to,
+          exchangerName: updated.name,
+          ownerLogin: updated.ownerLogin!,
+          tempPassword,
+          totpSecret,
+          totpUri: totpAuthUri(totpSecret, updated.ownerLogin!, issuer),
+        });
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "ошибка отправки";
+        mailWarning = `Обменник одобрен, но письмо не ушло: ${message}`;
+      }
+    }
   }
 
   if (body.sync || body.status === "active") {
     await syncAllFeeds();
   }
 
-  const { ownerPasswordHash: _h, ...safe } = updated;
+  const {
+    ownerPasswordHash: _h,
+    ownerTotpSecret: _t,
+    ...safe
+  } = updated;
   return NextResponse.json({
-    exchanger: { ...safe, hasOwnerPassword: Boolean(_h) },
+    exchanger: {
+      ...safe,
+      hasOwnerPassword: Boolean(_h),
+      ownerTotpEnabled: updated.ownerTotpEnabled,
+    },
+    mailWarning,
   });
 }
 

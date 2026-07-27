@@ -8,6 +8,27 @@
       "when": 1785185616720,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785194268146,
+      "tag": "0001_review_email_confirm",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785194542278,
+      "tag": "0002_owner_email_totp",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1785194882771,
+      "tag": "0003_email_module",
+      "breakpoints": true
     }
   ]
 }

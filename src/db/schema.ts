@@ -61,6 +61,9 @@ export const exchangers = pgTable(
     traffic: jsonb("traffic").$type<ExchangerTrafficJson>().notNull(),
     ownerLogin: text("owner_login"),
     ownerPasswordHash: text("owner_password_hash"),
+    ownerEmail: text("owner_email"),
+    ownerTotpSecret: text("owner_totp_secret"),
+    ownerTotpEnabled: boolean("owner_totp_enabled").notNull().default(false),
   },
   (t) => [
     index("exchangers_status_idx").on(t.status),
@@ -128,10 +131,15 @@ export const reviews = pgTable(
     moderatedAt: text("moderated_at"),
     ownerReply: text("owner_reply"),
     ownerRepliedAt: text("owner_replied_at"),
+    email: text("email"),
+    emailVerifiedAt: text("email_verified_at"),
+    confirmTokenHash: text("confirm_token_hash"),
+    confirmExpiresAt: text("confirm_expires_at"),
   },
   (t) => [
     index("reviews_exchanger_id_idx").on(t.exchangerId),
     index("reviews_status_idx").on(t.status),
+    index("reviews_confirm_token_hash_idx").on(t.confirmTokenHash),
   ],
 );
 
@@ -216,3 +224,50 @@ export const appMeta = pgTable("app_meta", {
   lastGlobalSyncAt: text("last_global_sync_at"),
   seededAt: timestamp("seeded_at", { withTimezone: true }),
 });
+
+/** Runtime email settings (from/name can override env). */
+export const emailSettings = pgTable("email_settings", {
+  id: integer("id").primaryKey().default(1),
+  fromEmail: text("from_email").notNull().default(""),
+  fromName: text("from_name").notNull().default("GapSnap"),
+  replyTo: text("reply_to").notNull().default(""),
+  notifyReviewConfirm: boolean("notify_review_confirm").notNull().default(true),
+  notifyOwnerExchangerApproved: boolean("notify_owner_exchanger_approved")
+    .notNull()
+    .default(true),
+  notifyOwnerReviewApproved: boolean("notify_owner_review_approved")
+    .notNull()
+    .default(true),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const emailTemplates = pgTable("email_templates", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull().default(""),
+  subject: text("subject").notNull(),
+  html: text("html").notNull(),
+  text: text("text").notNull().default(""),
+  enabled: boolean("enabled").notNull().default(true),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const emailLog = pgTable(
+  "email_log",
+  {
+    id: text("id").primaryKey(),
+    createdAt: text("created_at").notNull(),
+    toAddress: text("to_address").notNull(),
+    subject: text("subject").notNull(),
+    tag: text("tag").notNull().default(""),
+    templateId: text("template_id"),
+    status: text("status").notNull().default("sent"),
+    error: text("error"),
+    providerRaw: text("provider_raw"),
+  },
+  (t) => [
+    index("email_log_created_at_idx").on(t.createdAt),
+    index("email_log_tag_idx").on(t.tag),
+    index("email_log_status_idx").on(t.status),
+  ],
+);
