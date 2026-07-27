@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { listExchangers } from "@/lib/store";
 
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export async function GET() {
   const exchangers = await listExchangers({ publicOnly: true });

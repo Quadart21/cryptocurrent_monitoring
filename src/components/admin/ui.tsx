@@ -19,7 +19,7 @@ export function AdminPageHeader({
   actions,
 }: {
   title: string;
-  description?: string;
+  description?: React.ReactNode;
   actions?: React.ReactNode;
 }) {
   return (
@@ -27,7 +27,7 @@ export function AdminPageHeader({
       <div>
         <h1 className="font-display text-3xl font-semibold text-ink">{title}</h1>
         {description ? (
-          <p className="mt-1 max-w-2xl text-sm text-ink-muted">{description}</p>
+          <div className="mt-1 max-w-2xl text-sm text-ink-muted">{description}</div>
         ) : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}

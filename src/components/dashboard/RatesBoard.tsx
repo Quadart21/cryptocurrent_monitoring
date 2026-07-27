@@ -6,8 +6,8 @@ import { AchievementBadges } from "@/components/AchievementBadges";
 import { useAds } from "@/components/ads/useAds";
 import { trackAdClick, trackAdImpression } from "@/components/ads/track";
 import type { LiveOffer } from "@/components/RateTable";
+import { currencyDecimals } from "@/lib/bestchange/currency-decimals";
 import { pickWeightedRandom } from "@/lib/ads";
-import { cityLabel, currencyDecimals } from "@/lib/bestchange/catalog";
 import { formatAmount, formatRating, formatReserve } from "@/lib/format";
 
 export function RatesBoard({
@@ -15,13 +15,13 @@ export function RatesBoard({
   from,
   to,
   loading,
-  city,
+  cityLabel,
 }: {
   offers: LiveOffer[];
   from: string;
   to: string;
   loading?: boolean;
-  city?: string;
+  cityLabel?: string;
 }) {
   const pinAds = useAds("rates");
   const pinKey = pinAds.map((a) => `${a.id}:${a.priority}`).join("|");
@@ -49,8 +49,8 @@ export function RatesBoard({
     }));
   }, [offers, pinnedId]);
 
-  const pairLabel = city
-    ? `${from} → ${to} · ${cityLabel(city)}`
+  const pairLabel = cityLabel
+    ? `${from} → ${to} · ${cityLabel}`
     : `${from} → ${to}`;
 
   return (
@@ -95,7 +95,7 @@ export function RatesBoard({
                 <th className="hidden px-5 py-3 font-medium lg:table-cell">
                   Лимиты
                 </th>
-                <th className="px-5 py-3 font-medium">Action</th>
+                <th className="px-5 py-3 font-medium">Действие</th>
               </tr>
             </thead>
             <tbody>
@@ -190,7 +190,7 @@ export function RatesBoard({
                           }
                         }}
                       >
-                        Trade
+                        Обменять
                       </a>
                     </td>
                   </tr>

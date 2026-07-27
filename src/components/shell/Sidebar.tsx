@@ -7,7 +7,9 @@ const items = [
   { href: "/", label: "Обмен", icon: "▣" },
   { href: "/exchangers", label: "Обменники", icon: "◎" },
   { href: "/catalogs", label: "Справочники", icon: "☰" },
+  { href: "/advertise", label: "Реклама", icon: "◈" },
   { href: "/apply", label: "Добавить", icon: "+" },
+  { href: "/cabinet", label: "Кабинет", icon: "◇" },
   { href: "/blacklist", label: "Чёрный список", icon: "!" },
 ];
 

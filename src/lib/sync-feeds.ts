@@ -1,12 +1,13 @@
 import {
   getStore,
-  replaceExchangerRates,
+  replaceExchangerRatesBatch,
   type FeedExchanger,
 } from "@/lib/store";
-import { parseRatesXml } from "@/lib/xml/parse-rates";
+import { parseRatesXml, type ParsedRateItem } from "@/lib/xml/parse-rates";
 
-const FETCH_TIMEOUT_MS = 25_000;
+const FETCH_TIMEOUT_MS = 12_000;
 const POLL_INTERVAL_MS = 60_000;
+const FETCH_CONCURRENCY = 4;
 
 export async function fetchFeedXml(feedUrl: string): Promise<string> {
   const controller = new AbortController();
@@ -44,16 +45,50 @@ export async function validateFeedUrl(feedUrl: string) {
   return { items, pairCount: items.length };
 }
 
-async function syncOne(exchanger: FeedExchanger): Promise<void> {
+type SyncResult = {
+  exchangerId: string;
+  items: ParsedRateItem[];
+  meta: { ok: true } | { ok: false; error: string };
+};
+
+async function fetchOne(exchanger: FeedExchanger): Promise<SyncResult> {
   try {
     const xml = await fetchFeedXml(exchanger.feedUrl);
     const items = parseRatesXml(xml);
-    await replaceExchangerRates(exchanger.id, items, { ok: true });
+    return { exchangerId: exchanger.id, items, meta: { ok: true } };
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Неизвестная ошибка синхронизации";
-    await replaceExchangerRates(exchanger.id, [], { ok: false, error: message });
+    return {
+      exchangerId: exchanger.id,
+      items: [],
+      meta: { ok: false, error: message },
+    };
   }
+}
+
+async function mapPool<T, R>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+
+  async function run() {
+    while (next < items.length) {
+      const index = next;
+      next += 1;
+      results[index] = await worker(items[index]!);
+    }
+  }
+
+  const runners = Array.from(
+    { length: Math.min(concurrency, Math.max(items.length, 1)) },
+    () => run(),
+  );
+  await Promise.all(runners);
+  return results;
 }
 
 export async function syncAllFeeds(): Promise<{
@@ -67,13 +102,13 @@ export async function syncAllFeeds(): Promise<{
     (e) => e.status === "active" || e.status === "error",
   );
 
+  const results = await mapPool(targets, FETCH_CONCURRENCY, fetchOne);
+  await replaceExchangerRatesBatch(results);
+
   let ok = 0;
   let failed = 0;
-
-  for (const exchanger of targets) {
-    await syncOne(exchanger);
-    const after = (await getStore()).exchangers.find((e) => e.id === exchanger.id);
-    if (after?.status === "active" && !after.lastError) ok += 1;
+  for (const r of results) {
+    if (r.meta.ok) ok += 1;
     else failed += 1;
   }
 
@@ -100,7 +135,6 @@ export function startFeedPoller(): void {
     });
   };
 
-  // Initial sync shortly after boot, then every minute
   setTimeout(tick, 1_500);
   setInterval(tick, POLL_INTERVAL_MS);
 

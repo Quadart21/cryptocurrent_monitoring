@@ -23,22 +23,34 @@ export async function POST(request: Request) {
     name?: string;
     reason?: string;
     reports?: number;
+    exchangerId?: string | null;
   };
 
   if (!body.name?.trim() || !body.reason?.trim()) {
     return NextResponse.json(
-      { error: "name and reason required" },
+      { error: "Укажите название и причину" },
       { status: 400 },
     );
   }
 
-  const item = await addBlacklistItem({
-    name: body.name.trim(),
-    reason: body.reason.trim(),
-    reports: body.reports,
-  });
-
-  return NextResponse.json({ item });
+  try {
+    const item = await addBlacklistItem({
+      name: body.name.trim(),
+      reason: body.reason.trim(),
+      reports: body.reports,
+      exchangerId: body.exchangerId ?? null,
+    });
+    return NextResponse.json({ item });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "fail";
+    if (message === "ALREADY_BLACKLISTED") {
+      return NextResponse.json(
+        { error: "Этот обменник уже в чёрном списке" },
+        { status: 409 },
+      );
+    }
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 }
 
 export async function DELETE(request: Request) {

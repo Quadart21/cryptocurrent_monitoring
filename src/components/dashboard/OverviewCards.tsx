@@ -24,7 +24,7 @@ export function OverviewCards({ exchangers, pairs, lastSyncAt }: Props) {
             <p className="mt-1 text-sm text-ink-muted">активных направлений</p>
           </div>
           <span className="rounded-full bg-[color-mix(in_srgb,var(--ok)_18%,transparent)] px-2.5 py-1 text-xs font-semibold text-ok">
-            live
+            онлайн
           </span>
         </div>
 

@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  POPULAR_FEED_PAIRS,
-  cityLabel,
-  listCashCurrencies,
-  listCities,
-  listOnlineCurrencies,
-} from "@/lib/bestchange/catalog";
+import { useSearchParams } from "next/navigation";
+import { POPULAR_FEED_PAIRS } from "@/lib/bestchange/popular-pairs";
+import type {
+  DashboardCatalog,
+  DashboardCityOption,
+  DashboardCurrencyOption,
+} from "@/lib/bestchange/dashboard-catalog-types";
 import type { LiveOffer } from "@/components/RateTable";
 import { OverviewCards } from "@/components/dashboard/OverviewCards";
 import { StatsChart } from "@/components/dashboard/StatsChart";
@@ -18,82 +18,88 @@ import {
 } from "@/components/dashboard/FastAction";
 import { DashboardAdSlot } from "@/components/ads/SiteAds";
 
-type CurrencyOption = { code: string; name: string };
+type Props = {
+  catalog: DashboardCatalog;
+  initialFrom: string;
+  initialTo: string;
+  initialMode: ExchangeMode;
+  initialCity: string;
+  initialOffers: LiveOffer[];
+  initialLastSyncAt: string | null;
+  initialPairCount: number;
+  initialExchangerCount: number;
+};
 
-const ONLINE_CURRENCIES: CurrencyOption[] = listOnlineCurrencies().map((c) => ({
-  code: c.code,
-  name: c.name,
-}));
+export function Dashboard({
+  catalog,
+  initialFrom,
+  initialTo,
+  initialMode,
+  initialCity,
+  initialOffers,
+  initialLastSyncAt,
+  initialPairCount,
+  initialExchangerCount,
+}: Props) {
+  const searchParams = useSearchParams();
+  const [mode, setMode] = useState<ExchangeMode>(initialMode);
+  const [city, setCity] = useState(initialCity);
+  const [from, setFrom] = useState(initialFrom);
+  const [to, setTo] = useState(initialTo);
+  const [offers, setOffers] = useState<LiveOffer[]>(initialOffers);
+  const [lastSyncAt, setLastSyncAt] = useState<string | null>(initialLastSyncAt);
+  const [exchangerCount] = useState(initialExchangerCount);
+  const [pairCount, setPairCount] = useState(initialPairCount);
+  const [loading, setLoading] = useState(false);
+  const bootstrapped = useRef(true);
+  const requestId = useRef(0);
+  const skipFirstPoll = useRef(true);
+  const urlKey = searchParams.toString();
 
-const CASH_CURRENCIES: CurrencyOption[] = listCashCurrencies().map((c) => ({
-  code: c.code,
-  name: c.name,
-}));
+  const currencies: DashboardCurrencyOption[] = useMemo(
+    () =>
+      mode === "cash" ? catalog.cashModeCurrencies : catalog.onlineCurrencies,
+    [mode, catalog],
+  );
 
-/** Наличные: фиат cash + остальные направления (крипта/банки) для пар crypto↔cash */
-const CASH_MODE_CURRENCIES: CurrencyOption[] = [
-  ...CASH_CURRENCIES,
-  ...ONLINE_CURRENCIES,
-];
+  const cities: DashboardCityOption[] = catalog.cities;
 
-const CITY_OPTIONS = [...listCities()]
-  .map((c) => ({
-    code: c.code,
-    name: cityLabel(c.code),
-  }))
-  .sort((a, b) => a.name.localeCompare(b.name, "ru", { sensitivity: "base" }));
+  const cityDisplayName = useMemo(() => {
+    if (!city) return undefined;
+    return cities.find((c) => c.code === city)?.name ?? city;
+  }, [city, cities]);
 
-/** Default city: Москва if present, otherwise first alphabetically */
-const DEFAULT_CITY =
-  CITY_OPTIONS.find((c) => c.code === "MSK")?.code ??
-  CITY_OPTIONS[0]?.code ??
-  "MSK";
-
-function defaultsForMode(mode: ExchangeMode): {
-  from: string;
-  to: string;
-  city: string;
-} {
-  if (mode === "cash") {
+  function defaultsForMode(next: ExchangeMode): {
+    from: string;
+    to: string;
+    city: string;
+  } {
+    if (next === "cash") {
+      return {
+        from: catalog.defaultCashFrom,
+        to: catalog.defaultCashTo,
+        city: catalog.defaultCity,
+      };
+    }
+    const codes = new Set(catalog.onlineCurrencies.map((c) => c.code));
+    const preferred = POPULAR_FEED_PAIRS.find(
+      ([a, b]) => codes.has(a) && codes.has(b),
+    );
     return {
-      from: "USDTTRC20",
-      to: "CASHRUB",
-      city: DEFAULT_CITY,
+      from: preferred?.[0] ?? catalog.defaultOnlineFrom,
+      to: preferred?.[1] ?? catalog.defaultOnlineTo,
+      city: "",
     };
   }
 
-  const codes = new Set(ONLINE_CURRENCIES.map((c) => c.code));
-  const preferred = POPULAR_FEED_PAIRS.find(
-    ([a, b]) => codes.has(a) && codes.has(b),
-  );
-  return {
-    from: preferred?.[0] ?? "USDTTRC20",
-    to: preferred?.[1] ?? "SBERRUB",
-    city: "",
-  };
-}
-
-export function Dashboard() {
-  const initial = defaultsForMode("online");
-  const [mode, setMode] = useState<ExchangeMode>("online");
-  const [city, setCity] = useState(initial.city);
-  const [from, setFrom] = useState(initial.from);
-  const [to, setTo] = useState(initial.to);
-  const [offers, setOffers] = useState<LiveOffer[]>([]);
-  const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
-  const [exchangerCount, setExchangerCount] = useState(0);
-  const [pairCount, setPairCount] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const bootstrapped = useRef(false);
-  const requestId = useRef(0);
-
-  const currencies = useMemo(
-    () => (mode === "cash" ? CASH_MODE_CURRENCIES : ONLINE_CURRENCIES),
-    [mode],
-  );
-
-  const load = useCallback(
-    async (nextFrom: string, nextTo: string, nextMode: ExchangeMode, nextCity: string) => {
+  const loadRates = useCallback(
+    async (
+      nextFrom: string,
+      nextTo: string,
+      nextMode: ExchangeMode,
+      nextCity: string,
+      opts?: { scroll?: boolean },
+    ) => {
       const id = ++requestId.current;
       setLoading(true);
 
@@ -107,10 +113,9 @@ export function Dashboard() {
           params.set("city", nextCity);
         }
 
-        const [ratesRes, exRes] = await Promise.all([
-          fetch(`/api/rates?${params}`, { cache: "no-store" }),
-          fetch("/api/exchangers", { cache: "no-store" }),
-        ]);
+        const ratesRes = await fetch(`/api/rates?${params}`, {
+          next: { revalidate: 60 },
+        });
 
         if (id !== requestId.current) return;
 
@@ -136,19 +141,13 @@ export function Dashboard() {
           setLastSyncAt(data.lastGlobalSyncAt);
           setPairCount(data.activePairCount ?? 0);
 
-          if (bootstrapped.current) {
+          if (opts?.scroll && bootstrapped.current) {
             requestAnimationFrame(() => {
               document
                 .getElementById("rates-board")
                 ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
             });
           }
-          bootstrapped.current = true;
-        }
-
-        if (exRes.ok) {
-          const data = (await exRes.json()) as { exchangers: unknown[] };
-          setExchangerCount(data.exchangers.length);
         }
       } finally {
         if (id === requestId.current) setLoading(false);
@@ -158,10 +157,60 @@ export function Dashboard() {
   );
 
   useEffect(() => {
-    void load(from, to, mode, city);
-    const id = setInterval(() => void load(from, to, mode, city), 60_000);
-    return () => clearInterval(id);
-  }, [from, to, mode, city, load]);
+    const spFrom = searchParams.get("from")?.trim().toUpperCase();
+    const spTo = searchParams.get("to")?.trim().toUpperCase();
+    const spMode = searchParams.get("mode") === "cash" ? "cash" : "online";
+    const spCity =
+      spMode === "cash"
+        ? searchParams.get("city")?.trim().toUpperCase() ||
+          catalog.defaultCity
+        : "";
+
+    if (!spFrom && !spTo && !searchParams.get("mode")) return;
+
+    const nextFrom = spFrom || from;
+    const nextTo = spTo || to;
+    if (
+      nextFrom === from &&
+      nextTo === to &&
+      spMode === mode &&
+      spCity === city
+    ) {
+      return;
+    }
+
+    skipFirstPoll.current = false;
+    setMode(spMode);
+    setFrom(nextFrom);
+    setTo(nextTo);
+    setCity(spCity);
+    setOffers([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlKey, catalog.defaultCity]);
+
+  useEffect(() => {
+    if (skipFirstPoll.current) {
+      skipFirstPoll.current = false;
+      return;
+    }
+    void loadRates(from, to, mode, city, { scroll: true });
+  }, [from, to, mode, city, loadRates]);
+
+  useEffect(() => {
+    const tick = () => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      void loadRates(from, to, mode, city);
+    };
+    const id = setInterval(tick, 60_000);
+    const onVis = () => {
+      if (!document.hidden) tick();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [from, to, mode, city, loadRates]);
 
   function onModeChange(next: ExchangeMode) {
     if (next === mode) return;
@@ -218,7 +267,7 @@ export function Dashboard() {
           from={from}
           to={to}
           currencies={currencies}
-          cities={CITY_OPTIONS}
+          cities={cities}
           bestRate={offers[0]?.rate}
           offerCount={offers.length}
           onModeChange={onModeChange}
@@ -237,7 +286,7 @@ export function Dashboard() {
           from={from}
           to={to}
           loading={loading}
-          city={mode === "cash" ? city : undefined}
+          cityLabel={mode === "cash" ? cityDisplayName : undefined}
         />
       </div>
     </div>

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { hashOwnerPassword } from "@/lib/owner-auth";
 import { addExchangerApplication } from "@/lib/store";
 import {
   saveExchangerLogo,
@@ -34,6 +35,9 @@ export async function POST(request: Request) {
   const feedUrl = String(form.get("feedUrl") ?? "").trim();
   const contact = String(form.get("contact") ?? "").trim();
   const description = String(form.get("description") ?? "").trim();
+  const ownerLogin = String(form.get("ownerLogin") ?? "").trim().toLowerCase();
+  const ownerPassword = String(form.get("ownerPassword") ?? "");
+  const ownerPasswordConfirm = String(form.get("ownerPasswordConfirm") ?? "");
   const logoField = form.get("logo");
   const logoFile = logoField instanceof File ? logoField : null;
 
@@ -55,6 +59,27 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
+  if (!/^[a-z0-9_]{3,32}$/.test(ownerLogin)) {
+    return NextResponse.json(
+      {
+        error:
+          "Логин кабинета: 3–32 символа, только латиница, цифры и подчёркивание",
+      },
+      { status: 400 },
+    );
+  }
+  if (ownerPassword.length < 6) {
+    return NextResponse.json(
+      { error: "Пароль кабинета не короче 6 символов" },
+      { status: 400 },
+    );
+  }
+  if (ownerPassword !== ownerPasswordConfirm) {
+    return NextResponse.json(
+      { error: "Пароли не совпадают" },
+      { status: 400 },
+    );
+  }
 
   let preparedLogo: Awaited<ReturnType<typeof validateAndPrepareLogo>> = null;
   try {
@@ -68,6 +93,7 @@ export async function POST(request: Request) {
   try {
     const { pairCount } = await validateFeedUrl(feedUrl);
     const id = newExchangerId();
+    const ownerPasswordHash = await hashOwnerPassword(ownerPassword);
 
     let logoMeta: { format: "svg" | "png"; updatedAt: string } | null = null;
     if (preparedLogo) {
@@ -85,6 +111,8 @@ export async function POST(request: Request) {
         `Заявка на добавление. Курсы подтягиваются из XML-фида раз в минуту.`,
       pairCount,
       logo: logoMeta,
+      ownerLogin,
+      ownerPasswordHash,
     });
 
     return NextResponse.json({
@@ -96,11 +124,17 @@ export async function POST(request: Request) {
         status: exchanger.status,
         pairCount,
       },
-      message: `Заявка принята (на модерации). В фиде найдено направлений: ${pairCount}. После одобрения курсы и логотип появятся в мониторинге.`,
+      message: `Заявка принята (на модерации). В фиде найдено направлений: ${pairCount}. После одобрения войдите в кабинет владельца (/cabinet) логином «${ownerLogin}», чтобы смотреть статистику и отвечать на отзывы.`,
     });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Не удалось проверить XML-фид";
+    if (message === "OWNER_LOGIN_TAKEN") {
+      return NextResponse.json(
+        { error: "Такой логин кабинета уже занят" },
+        { status: 409 },
+      );
+    }
     return NextResponse.json({ error: message }, { status: 422 });
   }
 }

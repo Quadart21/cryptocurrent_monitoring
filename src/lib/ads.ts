@@ -164,6 +164,20 @@ export function shuffleArray<T>(items: T[]): T[] {
   return next;
 }
 
+export const AD_PERIOD_LABELS: Record<"day" | "week" | "month", string> = {
+  day: "сутки",
+  week: "неделя",
+  month: "месяц",
+};
+
+export function formatAdPrice(price: number, currency: "RUB" = "RUB") {
+  return new Intl.NumberFormat("ru-RU", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(price);
+}
+
 export function utcDayKey(d = new Date()): string {
   return d.toISOString().slice(0, 10);
 }

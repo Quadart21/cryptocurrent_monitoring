@@ -2,6 +2,7 @@
 
 import type { FormEvent } from "react";
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import {
   AD_PLACEMENT_HINTS,
   AD_PLACEMENT_LABELS,
@@ -11,6 +12,7 @@ import {
   formatCtr,
 } from "@/lib/ads";
 import type { AdCreative, AdPlacement, AdType } from "@/lib/store-types";
+import { ADMIN_PATH } from "@/lib/admin-auth";
 import { useAdmin } from "@/components/admin/AdminProvider";
 import {
   AdminPageHeader,
@@ -185,7 +187,19 @@ export function AdsModule() {
     <div className="space-y-6">
       <AdminPageHeader
         title="Реклама"
-        description="Баннеры ротируются случайно в слоте (вес = приоритет). Конверсия считается по показам и кликам на публичных страницах."
+        description={
+          <>
+            Баннеры ротируются в слоте (вес = приоритет). Цены для рекламодателей
+            — в{" "}
+            <Link
+              href={`${ADMIN_PATH}/ad-tariffs`}
+              className="text-accent underline underline-offset-2"
+            >
+              тарифах
+            </Link>
+            .
+          </>
+        }
       />
 
       <div className="grid gap-3 sm:grid-cols-3">

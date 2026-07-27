@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import type { FeedExchanger } from "@/lib/store-types";
+import type { AdminExchanger } from "@/components/admin/types";
 import { formatOutboundCtr } from "@/lib/exchanger-traffic";
 import { logoPublicUrl } from "@/lib/logo-url";
 import { ADMIN_PATH } from "@/lib/admin-auth";
@@ -23,7 +24,7 @@ type EditForm = {
   description: string;
 };
 
-function formFromEx(ex: FeedExchanger): EditForm {
+function formFromEx(ex: FeedExchanger | AdminExchanger): EditForm {
   return {
     name: ex.name,
     website: ex.website,
@@ -53,12 +54,20 @@ export function ExchangerDetailModule() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
   const [syncAfterSave, setSyncAfterSave] = useState(false);
+  const [ownerLogin, setOwnerLogin] = useState("");
+  const [ownerPassword, setOwnerPassword] = useState("");
+  const [ownerError, setOwnerError] = useState<string | null>(null);
+  const [ownerOk, setOwnerOk] = useState(false);
 
   useEffect(() => {
     if (ex) {
       setForm(formFromEx(ex));
       setLogoFile(null);
       setEditError(null);
+      setOwnerLogin(ex.ownerLogin ?? "");
+      setOwnerPassword("");
+      setOwnerError(null);
+      setOwnerOk(false);
     }
   }, [ex]);
 
@@ -138,6 +147,36 @@ export function ExchangerDetailModule() {
       await refresh();
     } catch {
       setEditError("Сеть недоступна");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveOwnerCredentials(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setOwnerError(null);
+    setOwnerOk(false);
+    try {
+      const res = await fetch("/api/admin/exchangers", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id,
+          ownerLogin,
+          ownerPassword,
+        }),
+      });
+      const body = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        setOwnerError(body.error ?? "Не удалось сохранить доступ");
+        return;
+      }
+      setOwnerPassword("");
+      setOwnerOk(true);
+      await refresh();
+    } catch {
+      setOwnerError("Сеть недоступна");
     } finally {
       setBusy(false);
     }
@@ -473,6 +512,56 @@ export function ExchangerDetailModule() {
             className="btn-primary rounded-2xl px-4 py-2.5 text-sm font-semibold disabled:opacity-60"
           >
             Сохранить
+          </button>
+        </form>
+      </AdminSection>
+
+      <AdminSection title="Кабинет владельца">
+        <form
+          onSubmit={(ev) => void saveOwnerCredentials(ev)}
+          className="space-y-4 p-5"
+        >
+          <p className="text-sm text-ink-muted">
+            Логин для{" "}
+            <Link href="/cabinet" className="text-accent underline underline-offset-2">
+              /cabinet
+            </Link>
+            . Владелец видит только статистику и может отвечать на отзывы.
+            {ex.hasOwnerPassword
+              ? " Пароль уже задан — укажите новый, чтобы сменить."
+              : " Пароль ещё не задан."}
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block space-y-1">
+              <span className="text-xs text-ink-muted">Логин</span>
+              <input
+                value={ownerLogin}
+                onChange={(e) => setOwnerLogin(e.target.value)}
+                required
+                pattern="[a-zA-Z0-9_]{3,32}"
+                className="w-full rounded-2xl border border-line bg-input px-3 py-2.5 text-sm outline-none focus:border-accent"
+              />
+            </label>
+            <label className="block space-y-1">
+              <span className="text-xs text-ink-muted">Новый пароль</span>
+              <input
+                type="password"
+                value={ownerPassword}
+                onChange={(e) => setOwnerPassword(e.target.value)}
+                required
+                minLength={6}
+                className="w-full rounded-2xl border border-line bg-input px-3 py-2.5 text-sm outline-none focus:border-accent"
+              />
+            </label>
+          </div>
+          {ownerError && <p className="text-sm text-danger">{ownerError}</p>}
+          {ownerOk && <p className="text-sm text-ok">Доступ сохранён</p>}
+          <button
+            type="submit"
+            disabled={busy}
+            className="btn-primary rounded-2xl px-4 py-2.5 text-sm font-semibold disabled:opacity-60"
+          >
+            Сохранить доступ в кабинет
           </button>
         </form>
       </AdminSection>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ADMIN_NAV } from "@/components/admin/nav";
 import { useAdmin } from "@/components/admin/AdminProvider";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
@@ -19,10 +19,6 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { counts, lastGlobalSyncAt, logout, refresh, busy } = useAdmin();
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  useEffect(() => {
-    void refresh();
-  }, [pathname, refresh]);
 
   const pendingTotal =
     (counts?.pending ?? 0) + (counts?.pendingReviews ?? 0);

@@ -29,8 +29,20 @@ export async function sessionTokenFromCredentials(
     .join("");
 }
 
+let cachedExpectedToken: string | null = null;
+let cachedExpectedKey: string | null = null;
+
 export async function expectedSessionToken(): Promise<string> {
-  return sessionTokenFromCredentials(getAdminLogin(), getAdminPassword());
+  const login = getAdminLogin();
+  const password = getAdminPassword();
+  const key = `${login}\0${password}`;
+  if (cachedExpectedToken && cachedExpectedKey === key) {
+    return cachedExpectedToken;
+  }
+  const token = await sessionTokenFromCredentials(login, password);
+  cachedExpectedToken = token;
+  cachedExpectedKey = key;
+  return token;
 }
 
 export function isValidCredentials(login: string, password: string): boolean {

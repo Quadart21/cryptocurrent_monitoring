@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { GlobalSearch } from "@/components/shell/GlobalSearch";
 
 export function Topbar({
   title = "Мониторинг",
@@ -10,26 +11,18 @@ export function Topbar({
 }) {
   return (
     <header className="sticky top-0 z-20 border-b border-line/70 bg-[var(--topbar)] backdrop-blur-xl">
-      <div className="flex h-16 items-center gap-4 px-4 sm:px-6">
-        <div className="min-w-0">
-          <Link href="/" className="font-display text-lg font-semibold tracking-tight text-ink">
+      <div className="flex h-16 items-center gap-3 px-4 sm:gap-4 sm:px-6">
+        <div className="min-w-0 shrink-0">
+          <Link
+            href="/"
+            className="font-display text-lg font-semibold tracking-tight text-ink"
+          >
             Cryptomon
           </Link>
           <p className="truncate text-xs text-ink-muted sm:text-sm">{title}</p>
         </div>
 
-        <div className="mx-auto hidden max-w-md flex-1 md:block">
-          <label className="relative block">
-            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-ink-muted">
-              ⌕
-            </span>
-            <input
-              type="search"
-              placeholder="Поиск пары, обменника, кода…"
-              className="w-full rounded-2xl border border-line bg-input py-2.5 pl-9 pr-3 text-sm text-ink outline-none transition placeholder:text-ink-muted focus:border-accent focus:ring-2 focus:ring-accent/20"
-            />
-          </label>
-        </div>
+        <GlobalSearch className="mx-auto hidden min-w-0 max-w-md flex-1 md:block" />
 
         <div className="ml-auto flex items-center gap-2 sm:gap-3">
           <Link
@@ -40,6 +33,9 @@ export function Topbar({
           </Link>
           <ThemeToggle />
         </div>
+      </div>
+      <div className="border-t border-line/50 px-4 py-2 md:hidden">
+        <GlobalSearch />
       </div>
     </header>
   );

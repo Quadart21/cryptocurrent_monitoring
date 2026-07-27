@@ -8,7 +8,7 @@ import { listAchievements, listActiveAds, listExchangers } from "@/lib/store";
 import { formatRating } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Обменники" };
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 const statusLabel: Record<string, string> = {
   active: "Онлайн",

@@ -21,10 +21,14 @@ export type AdminCounts = {
   ads: number;
 };
 
+export type AdminExchanger = Omit<FeedExchanger, "ownerPasswordHash"> & {
+  hasOwnerPassword?: boolean;
+};
+
 export type AdminOverview = {
   lastGlobalSyncAt: string | null;
   counts: AdminCounts;
-  exchangers: FeedExchanger[];
+  exchangers: AdminExchanger[];
   blacklist: BlacklistItem[];
   reviews: ReviewRow[];
   qualityTags: ReviewQualityTag[];
@@ -39,6 +43,7 @@ export type AdminNavId =
   | "qualities"
   | "achievements"
   | "ads"
+  | "ad-tariffs"
   | "blacklist"
   | "sync";
 

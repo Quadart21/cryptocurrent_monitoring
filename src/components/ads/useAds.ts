@@ -13,7 +13,7 @@ export function useAds(placement?: AdPlacement) {
   useEffect(() => {
     if (ctx) return;
     const params = placement ? `?placement=${placement}` : "";
-    void fetch(`/api/ads${params}`, { cache: "no-store" })
+    void fetch(`/api/ads${params}`, { next: { revalidate: 60 } })
       .then((r) => (r.ok ? r.json() : null))
       .then((data: { ads?: PublicAd[] } | null) => {
         setFallback(data?.ads ?? []);

@@ -16,8 +16,14 @@ export function Footer() {
           <Link href="/exchangers" className="hover:text-accent-deep">
             Обменники
           </Link>
+          <Link href="/advertise" className="hover:text-accent-deep">
+            Реклама
+          </Link>
           <Link href="/apply" className="hover:text-accent-deep">
             Добавить
+          </Link>
+          <Link href="/cabinet" className="hover:text-accent-deep">
+            Кабинет
           </Link>
           <Link href="/blacklist" className="hover:text-accent-deep">
             Чёрный список

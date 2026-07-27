@@ -54,11 +54,22 @@ export async function GET() {
       achievements: achievements.length,
       ads: ads.length,
     },
-    exchangers,
+    exchangers: exchangers.map(({ ownerPasswordHash: _hash, ...ex }) => ({
+      ...ex,
+      hasOwnerPassword: Boolean(_hash),
+    })),
     blacklist,
     reviews: reviewsWithLabels,
     qualityTags,
     achievements,
-    ads,
+    ads: ads.map((ad) => ({
+      ...ad,
+      stats: {
+        ...ad.stats,
+        daily: [...(ad.stats?.daily ?? [])]
+          .sort((a, b) => b.date.localeCompare(a.date))
+          .slice(0, 14),
+      },
+    })),
   });
 }

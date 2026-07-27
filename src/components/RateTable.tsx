@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AchievementBadges } from "@/components/AchievementBadges";
-import { currencyDecimals } from "@/lib/bestchange/catalog";
+import { currencyDecimals } from "@/lib/bestchange/currency-decimals";
 import { formatAmount, formatRating, formatReserve } from "@/lib/format";
 
 export type LiveOffer = {

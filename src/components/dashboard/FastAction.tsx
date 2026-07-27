@@ -4,9 +4,7 @@ import Link from "next/link";
 import {
   POPULAR_CASH_PAIRS,
   POPULAR_FEED_PAIRS,
-  cityLabel,
-  currencyLabel,
-} from "@/lib/bestchange/catalog";
+} from "@/lib/bestchange/popular-pairs";
 import {
   CityAutocomplete,
   type CityOption,
@@ -53,18 +51,22 @@ export function FastAction({
     currencies.length > 0
       ? currencies
       : [
-          { code: from, name: currencyLabel(from) },
-          { code: to, name: currencyLabel(to) },
+          { code: from, name: from },
+          { code: to, name: to },
         ];
 
   const popular =
-    mode === "cash" ? POPULAR_CASH_PAIRS.slice(0, 4) : POPULAR_FEED_PAIRS.slice(0, 4);
+    mode === "cash"
+      ? POPULAR_CASH_PAIRS.slice(0, 4)
+      : POPULAR_FEED_PAIRS.slice(0, 4);
+
+  const cityName = cities.find((c) => c.code === city)?.name ?? city;
 
   return (
     <div className="card animate-rise flex h-full flex-col p-5">
       <div className="flex items-center justify-between gap-2">
         <h2 className="font-display text-lg font-semibold text-ink">
-          Fast Action
+          Быстрый обмен
         </h2>
         <span className="rounded-full bg-accent-soft px-2.5 py-1 text-[11px] font-semibold text-accent">
           {options.length}
@@ -118,7 +120,9 @@ export function FastAction({
             Отдаёте
           </span>
           <select
-            value={options.some((c) => c.code === from) ? from : options[0]?.code}
+            value={
+              options.some((c) => c.code === from) ? from : options[0]?.code
+            }
             onChange={(e) => onFromChange(e.target.value)}
             className="w-full rounded-2xl border border-line bg-input px-3 py-3 text-sm font-medium text-ink outline-none focus:border-accent"
           >
@@ -169,7 +173,7 @@ export function FastAction({
         <div className="rounded-2xl border border-line bg-bg-soft px-4 py-3">
           <p className="text-xs text-ink-muted">
             Лучший курс (за 1 {from})
-            {mode === "cash" && city ? ` · ${cityLabel(city)}` : ""}
+            {mode === "cash" && city ? ` · ${cityName}` : ""}
           </p>
           <p className="mt-1 text-lg font-semibold tabular-nums text-accent-deep">
             {bestRate != null
@@ -208,7 +212,9 @@ export function FastAction({
       </div>
 
       <div className="mt-4 overflow-hidden rounded-2xl bg-gradient-to-br from-[var(--promo-from)] to-[var(--promo-to)] p-4 text-white shadow-[var(--glow)]">
-        <p className="font-display text-base font-semibold">Владелец обменника?</p>
+        <p className="font-display text-base font-semibold">
+          Владелец обменника?
+        </p>
         <p className="mt-1 text-sm text-white/85">
           Подключите valuta.xml и попадите в мониторинг.
         </p>
@@ -216,7 +222,7 @@ export function FastAction({
           href="/apply"
           className="mt-3 inline-flex rounded-xl bg-white px-3 py-2 text-xs font-bold text-[var(--accent-deep)]"
         >
-          Upgrade Now
+          Подать заявку
         </Link>
       </div>
     </div>

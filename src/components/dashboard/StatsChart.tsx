@@ -25,12 +25,12 @@ export function StatsChart() {
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <h2 className="font-display text-lg font-semibold text-ink">
-            Statistics
+            Статистика
           </h2>
           <p className="text-sm text-ink-muted">Динамика лучших курсов</p>
         </div>
         <div className="flex gap-2">
-          {["All", "BTC", "USDT"].map((label, i) => (
+          {["Все", "BTC", "USDT"].map((label, i) => (
             <span
               key={label}
               className={`rounded-full px-3 py-1 text-xs font-semibold ${

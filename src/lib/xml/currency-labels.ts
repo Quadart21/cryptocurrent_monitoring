@@ -1,10 +1,9 @@
 /**
- * @deprecated Import from `@/lib/bestchange/catalog` instead.
- * Kept as a thin re-export for existing imports.
+ * Thin re-exports. Prefer importing helpers directly from their modules.
  */
+export { currencyDecimals } from "@/lib/bestchange/currency-decimals";
+export { POPULAR_FEED_PAIRS } from "@/lib/bestchange/popular-pairs";
 export {
   currencyLabel,
-  currencyDecimals,
-  POPULAR_FEED_PAIRS,
   defaultAmountFor,
 } from "@/lib/bestchange/catalog";

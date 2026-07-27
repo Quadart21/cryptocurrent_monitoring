@@ -49,6 +49,10 @@ export type FeedExchanger = {
   /** Optional logo from application (SVG or transparent PNG). */
   logo: ExchangerLogo | null;
   traffic: ExchangerTraffic;
+  /** Логин кабинета владельца (задаётся при заявке) */
+  ownerLogin: string | null;
+  /** SHA-256 хеш пароля владельца */
+  ownerPasswordHash: string | null;
 };
 
 export type ExchangerAchievement = {
@@ -66,6 +70,8 @@ export type BlacklistItem = {
   reason: string;
   reportedAt: string;
   reports: number;
+  /** Linked exchanger id when picked from catalog; null for free-text entries */
+  exchangerId: string | null;
 };
 
 export type ReviewSentiment = "positive" | "negative";
@@ -90,6 +96,9 @@ export type ExchangerReview = {
   status: ReviewStatus;
   createdAt: string;
   moderatedAt: string | null;
+  /** Ответ владельца обменника */
+  ownerReply: string | null;
+  ownerRepliedAt: string | null;
 };
 
 /** Виды рекламы */
@@ -147,4 +156,30 @@ export type AdCreative = {
   endsAt: string | null;
   createdAt: string;
   stats: AdStats;
+};
+
+export type AdTariffPeriod = "day" | "week" | "month";
+
+/** Публичный тариф на размещение — правится в админке */
+export type AdTariff = {
+  id: string;
+  placement: AdPlacement;
+  type: AdType;
+  title: string;
+  description: string;
+  /** Напр. 1200×90 или «текстовая строка» */
+  sizeLabel: string;
+  price: number;
+  period: AdTariffPeriod;
+  currency: "RUB";
+  features: string[];
+  active: boolean;
+  sortOrder: number;
+  updatedAt: string;
+};
+
+export type AdPricingSettings = {
+  contact: string;
+  intro: string;
+  note: string;
 };

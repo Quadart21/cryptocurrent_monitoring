@@ -9,6 +9,9 @@ import type { ParsedRateItem } from "@/lib/xml/parse-rates";
 import type {
   AdCreative,
   AdPlacement,
+  AdPricingSettings,
+  AdTariff,
+  AdTariffPeriod,
   AdType,
   BlacklistItem,
   ExchangerAchievement,
@@ -23,6 +26,9 @@ import type {
 export type {
   AdCreative,
   AdPlacement,
+  AdPricingSettings,
+  AdTariff,
+  AdTariffPeriod,
   AdType,
   BlacklistItem,
   ExchangerAchievement,
@@ -48,6 +54,8 @@ export type StoreData = {
   reviews: ExchangerReview[];
   achievements: ExchangerAchievement[];
   ads: AdCreative[];
+  adTariffs: AdTariff[];
+  adPricing: AdPricingSettings;
   lastGlobalSyncAt: string | null;
 };
 
@@ -61,6 +69,7 @@ const seedBlacklist: BlacklistItem[] = [
     reason: "AML-скам: блокировка средств после оплаты и требование «доплаты».",
     reportedAt: "2026-05-12",
     reports: 47,
+    exchangerId: null,
   },
   {
     id: "b2",
@@ -68,6 +77,7 @@ const seedBlacklist: BlacklistItem[] = [
     reason: "Невыплата по подтверждённым заявкам, поддержка перестала отвечать.",
     reportedAt: "2026-03-28",
     reports: 31,
+    exchangerId: null,
   },
   {
     id: "b3",
@@ -75,6 +85,7 @@ const seedBlacklist: BlacklistItem[] = [
     reason: "Поддельные реквизиты и фишинговые зеркала официального сайта.",
     reportedAt: "2026-01-09",
     reports: 62,
+    exchangerId: null,
   },
   {
     id: "b4",
@@ -82,6 +93,7 @@ const seedBlacklist: BlacklistItem[] = [
     reason: "Массовые жалобы на подмену курса после создания заявки.",
     reportedAt: "2025-11-17",
     reports: 24,
+    exchangerId: null,
   },
 ];
 
@@ -143,6 +155,127 @@ const seedExchangers: FeedExchanger[] = [
     achievementIds: [],
     logo: null,
     traffic: emptyExchangerTraffic(),
+    ownerLogin: "kubex",
+    ownerPasswordHash:
+      "915bbe7d238199b20928beb910402f53991f2c7d229ec9a95bd03be2611bebcc",
+  },
+];
+
+const seedAdPricing: AdPricingSettings = {
+  contact: "ads@cryptomon.local",
+  intro:
+    "Разместите баннер или выделите обменник в мониторинге Cryptomon. Ниже — актуальные форматы, размеры и тарифы.",
+  note: "Цены указаны в рублях. Слоты ограничены: при занятости даты согласуем отдельно.",
+};
+
+const seedAdTariffs: AdTariff[] = [
+  {
+    id: "tar_header",
+    placement: "header",
+    type: "banner",
+    title: "Баннер под шапкой",
+    description:
+      "Горизонтальный баннер сразу под топбаром на всех публичных страницах.",
+    sizeLabel: "1200×90",
+    price: 25000,
+    period: "week",
+    currency: "RUB",
+    features: [
+      "Весь сайт",
+      "Случайная ротация при нескольких креативах",
+      "Статистика показов и кликов",
+    ],
+    active: true,
+    sortOrder: 10,
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "tar_dashboard",
+    placement: "dashboard",
+    type: "banner",
+    title: "Баннер над курсами",
+    description: "Баннер на главной странице над таблицей предложений.",
+    sizeLabel: "1200×120",
+    price: 35000,
+    period: "week",
+    currency: "RUB",
+    features: [
+      "Главная страница",
+      "Максимальный охват при выборе пары",
+      "Статистика CTR",
+    ],
+    active: true,
+    sortOrder: 20,
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "tar_footer",
+    placement: "footer",
+    type: "banner",
+    title: "Баннер внизу страницы",
+    description: "Крупный баннер в футере публичных страниц.",
+    sizeLabel: "970×250",
+    price: 18000,
+    period: "week",
+    currency: "RUB",
+    features: ["Все публичные страницы", "Большой креатив", "Статистика"],
+    active: true,
+    sortOrder: 30,
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "tar_ticker",
+    placement: "ticker",
+    type: "ticker",
+    title: "Бегущая строка",
+    description: "Текстовая полоса под шапкой с ссылкой на ваш сайт.",
+    sizeLabel: "текст до 120 символов",
+    price: 12000,
+    period: "week",
+    currency: "RUB",
+    features: ["Весь сайт", "Быстрый запуск без макета", "Ссылка на сайт"],
+    active: true,
+    sortOrder: 40,
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "tar_exchangers",
+    placement: "exchangers",
+    type: "highlight",
+    title: "Выделение в списке обменников",
+    description: "Подсветка карточки обменника на странице /exchangers.",
+    sizeLabel: "без баннера",
+    price: 15000,
+    period: "week",
+    currency: "RUB",
+    features: [
+      "Страница списка обменников",
+      "Привязка к вашему обменнику",
+      "Повышенная заметность",
+    ],
+    active: true,
+    sortOrder: 50,
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "tar_rates",
+    placement: "rates",
+    type: "rates_pin",
+    title: "Закреп в таблице курсов",
+    description:
+      "Ваш обменник поднимается в таблице курсов на главной при выбранной паре.",
+    sizeLabel: "без баннера",
+    price: 40000,
+    period: "week",
+    currency: "RUB",
+    features: [
+      "Главная · таблица курсов",
+      "Закреп поверх органической сортировки",
+      "Максимальная конверсия в переход",
+    ],
+    active: true,
+    sortOrder: 60,
+    updatedAt: new Date().toISOString(),
   },
 ];
 
@@ -155,6 +288,8 @@ function emptyStore(): StoreData {
     reviews: [],
     achievements: [],
     ads: [],
+    adTariffs: structuredClone(seedAdTariffs),
+    adPricing: structuredClone(seedAdPricing),
     lastGlobalSyncAt: null,
   };
 }
@@ -180,6 +315,33 @@ function applyReviewStats(
   ex.reviews = total;
   ex.rating =
     total === 0 ? 0 : Math.round((positive / total) * 5 * 100) / 100;
+}
+
+function normalizeAdTariff(raw: Partial<AdTariff> & { id: string }): AdTariff {
+  const period: AdTariffPeriod =
+    raw.period === "day" || raw.period === "week" || raw.period === "month"
+      ? raw.period
+      : "week";
+  return {
+    id: raw.id,
+    placement: raw.placement ?? "dashboard",
+    type: raw.type ?? "banner",
+    title: typeof raw.title === "string" ? raw.title : raw.id,
+    description: typeof raw.description === "string" ? raw.description : "",
+    sizeLabel: typeof raw.sizeLabel === "string" ? raw.sizeLabel : "",
+    price: typeof raw.price === "number" ? Math.max(0, raw.price) : 0,
+    period,
+    currency: "RUB",
+    features: Array.isArray(raw.features)
+      ? raw.features.filter((f): f is string => typeof f === "string")
+      : [],
+    active: raw.active !== false,
+    sortOrder: typeof raw.sortOrder === "number" ? raw.sortOrder : 0,
+    updatedAt:
+      typeof raw.updatedAt === "string"
+        ? raw.updatedAt
+        : new Date().toISOString(),
+  };
 }
 
 function normalizeExchanger(
@@ -226,6 +388,14 @@ function normalizeExchanger(
         ? { format: ex.logo.format, updatedAt: ex.logo.updatedAt }
         : null,
     traffic: normalizeExchangerTraffic(ex.traffic),
+    ownerLogin:
+      typeof ex.ownerLogin === "string" && ex.ownerLogin.trim()
+        ? ex.ownerLogin.trim().toLowerCase()
+        : null,
+    ownerPasswordHash:
+      typeof ex.ownerPasswordHash === "string" && ex.ownerPasswordHash
+        ? ex.ownerPasswordHash
+        : null,
   };
 }
 
@@ -242,10 +412,24 @@ function normalizeStore(parsed: Partial<StoreData>): {
   const hadBlacklist = Array.isArray(parsed.blacklist) && parsed.blacklist.length > 0;
   const hadAchievements = Array.isArray(parsed.achievements);
   const hadAds = Array.isArray(parsed.ads);
+  const hadAdTariffs =
+    Array.isArray(parsed.adTariffs) && parsed.adTariffs.length > 0;
+  const hadAdPricing =
+    parsed.adPricing != null && typeof parsed.adPricing === "object";
 
   const exchangers = (parsed.exchangers ?? []).map((ex) =>
     normalizeExchanger(ex),
   );
+
+  let ownerCredsMigrated = false;
+  for (const ex of exchangers) {
+    if (ex.id === "kubex" && (!ex.ownerLogin || !ex.ownerPasswordHash)) {
+      ex.ownerLogin = "kubex";
+      ex.ownerPasswordHash =
+        "915bbe7d238199b20928beb910402f53991f2c7d229ec9a95bd03be2611bebcc";
+      ownerCredsMigrated = true;
+    }
+  }
 
   const ads: AdCreative[] = (hadAds ? parsed.ads! : []).map((raw) => {
     const ad = raw as Partial<AdCreative> & { id: string };
@@ -272,14 +456,61 @@ function normalizeStore(parsed: Partial<StoreData>): {
     exchangers,
     rates: parsed.rates ?? [],
     blacklist: hadBlacklist
-      ? parsed.blacklist!
+      ? (parsed.blacklist ?? []).map((raw) => {
+          const b = raw as Partial<BlacklistItem> & {
+            id: string;
+            name: string;
+            reason: string;
+          };
+          return {
+            id: b.id,
+            name: b.name,
+            reason: b.reason,
+            reportedAt:
+              typeof b.reportedAt === "string"
+                ? b.reportedAt
+                : new Date().toISOString().slice(0, 10),
+            reports: typeof b.reports === "number" ? b.reports : 1,
+            exchangerId:
+              typeof b.exchangerId === "string" && b.exchangerId
+                ? b.exchangerId
+                : null,
+          };
+        })
       : structuredClone(seedBlacklist),
     qualityTags: hadTags
       ? parsed.qualityTags!
       : structuredClone(seedQualityTags),
-    reviews: hadReviews ? parsed.reviews! : [],
+    reviews: hadReviews
+      ? (parsed.reviews ?? []).map((r) => ({
+          ...r,
+          ownerReply:
+            typeof r.ownerReply === "string" ? r.ownerReply : null,
+          ownerRepliedAt:
+            typeof r.ownerRepliedAt === "string" ? r.ownerRepliedAt : null,
+        }))
+      : [],
     achievements: hadAchievements ? parsed.achievements! : [],
     ads,
+    adTariffs: hadAdTariffs
+      ? parsed.adTariffs!.map(normalizeAdTariff)
+      : structuredClone(seedAdTariffs),
+    adPricing: hadAdPricing
+      ? {
+          contact:
+            typeof parsed.adPricing!.contact === "string"
+              ? parsed.adPricing!.contact
+              : seedAdPricing.contact,
+          intro:
+            typeof parsed.adPricing!.intro === "string"
+              ? parsed.adPricing!.intro
+              : seedAdPricing.intro,
+          note:
+            typeof parsed.adPricing!.note === "string"
+              ? parsed.adPricing!.note
+              : seedAdPricing.note,
+        }
+      : structuredClone(seedAdPricing),
     lastGlobalSyncAt: parsed.lastGlobalSyncAt ?? null,
   };
 
@@ -299,14 +530,23 @@ function normalizeStore(parsed: Partial<StoreData>): {
       ((ex.status === "active" || ex.status === "error") && !ex.approvedAt),
   );
   const adsNeedStats = hadAds && (parsed.ads ?? []).some((ad) => !ad.stats);
+  const blacklistNeedsId =
+    hadBlacklist &&
+    (parsed.blacklist ?? []).some(
+      (b) => !("exchangerId" in (b as object)),
+    );
   const migrated =
     !hadTags ||
     !hadReviews ||
     !hadBlacklist ||
     !hadAchievements ||
     !hadAds ||
+    !hadAdTariffs ||
+    !hadAdPricing ||
     adsNeedStats ||
-    needsRepair;
+    needsRepair ||
+    ownerCredsMigrated ||
+    blacklistNeedsId;
   return { data, migrated };
 }
 
@@ -403,6 +643,8 @@ async function persist(data: StoreData): Promise<void> {
     reviews: data.reviews ?? [],
     achievements: data.achievements ?? [],
     ads: data.ads ?? [],
+    adTariffs: data.adTariffs ?? [],
+    adPricing: data.adPricing ?? structuredClone(seedAdPricing),
     lastGlobalSyncAt: data.lastGlobalSyncAt ?? null,
   };
   const json = JSON.stringify(payload, null, 2);
@@ -443,7 +685,9 @@ export async function listExchangers(options?: {
   const store = await ensureLoaded();
   if (options?.publicOnly) {
     return store.exchangers.filter(
-      (e) => e.status === "active" || e.status === "error",
+      (e) =>
+        (e.status === "active" || e.status === "error") &&
+        !isExchangerBlacklisted(e, store.blacklist),
     );
   }
   return store.exchangers;
@@ -451,9 +695,15 @@ export async function listExchangers(options?: {
 
 export async function getExchangerBySlug(
   slug: string,
+  options?: { publicOnly?: boolean },
 ): Promise<FeedExchanger | undefined> {
   const store = await ensureLoaded();
-  return store.exchangers.find((e) => e.slug === slug);
+  const ex = store.exchangers.find((e) => e.slug === slug);
+  if (!ex) return undefined;
+  if (options?.publicOnly && isExchangerBlacklisted(ex, store.blacklist)) {
+    return undefined;
+  }
+  return ex;
 }
 
 export async function getExchangerById(
@@ -466,9 +716,36 @@ export async function getExchangerById(
 export async function getActiveRates(): Promise<StoredRate[]> {
   const store = await ensureLoaded();
   const activeIds = new Set(
-    store.exchangers.filter((e) => e.status === "active").map((e) => e.id),
+    store.exchangers
+      .filter(
+        (e) =>
+          e.status === "active" && !isExchangerBlacklisted(e, store.blacklist),
+      )
+      .map((e) => e.id),
   );
   return store.rates.filter((r) => activeIds.has(r.exchangerId));
+}
+
+/** Match blacklist by linked id or by name (legacy free-text entries). */
+export function isExchangerBlacklisted(
+  ex: Pick<FeedExchanger, "id" | "name" | "slug">,
+  blacklist: BlacklistItem[],
+): boolean {
+  const name = ex.name.trim().toLowerCase();
+  const slug = ex.slug.trim().toLowerCase();
+  return blacklist.some((b) => {
+    if (b.exchangerId && b.exchangerId === ex.id) return true;
+    const bn = b.name.trim().toLowerCase();
+    return bn === name || bn === slug;
+  });
+}
+
+export async function isSlugBlacklisted(slug: string): Promise<boolean> {
+  const store = await ensureLoaded();
+  const ex = store.exchangers.find((e) => e.slug === slug);
+  if (ex) return isExchangerBlacklisted(ex, store.blacklist);
+  const needle = slug.trim().toLowerCase();
+  return store.blacklist.some((b) => b.name.trim().toLowerCase() === needle);
 }
 
 export async function addExchangerApplication(input: {
@@ -480,6 +757,8 @@ export async function addExchangerApplication(input: {
   description: string;
   pairCount: number;
   logo?: { format: "svg" | "png"; updatedAt: string } | null;
+  ownerLogin: string;
+  ownerPasswordHash: string;
 }): Promise<FeedExchanger> {
   const slugBase = slugify(input.name);
   let slug = slugBase;
@@ -487,10 +766,18 @@ export async function addExchangerApplication(input: {
   const id =
     input.id ??
     `ex_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+  const ownerLogin = input.ownerLogin.trim().toLowerCase();
 
   const created = await enqueueWrite((data) => {
     while (data.exchangers.some((e) => e.slug === slug)) {
       slug = `${slugBase}-${i++}`;
+    }
+    if (
+      data.exchangers.some(
+        (e) => e.ownerLogin && e.ownerLogin === ownerLogin,
+      )
+    ) {
+      throw new Error("OWNER_LOGIN_TAKEN");
     }
 
     const exchanger: FeedExchanger = {
@@ -516,6 +803,8 @@ export async function addExchangerApplication(input: {
       achievementIds: [],
       logo: input.logo ?? null,
       traffic: emptyExchangerTraffic(),
+      ownerLogin,
+      ownerPasswordHash: input.ownerPasswordHash,
     };
 
     data.exchangers.push(exchanger);
@@ -529,31 +818,46 @@ export async function replaceExchangerRates(
   items: ParsedRateItem[],
   meta: { ok: true } | { ok: false; error: string },
 ): Promise<void> {
+  await replaceExchangerRatesBatch([
+    { exchangerId, items, meta },
+  ]);
+}
+
+export async function replaceExchangerRatesBatch(
+  updates: Array<{
+    exchangerId: string;
+    items: ParsedRateItem[];
+    meta: { ok: true } | { ok: false; error: string };
+  }>,
+): Promise<void> {
+  if (updates.length === 0) return;
   const syncedAt = new Date().toISOString();
 
   await enqueueWrite((data) => {
-    const ex = data.exchangers.find((e) => e.id === exchangerId);
-    if (!ex) return;
+    for (const { exchangerId, items, meta } of updates) {
+      const ex = data.exchangers.find((e) => e.id === exchangerId);
+      if (!ex) continue;
 
-    data.rates = data.rates.filter((r) => r.exchangerId !== exchangerId);
+      data.rates = data.rates.filter((r) => r.exchangerId !== exchangerId);
 
-    if (meta.ok) {
-      ex.status = "active";
-      ex.lastError = null;
-      ex.lastSyncAt = syncedAt;
-      ex.pairCount = items.length;
-      data.rates.push(
-        ...items.map((item, index) => ({
-          ...item,
-          id: `${exchangerId}_${item.from}_${item.to}_${index}`,
-          exchangerId,
-          syncedAt,
-        })),
-      );
-    } else {
-      ex.status = ex.status === "pending" ? "pending" : "error";
-      ex.lastError = meta.error;
-      ex.lastSyncAt = syncedAt;
+      if (meta.ok) {
+        ex.status = "active";
+        ex.lastError = null;
+        ex.lastSyncAt = syncedAt;
+        ex.pairCount = items.length;
+        data.rates.push(
+          ...items.map((item, index) => ({
+            ...item,
+            id: `${exchangerId}_${item.from}_${item.to}_${index}`,
+            exchangerId,
+            syncedAt,
+          })),
+        );
+      } else {
+        ex.status = ex.status === "pending" ? "pending" : "error";
+        ex.lastError = meta.error;
+        ex.lastSyncAt = syncedAt;
+      }
     }
 
     data.lastGlobalSyncAt = syncedAt;
@@ -652,15 +956,29 @@ export async function addBlacklistItem(input: {
   name: string;
   reason: string;
   reports?: number;
+  exchangerId?: string | null;
 }): Promise<BlacklistItem> {
+  const name = input.name.trim();
+  const reason = input.reason.trim();
+  const exchangerId = input.exchangerId?.trim() || null;
+
   const item: BlacklistItem = {
     id: `bl_${Date.now().toString(36)}`,
-    name: input.name,
-    reason: input.reason,
+    name,
+    reason,
     reportedAt: new Date().toISOString().slice(0, 10),
     reports: input.reports ?? 1,
+    exchangerId,
   };
+
   await enqueueWrite((data) => {
+    const dup = data.blacklist.some((b) => {
+      if (exchangerId && b.exchangerId === exchangerId) return true;
+      return b.name.trim().toLowerCase() === name.toLowerCase();
+    });
+    if (dup) {
+      throw new Error("ALREADY_BLACKLISTED");
+    }
     data.blacklist.unshift(item);
   });
   return item;
@@ -769,6 +1087,8 @@ export async function addReview(input: {
     status: "pending",
     createdAt: new Date().toISOString(),
     moderatedAt: null,
+    ownerReply: null,
+    ownerRepliedAt: null,
   };
 
   await enqueueWrite((data) => {
@@ -777,6 +1097,63 @@ export async function addReview(input: {
   });
 
   return review;
+}
+
+export async function replyToReview(
+  reviewId: string,
+  exchangerId: string,
+  reply: string,
+): Promise<ExchangerReview | null> {
+  const text = reply.trim();
+  if (text.length < 2 || text.length > 2000) {
+    throw new Error("Ответ должен быть от 2 до 2000 символов");
+  }
+
+  let updated: ExchangerReview | null = null;
+  await enqueueWrite((data) => {
+    const review = (data.reviews ?? []).find((r) => r.id === reviewId);
+    if (!review || review.exchangerId !== exchangerId) return;
+    if (review.status !== "approved") return;
+    review.ownerReply = text;
+    review.ownerRepliedAt = new Date().toISOString();
+    updated = { ...review };
+  });
+  return updated;
+}
+
+export async function findExchangerByOwnerLogin(
+  login: string,
+): Promise<FeedExchanger | undefined> {
+  const needle = login.trim().toLowerCase();
+  if (!needle) return undefined;
+  const store = await ensureLoaded();
+  return store.exchangers.find((e) => e.ownerLogin === needle);
+}
+
+export async function setOwnerCredentials(
+  id: string,
+  input: { ownerLogin: string; ownerPasswordHash: string },
+): Promise<FeedExchanger | null> {
+  const ownerLogin = input.ownerLogin.trim().toLowerCase();
+  let updated: FeedExchanger | null = null;
+
+  await enqueueWrite((data) => {
+    const ex = data.exchangers.find((e) => e.id === id);
+    if (!ex) return;
+
+    const taken = data.exchangers.some(
+      (e) => e.id !== id && e.ownerLogin && e.ownerLogin === ownerLogin,
+    );
+    if (taken) {
+      throw new Error("OWNER_LOGIN_TAKEN");
+    }
+
+    ex.ownerLogin = ownerLogin;
+    ex.ownerPasswordHash = input.ownerPasswordHash;
+    updated = { ...ex };
+  });
+
+  return updated;
 }
 
 export async function moderateReview(
@@ -999,6 +1376,141 @@ export async function applyAdStatDeltas(
 
 export async function resetAdStats(id: string): Promise<AdCreative | null> {
   return updateAd(id, { stats: emptyAdStats() });
+}
+
+export async function listAdTariffs(options?: {
+  activeOnly?: boolean;
+}): Promise<AdTariff[]> {
+  const store = await ensureLoaded();
+  let rows = [...(store.adTariffs ?? [])];
+  if (options?.activeOnly) rows = rows.filter((t) => t.active);
+  return rows.sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title, "ru"));
+}
+
+export async function getAdPricing(): Promise<AdPricingSettings> {
+  const store = await ensureLoaded();
+  return store.adPricing ?? structuredClone(seedAdPricing);
+}
+
+export async function updateAdPricing(
+  patch: Partial<AdPricingSettings>,
+): Promise<AdPricingSettings> {
+  let next = structuredClone(seedAdPricing);
+  await enqueueWrite((data) => {
+    data.adPricing = data.adPricing ?? structuredClone(seedAdPricing);
+    if (typeof patch.contact === "string") {
+      data.adPricing.contact = patch.contact.trim();
+    }
+    if (typeof patch.intro === "string") {
+      data.adPricing.intro = patch.intro.trim();
+    }
+    if (typeof patch.note === "string") {
+      data.adPricing.note = patch.note.trim();
+    }
+    next = { ...data.adPricing };
+  });
+  return next;
+}
+
+export async function updateAdTariff(
+  id: string,
+  patch: Partial<
+    Pick<
+      AdTariff,
+      | "title"
+      | "description"
+      | "sizeLabel"
+      | "price"
+      | "period"
+      | "features"
+      | "active"
+      | "sortOrder"
+      | "placement"
+      | "type"
+    >
+  >,
+): Promise<AdTariff | null> {
+  let updated: AdTariff | null = null;
+  await enqueueWrite((data) => {
+    data.adTariffs = data.adTariffs ?? [];
+    const item = data.adTariffs.find((t) => t.id === id);
+    if (!item) return;
+    if (typeof patch.title === "string" && patch.title.trim()) {
+      item.title = patch.title.trim();
+    }
+    if (typeof patch.description === "string") {
+      item.description = patch.description.trim();
+    }
+    if (typeof patch.sizeLabel === "string") {
+      item.sizeLabel = patch.sizeLabel.trim();
+    }
+    if (typeof patch.price === "number" && Number.isFinite(patch.price)) {
+      item.price = Math.max(0, patch.price);
+    }
+    if (
+      patch.period === "day" ||
+      patch.period === "week" ||
+      patch.period === "month"
+    ) {
+      item.period = patch.period;
+    }
+    if (Array.isArray(patch.features)) {
+      item.features = patch.features
+        .filter((f): f is string => typeof f === "string")
+        .map((f) => f.trim())
+        .filter(Boolean);
+    }
+    if (typeof patch.active === "boolean") item.active = patch.active;
+    if (typeof patch.sortOrder === "number") item.sortOrder = patch.sortOrder;
+    if (patch.placement) item.placement = patch.placement;
+    if (patch.type) item.type = patch.type;
+    item.updatedAt = new Date().toISOString();
+    updated = { ...item };
+  });
+  return updated;
+}
+
+export async function addAdTariff(input: {
+  placement: AdPlacement;
+  type: AdType;
+  title: string;
+  description?: string;
+  sizeLabel?: string;
+  price: number;
+  period?: AdTariffPeriod;
+  features?: string[];
+  sortOrder?: number;
+}): Promise<AdTariff> {
+  const item: AdTariff = {
+    id: `tar_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 5)}`,
+    placement: input.placement,
+    type: input.type,
+    title: input.title.trim(),
+    description: (input.description ?? "").trim(),
+    sizeLabel: (input.sizeLabel ?? "").trim(),
+    price: Math.max(0, input.price),
+    period: input.period ?? "week",
+    currency: "RUB",
+    features: (input.features ?? []).map((f) => f.trim()).filter(Boolean),
+    active: true,
+    sortOrder: input.sortOrder ?? 100,
+    updatedAt: new Date().toISOString(),
+  };
+  await enqueueWrite((data) => {
+    data.adTariffs = data.adTariffs ?? [];
+    data.adTariffs.push(item);
+  });
+  return item;
+}
+
+export async function removeAdTariff(id: string): Promise<boolean> {
+  let removed = false;
+  await enqueueWrite((data) => {
+    const before = (data.adTariffs ?? []).length;
+    data.adTariffs = (data.adTariffs ?? []).filter((t) => t.id !== id);
+    removed = data.adTariffs.length < before;
+  });
+  return removed;
 }
 
 export type ExchangerTrafficDelta = {

@@ -1,8 +1,16 @@
+import "server-only";
+
 import currencyByCode from "@/data/bestchange/currency-by-code.json";
 import cityByCode from "@/data/bestchange/city-by-code.json";
 import countryByCode from "@/data/bestchange/country-by-code.json";
 import groups from "@/data/bestchange/groups.json";
 import index from "@/data/bestchange/index.json";
+
+export { currencyDecimals } from "@/lib/bestchange/currency-decimals";
+export {
+  POPULAR_CASH_PAIRS,
+  POPULAR_FEED_PAIRS,
+} from "@/lib/bestchange/popular-pairs";
 
 export type BcCurrency = {
   id: number;
@@ -73,30 +81,9 @@ export function cityLabel(code: string): string {
   return c.countryName ? `${c.name} (${c.countryName})` : c.name;
 }
 
-export function currencyDecimals(code: string): number {
-  const c = getCurrency(code);
-  const upper = code.toUpperCase();
-  if (c?.cash) return 0;
-  if (upper === "BTC" || upper.startsWith("BTC")) return 6;
-  if (upper === "ETH" || upper.startsWith("ETH")) return 5;
-  if (
-    upper.includes("RUB") ||
-    upper.includes("UAH") ||
-    upper.includes("KZT") ||
-    upper.includes("BYN") ||
-    upper.includes("USD") ||
-    upper.includes("EUR")
-  ) {
-    return 2;
-  }
-  if (!c?.crypto) return 2;
-  return 4;
-}
-
 export function defaultAmountFor(code: string): number {
   const c = getCurrency(code);
   if (c?.defamt && c.defamt > 0) {
-    // BestChange stores defamt in "display units" that are often too large for crypto
     if (c.crypto && c.defamt >= 1000) {
       if (code.toUpperCase().includes("BTC")) return 0.1;
       if (code.toUpperCase().includes("ETH")) return 1;
@@ -158,23 +145,3 @@ export function catalogMeta() {
     },
   };
 }
-
-/** Popular XML pairs used on the home calculator. */
-export const POPULAR_FEED_PAIRS: [string, string][] = [
-  ["USDTTRC20", "SBERRUB"],
-  ["USDTTRC20", "SBPRUB"],
-  ["USDTTRC20", "TCSBRUB"],
-  ["BTC", "SBERRUB"],
-  ["ETH", "SBERRUB"],
-  ["SBERRUB", "USDTTRC20"],
-  ["BTC", "USDTTRC20"],
-];
-
-export const POPULAR_CASH_PAIRS: [string, string][] = [
-  ["USDTTRC20", "CASHRUB"],
-  ["BTC", "CASHRUB"],
-  ["USDTTRC20", "CASHUSD"],
-  ["ETH", "CASHUSD"],
-  ["CASHRUB", "USDTTRC20"],
-  ["CASHUSD", "CASHRUB"],
-];

@@ -33,7 +33,13 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     reviews: reviews.map((r) => ({
-      ...r,
+      id: r.id,
+      sentiment: r.sentiment,
+      orderId: r.orderId,
+      text: r.text,
+      createdAt: r.createdAt,
+      ownerReply: r.ownerReply,
+      ownerRepliedAt: r.ownerRepliedAt,
       qualityLabels: r.qualityTagIds
         .map((tid) => tagMap[tid])
         .filter(Boolean),

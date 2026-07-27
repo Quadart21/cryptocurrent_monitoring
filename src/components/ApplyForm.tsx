@@ -56,6 +56,45 @@ export function ApplyForm() {
           required
         />
         <Field label="Контакт" name="contact" placeholder="email@ или @telegram" required />
+
+        <div className="rounded-2xl border border-line bg-bg-soft/40 p-4 space-y-4">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.14em] text-ink-muted">
+              Кабинет владельца
+            </p>
+            <p className="mt-1 text-xs text-ink-muted">
+              После одобрения заявки войдите на{" "}
+              <Link href="/cabinet" className="text-accent underline underline-offset-2">
+                /cabinet
+              </Link>
+              : статистика и ответы на отзывы. Профиль менять нельзя.
+            </p>
+          </div>
+          <Field
+            label="Логин"
+            name="ownerLogin"
+            placeholder="my_exchanger"
+            hint="3–32 символа: латиница, цифры, _"
+            required
+            autoComplete="username"
+          />
+          <Field
+            label="Пароль"
+            name="ownerPassword"
+            type="password"
+            placeholder="минимум 6 символов"
+            required
+            autoComplete="new-password"
+          />
+          <Field
+            label="Повтор пароля"
+            name="ownerPasswordConfirm"
+            type="password"
+            required
+            autoComplete="new-password"
+          />
+        </div>
+
         <label className="block space-y-2">
           <span className="text-xs font-medium uppercase tracking-[0.14em] text-ink-muted">
             Краткое описание
@@ -130,12 +169,16 @@ function Field({
   placeholder,
   hint,
   required,
+  type = "text",
+  autoComplete,
 }: {
   label: string;
   name: string;
   placeholder?: string;
   hint?: string;
   required?: boolean;
+  type?: string;
+  autoComplete?: string;
 }) {
   return (
     <label className="block space-y-2">
@@ -144,8 +187,10 @@ function Field({
       </span>
       <input
         name={name}
+        type={type}
         required={required}
         placeholder={placeholder}
+        autoComplete={autoComplete}
         className="w-full rounded-2xl border border-line bg-input px-3 py-3 text-sm text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
       />
       {hint && <span className="block text-xs text-ink-muted">{hint}</span>}

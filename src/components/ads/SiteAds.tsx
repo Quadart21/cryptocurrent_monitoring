@@ -35,7 +35,7 @@ export function SiteAdsChrome({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    void fetch("/api/ads", { cache: "no-store" })
+    void fetch("/api/ads", { next: { revalidate: 60 } })
       .then((r) => (r.ok ? r.json() : null))
       .then((data: { ads?: PublicAd[] } | null) => {
         if (!cancelled) {

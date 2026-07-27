@@ -16,17 +16,17 @@ import {
 import { formatRating, formatWorkingSince } from "@/lib/format";
 
 type Props = { params: Promise<{ slug: string }> };
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const ex = await getExchangerBySlug(slug);
+  const ex = await getExchangerBySlug(slug, { publicOnly: true });
   return { title: ex ? ex.name : "Обменник" };
 }
 
 export default async function ExchangerPage({ params }: Props) {
   const { slug } = await params;
-  const ex = await getExchangerBySlug(slug);
+  const ex = await getExchangerBySlug(slug, { publicOnly: true });
   if (!ex) notFound();
 
   const [livePairs, badges] = await Promise.all([
@@ -115,7 +115,11 @@ export default async function ExchangerPage({ params }: Props) {
         </dl>
       </div>
 
-      <ExchangerReviews exchangerId={ex.id} exchangerName={ex.name} />
+      <ExchangerReviews
+        exchangerId={ex.id}
+        exchangerName={ex.name}
+        logo={ex.logo}
+      />
     </div>
   );
 }

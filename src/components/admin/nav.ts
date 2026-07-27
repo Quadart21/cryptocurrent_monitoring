@@ -39,6 +39,12 @@ export const ADMIN_NAV: AdminNavItem[] = [
     description: "Баннеры и слоты",
   },
   {
+    id: "ad-tariffs",
+    href: `${ADMIN_PATH}/ad-tariffs`,
+    label: "Тарифы рекламы",
+    description: "Цены для /advertise",
+  },
+  {
     id: "blacklist",
     href: `${ADMIN_PATH}/blacklist`,
     label: "Чёрный список",
