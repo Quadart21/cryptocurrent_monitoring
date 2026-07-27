@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
-import { promises as fs } from "fs";
 import { cookies } from "next/headers";
 import { ADMIN_COOKIE, isValidAdminSession } from "@/lib/admin-auth";
-import { logoFilePath } from "@/lib/logo";
-import { getExchangerById } from "@/lib/store";
+import { getExchangerById, getExchangerLogoBytes } from "@/lib/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,21 +22,24 @@ export async function GET(_request: Request, { params }: Params) {
     return new NextResponse("Not found", { status: 404 });
   }
 
-  try {
-    const file = logoFilePath(ex.id, ex.logo.format);
-    const bytes = await fs.readFile(file);
-    const contentType =
-      ex.logo.format === "svg" ? "image/svg+xml; charset=utf-8" : "image/png";
-
-    return new NextResponse(bytes, {
-      headers: {
-        "Content-Type": contentType,
-        "Cache-Control": isAdmin
-          ? "no-store"
-          : "public, max-age=86400, stale-while-revalidate=604800",
-      },
-    });
-  } catch {
+  const logo = await getExchangerLogoBytes(ex.id);
+  if (!logo) {
     return new NextResponse("Not found", { status: 404 });
   }
+
+  const contentType =
+    logo.format === "svg" ? "image/svg+xml; charset=utf-8" : "image/png";
+
+  return new NextResponse(new Uint8Array(logo.bytes), {
+    headers: {
+      "Content-Type": contentType,
+      "Content-Disposition": "inline",
+      "X-Content-Type-Options": "nosniff",
+      "Content-Security-Policy":
+        "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+      "Cache-Control": isAdmin
+        ? "no-store"
+        : "public, max-age=86400, stale-while-revalidate=604800",
+    },
+  });
 }

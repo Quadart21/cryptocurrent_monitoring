@@ -142,6 +142,7 @@ export function OverviewModule() {
             ["Качества", `${ADMIN_PATH}/qualities`],
             ["Ачивки", `${ADMIN_PATH}/achievements`],
             ["Реклама", `${ADMIN_PATH}/ads`],
+            ["SEO", `${ADMIN_PATH}/seo`],
             ["Чёрный список", `${ADMIN_PATH}/blacklist`],
             ["Синхронизация", `${ADMIN_PATH}/sync`],
           ].map(([label, href]) => (

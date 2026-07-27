@@ -14,7 +14,7 @@ async function fetchJson(endpoint) {
     headers: {
       Accept: "application/json",
       "Accept-Encoding": "gzip",
-      "User-Agent": "CryptomonCatalogSync/1.0",
+      "User-Agent": "GapSnapCatalogSync/1.0",
     },
   });
   if (!res.ok) {

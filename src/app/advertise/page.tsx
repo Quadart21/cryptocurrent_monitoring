@@ -13,7 +13,7 @@ import { getAdPricing, listAdTariffs } from "@/lib/store";
 export const metadata: Metadata = {
   title: "Рекламодателям",
   description:
-    "Форматы и тарифы рекламы в мониторинге Cryptomon: баннеры, бегущая строка, закреп в курсах.",
+    "Форматы и тарифы рекламы в мониторинге GapSnap: баннеры, бегущая строка, закреп в курсах.",
 };
 
 export const revalidate = 60;
@@ -38,7 +38,7 @@ export default async function AdvertisePage() {
     <div className="space-y-10">
       <section className="relative overflow-hidden rounded-[2rem] border border-line bg-gradient-to-br from-bg-elevated via-bg to-accent-soft/40 px-6 py-10 sm:px-10 sm:py-14">
         <p className="font-display text-sm font-semibold tracking-[0.2em] text-accent uppercase">
-          Cryptomon
+          GapSnap
         </p>
         <h1 className="mt-3 max-w-2xl font-display text-3xl font-semibold text-ink sm:text-4xl">
           Реклама в мониторинге

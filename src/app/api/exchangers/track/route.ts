@@ -3,6 +3,7 @@ import {
   flushExchangerTraffic,
   queueExchangerTrafficEvent,
 } from "@/lib/exchanger-metrics";
+import { assertContentLength } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,6 +15,9 @@ type TrackBody = {
 };
 
 export async function POST(request: Request) {
+  const tooBig = assertContentLength(request, 32_768);
+  if (tooBig) return tooBig;
+
   let body: TrackBody;
   try {
     body = (await request.json()) as TrackBody;

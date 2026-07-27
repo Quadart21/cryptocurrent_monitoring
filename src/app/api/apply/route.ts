@@ -1,28 +1,22 @@
 import { NextResponse } from "next/server";
 import { hashOwnerPassword } from "@/lib/owner-auth";
 import { addExchangerApplication } from "@/lib/store";
-import {
-  saveExchangerLogo,
-  validateAndPrepareLogo,
-} from "@/lib/logo";
+import { validateAndPrepareLogo } from "@/lib/logo";
+import { clientIp, rateLimit } from "@/lib/security/rate-limit";
+import { rateLimitedResponse } from "@/lib/security/request";
+import { assertSafeOutboundUrl } from "@/lib/security/ssrf";
 import { validateFeedUrl } from "@/lib/sync-feeds";
 
 export const runtime = "nodejs";
-
-function isHttpUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" || url.protocol === "http:";
-  } catch {
-    return false;
-  }
-}
 
 function newExchangerId(): string {
   return `ex_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
 export async function POST(request: Request) {
+  const limited = rateLimit(`apply:${clientIp(request)}`, 5, 15 * 60_000);
+  if (!limited.ok) return rateLimitedResponse(limited.retryAfterSec);
+
   let form: FormData;
   try {
     form = await request.formData();
@@ -44,14 +38,17 @@ export async function POST(request: Request) {
   if (name.length < 2) {
     return NextResponse.json({ error: "Укажите название обменника" }, { status: 400 });
   }
-  if (!isHttpUrl(website)) {
+  try {
+    await assertSafeOutboundUrl(website, { allowHttp: true });
+  } catch {
     return NextResponse.json({ error: "Укажите корректный URL сайта" }, { status: 400 });
   }
-  if (!isHttpUrl(feedUrl)) {
-    return NextResponse.json(
-      { error: "Укажите корректный URL XML-фида (valuta.xml)" },
-      { status: 400 },
-    );
+  try {
+    await assertSafeOutboundUrl(feedUrl, { allowHttp: true });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Некорректный URL XML-фида";
+    return NextResponse.json({ error: message }, { status: 400 });
   }
   if (contact.length < 3) {
     return NextResponse.json(
@@ -68,9 +65,9 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  if (ownerPassword.length < 6) {
+  if (ownerPassword.length < 8) {
     return NextResponse.json(
-      { error: "Пароль кабинета не короче 6 символов" },
+      { error: "Пароль кабинета не короче 8 символов" },
       { status: 400 },
     );
   }
@@ -95,10 +92,12 @@ export async function POST(request: Request) {
     const id = newExchangerId();
     const ownerPasswordHash = await hashOwnerPassword(ownerPassword);
 
-    let logoMeta: { format: "svg" | "png"; updatedAt: string } | null = null;
-    if (preparedLogo) {
-      logoMeta = await saveExchangerLogo(id, preparedLogo);
-    }
+    const logoMeta = preparedLogo
+      ? {
+          format: preparedLogo.format,
+          updatedAt: new Date().toISOString(),
+        }
+      : null;
 
     const exchanger = await addExchangerApplication({
       id,
@@ -111,6 +110,7 @@ export async function POST(request: Request) {
         `Заявка на добавление. Курсы подтягиваются из XML-фида раз в минуту.`,
       pairCount,
       logo: logoMeta,
+      logoData: preparedLogo?.bytes ?? null,
       ownerLogin,
       ownerPasswordHash,
     });

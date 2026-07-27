@@ -1,5 +1,23 @@
-import { promises as fs } from "fs";
-import path from "path";
+import "server-only";
+
+import { and, count, eq, inArray, ne } from "drizzle-orm";
+import { getDb } from "@/db/index";
+import {
+  achievements,
+  adPricing,
+  ads,
+  adTariffs,
+  appMeta,
+  blacklist,
+  exchangers,
+  qualityTags,
+  rates,
+  reviews,
+  seo,
+  type AdStatsJson,
+  type ExchangerTrafficJson,
+} from "@/db/schema";
+import { seedAdPricing, seedSeo } from "@/db/seed";
 import { emptyAdStats, normalizeAdStats, utcDayKey } from "@/lib/ads";
 import {
   emptyExchangerTraffic,
@@ -15,12 +33,14 @@ import type {
   AdType,
   BlacklistItem,
   ExchangerAchievement,
+  ExchangerLogo,
   ExchangerReview,
   FeedExchanger,
   FeedExchangerStatus,
   ReviewQualityTag,
   ReviewSentiment,
   ReviewStatus,
+  SeoSettings,
 } from "@/lib/store-types";
 
 export type {
@@ -38,6 +58,7 @@ export type {
   ReviewQualityTag,
   ReviewSentiment,
   ReviewStatus,
+  SeoSettings,
 } from "@/lib/store-types";
 
 export type StoredRate = ParsedRateItem & {
@@ -56,652 +77,389 @@ export type StoreData = {
   ads: AdCreative[];
   adTariffs: AdTariff[];
   adPricing: AdPricingSettings;
+  seo: SeoSettings;
   lastGlobalSyncAt: string | null;
 };
 
-const DATA_DIR = path.join(process.cwd(), ".data");
-const STORE_PATH = path.join(DATA_DIR, "store.json");
+type ExchangerRow = typeof exchangers.$inferSelect;
+type RateRow = typeof rates.$inferSelect;
+type AdRow = typeof ads.$inferSelect;
+type ReviewRow = typeof reviews.$inferSelect;
+type AchievementRow = typeof achievements.$inferSelect;
+type TariffRow = typeof adTariffs.$inferSelect;
+type SeoRow = typeof seo.$inferSelect;
 
-const seedBlacklist: BlacklistItem[] = [
-  {
-    id: "b1",
-    name: "QuickCoin24",
-    reason: "AML-скам: блокировка средств после оплаты и требование «доплаты».",
-    reportedAt: "2026-05-12",
-    reports: 47,
-    exchangerId: null,
-  },
-  {
-    id: "b2",
-    name: "TurboBit Exchange",
-    reason: "Невыплата по подтверждённым заявкам, поддержка перестала отвечать.",
-    reportedAt: "2026-03-28",
-    reports: 31,
-    exchangerId: null,
-  },
-  {
-    id: "b3",
-    name: "RubleRocket",
-    reason: "Поддельные реквизиты и фишинговые зеркала официального сайта.",
-    reportedAt: "2026-01-09",
-    reports: 62,
-    exchangerId: null,
-  },
-  {
-    id: "b4",
-    name: "ShadowPay Pro",
-    reason: "Массовые жалобы на подмену курса после создания заявки.",
-    reportedAt: "2025-11-17",
-    reports: 24,
-    exchangerId: null,
-  },
-];
+function mapExchanger(row: ExchangerRow): FeedExchanger {
+  const logo: ExchangerLogo | null =
+    row.logoFormat === "svg" || row.logoFormat === "png"
+      ? {
+          format: row.logoFormat,
+          updatedAt: row.logoUpdatedAt ?? new Date().toISOString(),
+        }
+      : null;
 
-const seedQualityTags: ReviewQualityTag[] = [
-  {
-    id: "q_fast",
-    label: "Быстрый",
-    active: true,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "q_24_7",
-    label: "Круглосуточный",
-    active: true,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "q_support",
-    label: "Отзывчивая поддержка",
-    active: true,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "q_rate",
-    label: "Выгодный курс",
-    active: true,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "q_trust",
-    label: "Надёжный",
-    active: true,
-    createdAt: new Date().toISOString(),
-  },
-];
-
-const seedExchangers: FeedExchanger[] = [
-  {
-    id: "kubex",
-    slug: "kubex",
-    name: "Kubex",
-    website: "https://kubex.me",
-    feedUrl: "https://kubex.me/exports/valuta.xml",
-    contact: "seed@cryptomon.local",
-    description:
-      "Пример обменника с публичным BestChange-совместимым XML-фидом курсов.",
-    status: "active",
-    verified: true,
-    rating: 0,
-    reviews: 0,
-    reviewsPositive: 0,
-    reviewsNegative: 0,
-    ageYears: 3,
-    createdAt: new Date().toISOString(),
-    approvedAt: "2025-05-01T00:00:00.000Z",
-    lastSyncAt: null,
-    lastError: null,
-    pairCount: 0,
-    achievementIds: [],
-    logo: null,
-    traffic: emptyExchangerTraffic(),
-    ownerLogin: "kubex",
-    ownerPasswordHash:
-      "915bbe7d238199b20928beb910402f53991f2c7d229ec9a95bd03be2611bebcc",
-  },
-];
-
-const seedAdPricing: AdPricingSettings = {
-  contact: "ads@cryptomon.local",
-  intro:
-    "Разместите баннер или выделите обменник в мониторинге Cryptomon. Ниже — актуальные форматы, размеры и тарифы.",
-  note: "Цены указаны в рублях. Слоты ограничены: при занятости даты согласуем отдельно.",
-};
-
-const seedAdTariffs: AdTariff[] = [
-  {
-    id: "tar_header",
-    placement: "header",
-    type: "banner",
-    title: "Баннер под шапкой",
-    description:
-      "Горизонтальный баннер сразу под топбаром на всех публичных страницах.",
-    sizeLabel: "1200×90",
-    price: 25000,
-    period: "week",
-    currency: "RUB",
-    features: [
-      "Весь сайт",
-      "Случайная ротация при нескольких креативах",
-      "Статистика показов и кликов",
-    ],
-    active: true,
-    sortOrder: 10,
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "tar_dashboard",
-    placement: "dashboard",
-    type: "banner",
-    title: "Баннер над курсами",
-    description: "Баннер на главной странице над таблицей предложений.",
-    sizeLabel: "1200×120",
-    price: 35000,
-    period: "week",
-    currency: "RUB",
-    features: [
-      "Главная страница",
-      "Максимальный охват при выборе пары",
-      "Статистика CTR",
-    ],
-    active: true,
-    sortOrder: 20,
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "tar_footer",
-    placement: "footer",
-    type: "banner",
-    title: "Баннер внизу страницы",
-    description: "Крупный баннер в футере публичных страниц.",
-    sizeLabel: "970×250",
-    price: 18000,
-    period: "week",
-    currency: "RUB",
-    features: ["Все публичные страницы", "Большой креатив", "Статистика"],
-    active: true,
-    sortOrder: 30,
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "tar_ticker",
-    placement: "ticker",
-    type: "ticker",
-    title: "Бегущая строка",
-    description: "Текстовая полоса под шапкой с ссылкой на ваш сайт.",
-    sizeLabel: "текст до 120 символов",
-    price: 12000,
-    period: "week",
-    currency: "RUB",
-    features: ["Весь сайт", "Быстрый запуск без макета", "Ссылка на сайт"],
-    active: true,
-    sortOrder: 40,
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "tar_exchangers",
-    placement: "exchangers",
-    type: "highlight",
-    title: "Выделение в списке обменников",
-    description: "Подсветка карточки обменника на странице /exchangers.",
-    sizeLabel: "без баннера",
-    price: 15000,
-    period: "week",
-    currency: "RUB",
-    features: [
-      "Страница списка обменников",
-      "Привязка к вашему обменнику",
-      "Повышенная заметность",
-    ],
-    active: true,
-    sortOrder: 50,
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "tar_rates",
-    placement: "rates",
-    type: "rates_pin",
-    title: "Закреп в таблице курсов",
-    description:
-      "Ваш обменник поднимается в таблице курсов на главной при выбранной паре.",
-    sizeLabel: "без баннера",
-    price: 40000,
-    period: "week",
-    currency: "RUB",
-    features: [
-      "Главная · таблица курсов",
-      "Закреп поверх органической сортировки",
-      "Максимальная конверсия в переход",
-    ],
-    active: true,
-    sortOrder: 60,
-    updatedAt: new Date().toISOString(),
-  },
-];
-
-function emptyStore(): StoreData {
   return {
-    exchangers: structuredClone(seedExchangers),
-    rates: [],
-    blacklist: structuredClone(seedBlacklist),
-    qualityTags: structuredClone(seedQualityTags),
-    reviews: [],
-    achievements: [],
-    ads: [],
-    adTariffs: structuredClone(seedAdTariffs),
-    adPricing: structuredClone(seedAdPricing),
-    lastGlobalSyncAt: null,
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    website: row.website,
+    feedUrl: row.feedUrl,
+    contact: row.contact,
+    description: row.description,
+    status: row.status as FeedExchangerStatus,
+    verified: row.verified,
+    rating: row.rating,
+    reviews: row.reviews,
+    reviewsPositive: row.reviewsPositive,
+    reviewsNegative: row.reviewsNegative,
+    ageYears: row.ageYears,
+    createdAt: row.createdAt,
+    approvedAt: row.approvedAt,
+    lastSyncAt: row.lastSyncAt,
+    lastError: row.lastError,
+    pairCount: row.pairCount,
+    achievementIds: row.achievementIds ?? [],
+    logo,
+    traffic: normalizeExchangerTraffic(row.traffic),
+    ownerLogin: row.ownerLogin,
+    ownerPasswordHash: row.ownerPasswordHash,
   };
 }
 
-let memory: StoreData | null = null;
-let memoryMtimeMs = 0;
-let loadPromise: Promise<StoreData> | null = null;
-let writeQueue: Promise<void> = Promise.resolve();
+function mapRate(row: RateRow): StoredRate {
+  return {
+    id: row.id,
+    exchangerId: row.exchangerId,
+    from: row.from,
+    to: row.to,
+    in: row.inAmount,
+    out: row.outAmount,
+    rate: row.rate,
+    reserve: row.reserve,
+    minAmount: row.minAmount,
+    maxAmount: row.maxAmount,
+    city: row.city ?? undefined,
+    param: row.param ?? undefined,
+    tofee: row.tofee ?? undefined,
+    syncedAt: row.syncedAt,
+  };
+}
 
-/** Rating = (positive / (positive + negative)) * 5 from approved reviews. */
-function applyReviewStats(
-  ex: FeedExchanger,
-  reviews: ExchangerReview[],
-): void {
-  const approved = reviews.filter(
-    (r) => r.exchangerId === ex.id && r.status === "approved",
+function mapReview(row: ReviewRow): ExchangerReview {
+  return {
+    id: row.id,
+    exchangerId: row.exchangerId,
+    exchangerSlug: row.exchangerSlug,
+    exchangerName: row.exchangerName,
+    sentiment: row.sentiment as ReviewSentiment,
+    orderId: row.orderId,
+    text: row.text,
+    qualityTagIds: row.qualityTagIds ?? [],
+    status: row.status as ReviewStatus,
+    createdAt: row.createdAt,
+    moderatedAt: row.moderatedAt,
+    ownerReply: row.ownerReply,
+    ownerRepliedAt: row.ownerRepliedAt,
+  };
+}
+
+function mapAchievement(row: AchievementRow): ExchangerAchievement {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    svg: row.svg,
+    createdAt: row.createdAt,
+  };
+}
+
+function mapAd(row: AdRow): AdCreative {
+  return {
+    id: row.id,
+    name: row.name,
+    type: row.type as AdType,
+    placement: row.placement as AdPlacement,
+    title: row.title,
+    body: row.body,
+    href: row.href,
+    imageUrl: row.imageUrl,
+    exchangerId: row.exchangerId,
+    active: row.active,
+    priority: row.priority,
+    startsAt: row.startsAt,
+    endsAt: row.endsAt,
+    createdAt: row.createdAt,
+    stats: normalizeAdStats(row.stats),
+  };
+}
+
+function mapTariff(row: TariffRow): AdTariff {
+  const period: AdTariffPeriod =
+    row.period === "day" || row.period === "week" || row.period === "month"
+      ? row.period
+      : "week";
+  return {
+    id: row.id,
+    placement: row.placement as AdPlacement,
+    type: row.type as AdType,
+    title: row.title,
+    description: row.description,
+    sizeLabel: row.sizeLabel,
+    price: row.price,
+    period,
+    currency: "RUB",
+    features: row.features ?? [],
+    active: row.active,
+    sortOrder: row.sortOrder,
+    updatedAt: row.updatedAt,
+  };
+}
+
+function mapSeo(row: SeoRow | undefined): SeoSettings {
+  if (!row) return structuredClone(seedSeo);
+  const twitterCard =
+    row.twitterCard === "summary" || row.twitterCard === "summary_large_image"
+      ? row.twitterCard
+      : seedSeo.twitterCard;
+  return {
+    siteName: row.siteName || seedSeo.siteName,
+    siteUrl: row.siteUrl,
+    titleDefault: row.titleDefault || seedSeo.titleDefault,
+    titleTemplate: row.titleTemplate || seedSeo.titleTemplate,
+    description: row.description || seedSeo.description,
+    keywords: row.keywords,
+    ogTitle: row.ogTitle || seedSeo.ogTitle,
+    ogDescription: row.ogDescription || seedSeo.ogDescription,
+    ogImageUrl: row.ogImageUrl,
+    twitterCard,
+    twitterHandle: row.twitterHandle,
+    robotsIndex: row.robotsIndex,
+    robotsFollow: row.robotsFollow,
+    robotsExtra: row.robotsExtra,
+    robotsTxtExtra: row.robotsTxtExtra,
+    sitemapEnabled: row.sitemapEnabled,
+    noindexPaths: row.noindexPaths || seedSeo.noindexPaths,
+    googleVerification: row.googleVerification,
+    yandexVerification: row.yandexVerification,
+    bingVerification: row.bingVerification,
+    jsonLdEnabled: row.jsonLdEnabled,
+    organizationName: row.organizationName || seedSeo.organizationName,
+    organizationLogoUrl: row.organizationLogoUrl,
+  };
+}
+
+function normalizeSeoSettings(
+  raw: Partial<SeoSettings> | null | undefined,
+): SeoSettings {
+  const twitterCard =
+    raw?.twitterCard === "summary" || raw?.twitterCard === "summary_large_image"
+      ? raw.twitterCard
+      : seedSeo.twitterCard;
+  return {
+    siteName:
+      typeof raw?.siteName === "string" && raw.siteName.trim()
+        ? raw.siteName.trim()
+        : seedSeo.siteName,
+    siteUrl: typeof raw?.siteUrl === "string" ? raw.siteUrl.trim() : "",
+    titleDefault:
+      typeof raw?.titleDefault === "string" && raw.titleDefault.trim()
+        ? raw.titleDefault.trim()
+        : seedSeo.titleDefault,
+    titleTemplate:
+      typeof raw?.titleTemplate === "string" && raw.titleTemplate.trim()
+        ? raw.titleTemplate.trim()
+        : seedSeo.titleTemplate,
+    description:
+      typeof raw?.description === "string" && raw.description.trim()
+        ? raw.description.trim()
+        : seedSeo.description,
+    keywords:
+      typeof raw?.keywords === "string" ? raw.keywords.trim() : seedSeo.keywords,
+    ogTitle:
+      typeof raw?.ogTitle === "string" ? raw.ogTitle.trim() : seedSeo.ogTitle,
+    ogDescription:
+      typeof raw?.ogDescription === "string"
+        ? raw.ogDescription.trim()
+        : seedSeo.ogDescription,
+    ogImageUrl:
+      typeof raw?.ogImageUrl === "string" ? raw.ogImageUrl.trim() : "",
+    twitterCard,
+    twitterHandle:
+      typeof raw?.twitterHandle === "string" ? raw.twitterHandle.trim() : "",
+    robotsIndex: raw?.robotsIndex !== false,
+    robotsFollow: raw?.robotsFollow !== false,
+    robotsExtra:
+      typeof raw?.robotsExtra === "string" ? raw.robotsExtra.trim() : "",
+    robotsTxtExtra:
+      typeof raw?.robotsTxtExtra === "string" ? raw.robotsTxtExtra : "",
+    sitemapEnabled: raw?.sitemapEnabled !== false,
+    noindexPaths:
+      typeof raw?.noindexPaths === "string"
+        ? raw.noindexPaths
+        : seedSeo.noindexPaths,
+    googleVerification:
+      typeof raw?.googleVerification === "string"
+        ? raw.googleVerification.trim()
+        : "",
+    yandexVerification:
+      typeof raw?.yandexVerification === "string"
+        ? raw.yandexVerification.trim()
+        : "",
+    bingVerification:
+      typeof raw?.bingVerification === "string"
+        ? raw.bingVerification.trim()
+        : "",
+    jsonLdEnabled: raw?.jsonLdEnabled !== false,
+    organizationName:
+      typeof raw?.organizationName === "string"
+        ? raw.organizationName.trim()
+        : seedSeo.organizationName,
+    organizationLogoUrl:
+      typeof raw?.organizationLogoUrl === "string"
+        ? raw.organizationLogoUrl.trim()
+        : "",
+  };
+}
+
+function reviewStatsForExchanger(
+  exchangerId: string,
+  all: ExchangerReview[],
+): Pick<
+  FeedExchanger,
+  "reviews" | "reviewsPositive" | "reviewsNegative" | "rating"
+> {
+  const approved = all.filter(
+    (r) => r.exchangerId === exchangerId && r.status === "approved",
   );
   const positive = approved.filter((r) => r.sentiment === "positive").length;
   const negative = approved.filter((r) => r.sentiment === "negative").length;
   const total = positive + negative;
-  ex.reviewsPositive = positive;
-  ex.reviewsNegative = negative;
-  ex.reviews = total;
-  ex.rating =
-    total === 0 ? 0 : Math.round((positive / total) * 5 * 100) / 100;
-}
-
-function normalizeAdTariff(raw: Partial<AdTariff> & { id: string }): AdTariff {
-  const period: AdTariffPeriod =
-    raw.period === "day" || raw.period === "week" || raw.period === "month"
-      ? raw.period
-      : "week";
   return {
-    id: raw.id,
-    placement: raw.placement ?? "dashboard",
-    type: raw.type ?? "banner",
-    title: typeof raw.title === "string" ? raw.title : raw.id,
-    description: typeof raw.description === "string" ? raw.description : "",
-    sizeLabel: typeof raw.sizeLabel === "string" ? raw.sizeLabel : "",
-    price: typeof raw.price === "number" ? Math.max(0, raw.price) : 0,
-    period,
-    currency: "RUB",
-    features: Array.isArray(raw.features)
-      ? raw.features.filter((f): f is string => typeof f === "string")
-      : [],
-    active: raw.active !== false,
-    sortOrder: typeof raw.sortOrder === "number" ? raw.sortOrder : 0,
-    updatedAt:
-      typeof raw.updatedAt === "string"
-        ? raw.updatedAt
-        : new Date().toISOString(),
+    reviewsPositive: positive,
+    reviewsNegative: negative,
+    reviews: total,
+    rating: total === 0 ? 0 : Math.round((positive / total) * 5 * 100) / 100,
   };
 }
 
-function normalizeExchanger(
-  ex: Partial<FeedExchanger> & { id: string },
-): FeedExchanger {
-  const slug = ex.slug?.trim() || slugify(ex.name || ex.id);
-  const name =
-    typeof ex.name === "string" && ex.name.trim()
-      ? ex.name.trim()
-      : slug || ex.id;
-
-  return {
-    id: ex.id,
-    slug,
-    name,
-    website: typeof ex.website === "string" ? ex.website : "",
-    feedUrl: typeof ex.feedUrl === "string" ? ex.feedUrl : "",
-    contact: typeof ex.contact === "string" ? ex.contact : "",
-    description: typeof ex.description === "string" ? ex.description : "",
-    status: ex.status ?? "pending",
-    verified: Boolean(ex.verified),
-    rating: typeof ex.rating === "number" ? ex.rating : 0,
-    reviews: typeof ex.reviews === "number" ? ex.reviews : 0,
-    reviewsPositive:
-      typeof ex.reviewsPositive === "number" ? ex.reviewsPositive : 0,
-    reviewsNegative:
-      typeof ex.reviewsNegative === "number" ? ex.reviewsNegative : 0,
-    ageYears: typeof ex.ageYears === "number" ? ex.ageYears : 1,
-    createdAt: ex.createdAt ?? new Date().toISOString(),
-    approvedAt:
-      typeof ex.approvedAt === "string" && ex.approvedAt
-        ? ex.approvedAt
-        : ex.status === "active" || ex.status === "error"
-          ? (ex.createdAt ?? null)
-          : null,
-    lastSyncAt: ex.lastSyncAt ?? null,
-    lastError: ex.lastError ?? null,
-    pairCount: typeof ex.pairCount === "number" ? ex.pairCount : 0,
-    achievementIds: Array.isArray(ex.achievementIds) ? ex.achievementIds : [],
-    logo:
-      ex.logo &&
-      (ex.logo.format === "svg" || ex.logo.format === "png") &&
-      typeof ex.logo.updatedAt === "string"
-        ? { format: ex.logo.format, updatedAt: ex.logo.updatedAt }
-        : null,
-    traffic: normalizeExchangerTraffic(ex.traffic),
-    ownerLogin:
-      typeof ex.ownerLogin === "string" && ex.ownerLogin.trim()
-        ? ex.ownerLogin.trim().toLowerCase()
-        : null,
-    ownerPasswordHash:
-      typeof ex.ownerPasswordHash === "string" && ex.ownerPasswordHash
-        ? ex.ownerPasswordHash
-        : null,
-  };
+async function recomputeExchangerReviewStats(
+  exchangerId: string,
+): Promise<void> {
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(reviews)
+    .where(eq(reviews.exchangerId, exchangerId));
+  const stats = reviewStatsForExchanger(exchangerId, rows.map(mapReview));
+  await db
+    .update(exchangers)
+    .set({
+      reviews: stats.reviews,
+      reviewsPositive: stats.reviewsPositive,
+      reviewsNegative: stats.reviewsNegative,
+      rating: stats.rating,
+    })
+    .where(eq(exchangers.id, exchangerId));
 }
 
-function normalizeStore(parsed: Partial<StoreData>): {
-  data: StoreData;
-  migrated: boolean;
-} {
-  if (!parsed.exchangers?.length) {
-    return { data: emptyStore(), migrated: true };
-  }
-
-  const hadTags = Array.isArray(parsed.qualityTags) && parsed.qualityTags.length > 0;
-  const hadReviews = Array.isArray(parsed.reviews);
-  const hadBlacklist = Array.isArray(parsed.blacklist) && parsed.blacklist.length > 0;
-  const hadAchievements = Array.isArray(parsed.achievements);
-  const hadAds = Array.isArray(parsed.ads);
-  const hadAdTariffs =
-    Array.isArray(parsed.adTariffs) && parsed.adTariffs.length > 0;
-  const hadAdPricing =
-    parsed.adPricing != null && typeof parsed.adPricing === "object";
-
-  const exchangers = (parsed.exchangers ?? []).map((ex) =>
-    normalizeExchanger(ex),
-  );
-
-  let ownerCredsMigrated = false;
-  for (const ex of exchangers) {
-    if (ex.id === "kubex" && (!ex.ownerLogin || !ex.ownerPasswordHash)) {
-      ex.ownerLogin = "kubex";
-      ex.ownerPasswordHash =
-        "915bbe7d238199b20928beb910402f53991f2c7d229ec9a95bd03be2611bebcc";
-      ownerCredsMigrated = true;
-    }
-  }
-
-  const ads: AdCreative[] = (hadAds ? parsed.ads! : []).map((raw) => {
-    const ad = raw as Partial<AdCreative> & { id: string };
-    return {
-      id: ad.id,
-      name: typeof ad.name === "string" ? ad.name : ad.id,
-      type: ad.type ?? "banner",
-      placement: ad.placement ?? "dashboard",
-      title: typeof ad.title === "string" ? ad.title : "",
-      body: typeof ad.body === "string" ? ad.body : "",
-      href: typeof ad.href === "string" ? ad.href : "",
-      imageUrl: typeof ad.imageUrl === "string" ? ad.imageUrl : "",
-      exchangerId: ad.exchangerId ?? null,
-      active: ad.active !== false,
-      priority: typeof ad.priority === "number" ? ad.priority : 0,
-      startsAt: ad.startsAt ?? null,
-      endsAt: ad.endsAt ?? null,
-      createdAt: ad.createdAt ?? new Date().toISOString(),
-      stats: ad.stats ? normalizeAdStats(ad.stats) : emptyAdStats(),
-    };
-  });
-
-  const data: StoreData = {
-    exchangers,
-    rates: parsed.rates ?? [],
-    blacklist: hadBlacklist
-      ? (parsed.blacklist ?? []).map((raw) => {
-          const b = raw as Partial<BlacklistItem> & {
-            id: string;
-            name: string;
-            reason: string;
-          };
-          return {
-            id: b.id,
-            name: b.name,
-            reason: b.reason,
-            reportedAt:
-              typeof b.reportedAt === "string"
-                ? b.reportedAt
-                : new Date().toISOString().slice(0, 10),
-            reports: typeof b.reports === "number" ? b.reports : 1,
-            exchangerId:
-              typeof b.exchangerId === "string" && b.exchangerId
-                ? b.exchangerId
-                : null,
-          };
-        })
-      : structuredClone(seedBlacklist),
-    qualityTags: hadTags
-      ? parsed.qualityTags!
-      : structuredClone(seedQualityTags),
-    reviews: hadReviews
-      ? (parsed.reviews ?? []).map((r) => ({
-          ...r,
-          ownerReply:
-            typeof r.ownerReply === "string" ? r.ownerReply : null,
-          ownerRepliedAt:
-            typeof r.ownerRepliedAt === "string" ? r.ownerRepliedAt : null,
-        }))
-      : [],
-    achievements: hadAchievements ? parsed.achievements! : [],
-    ads,
-    adTariffs: hadAdTariffs
-      ? parsed.adTariffs!.map(normalizeAdTariff)
-      : structuredClone(seedAdTariffs),
-    adPricing: hadAdPricing
-      ? {
-          contact:
-            typeof parsed.adPricing!.contact === "string"
-              ? parsed.adPricing!.contact
-              : seedAdPricing.contact,
-          intro:
-            typeof parsed.adPricing!.intro === "string"
-              ? parsed.adPricing!.intro
-              : seedAdPricing.intro,
-          note:
-            typeof parsed.adPricing!.note === "string"
-              ? parsed.adPricing!.note
-              : seedAdPricing.note,
-        }
-      : structuredClone(seedAdPricing),
-    lastGlobalSyncAt: parsed.lastGlobalSyncAt ?? null,
-  };
-
-  for (const ex of data.exchangers) {
-    applyReviewStats(ex, data.reviews);
-  }
-
-  const needsRepair = (parsed.exchangers ?? []).some(
-    (ex) =>
-      !Array.isArray(ex.achievementIds) ||
-      typeof ex.name !== "string" ||
-      !ex.name.trim() ||
-      typeof ex.feedUrl !== "string" ||
-      typeof ex.reviewsPositive !== "number" ||
-      typeof ex.reviewsNegative !== "number" ||
-      !ex.traffic ||
-      ((ex.status === "active" || ex.status === "error") && !ex.approvedAt),
-  );
-  const adsNeedStats = hadAds && (parsed.ads ?? []).some((ad) => !ad.stats);
-  const blacklistNeedsId =
-    hadBlacklist &&
-    (parsed.blacklist ?? []).some(
-      (b) => !("exchangerId" in (b as object)),
-    );
-  const migrated =
-    !hadTags ||
-    !hadReviews ||
-    !hadBlacklist ||
-    !hadAchievements ||
-    !hadAds ||
-    !hadAdTariffs ||
-    !hadAdPricing ||
-    adsNeedStats ||
-    needsRepair ||
-    ownerCredsMigrated ||
-    blacklistNeedsId;
-  return { data, migrated };
+export async function getLastGlobalSyncAt(): Promise<string | null> {
+  const db = getDb();
+  const [row] = await db
+    .select({ lastGlobalSyncAt: appMeta.lastGlobalSyncAt })
+    .from(appMeta)
+    .where(eq(appMeta.id, 1))
+    .limit(1);
+  return row?.lastGlobalSyncAt ?? null;
 }
 
-async function readStoreFromDisk(): Promise<{
-  data: StoreData;
-  mtimeMs: number;
-  migrated: boolean;
-}> {
-  try {
-    const stat = await fs.stat(STORE_PATH);
-    const raw = await fs.readFile(STORE_PATH, "utf8");
-    const parsed = JSON.parse(raw) as Partial<StoreData>;
-    const { data, migrated } = normalizeStore(parsed);
-    return { data, mtimeMs: stat.mtimeMs, migrated };
-  } catch {
-    return { data: emptyStore(), mtimeMs: 0, migrated: true };
-  }
-}
-
-async function ensureLoaded(): Promise<StoreData> {
-  if (loadPromise) return loadPromise;
-
-  loadPromise = (async () => {
-    try {
-      const stat = await fs.stat(STORE_PATH);
-      if (memory && stat.mtimeMs === memoryMtimeMs) {
-        return memory;
-      }
-    } catch {
-      // file missing — fall through to full reload
-    }
-
-    const { data, mtimeMs, migrated } = await readStoreFromDisk();
-    memory = data;
-    memoryMtimeMs = mtimeMs;
-
-    if (migrated || mtimeMs === 0) {
-      await withStoreLock(async () => {
-        // Re-check under lock in case another instance already migrated.
-        const fresh = await readStoreFromDisk();
-        memory = fresh.data;
-        memoryMtimeMs = fresh.mtimeMs;
-        if (fresh.migrated || fresh.mtimeMs === 0) {
-          await persist(memory);
-        }
-      });
-    }
-
-    return memory;
-  })();
-
-  try {
-    return await loadPromise;
-  } finally {
-    loadPromise = null;
-  }
-}
-
-async function withStoreLock<T>(fn: () => Promise<T>): Promise<T> {
-  const lockPath = `${STORE_PATH}.lock`;
-  await fs.mkdir(DATA_DIR, { recursive: true });
-
-  for (let attempt = 0; attempt < 80; attempt += 1) {
-    try {
-      const handle = await fs.open(lockPath, "wx");
-      try {
-        return await fn();
-      } finally {
-        await handle.close();
-        await fs.unlink(lockPath).catch(() => undefined);
-      }
-    } catch (error) {
-      const code =
-        error && typeof error === "object" && "code" in error
-          ? String((error as { code?: string }).code)
-          : "";
-      if (code !== "EEXIST") throw error;
-      await new Promise((r) => setTimeout(r, 40 + Math.random() * 60));
-    }
-  }
-
-  throw new Error("Не удалось получить блокировку store.json");
-}
-
-async function persist(data: StoreData): Promise<void> {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  const tmp = `${STORE_PATH}.tmp`;
-  // Always keep reviews/qualityTags/achievements keys so other process instances cannot drop them.
-  const payload: StoreData = {
-    exchangers: data.exchangers,
-    rates: data.rates,
-    blacklist: data.blacklist ?? [],
-    qualityTags: data.qualityTags ?? [],
-    reviews: data.reviews ?? [],
-    achievements: data.achievements ?? [],
-    ads: data.ads ?? [],
-    adTariffs: data.adTariffs ?? [],
-    adPricing: data.adPricing ?? structuredClone(seedAdPricing),
-    lastGlobalSyncAt: data.lastGlobalSyncAt ?? null,
-  };
-  const json = JSON.stringify(payload, null, 2);
-  // Avoid fs.rename on Windows — it often throws EPERM when store.json is open,
-  // which previously aborted writes and left achievements / names wiped.
-  await fs.writeFile(tmp, json, "utf8");
-  await fs.copyFile(tmp, STORE_PATH);
-  await fs.unlink(tmp).catch(() => undefined);
-  const stat = await fs.stat(STORE_PATH);
-  memory = payload;
-  memoryMtimeMs = stat.mtimeMs;
-}
-
-function enqueueWrite(mutator: (data: StoreData) => void): Promise<StoreData> {
-  const run = writeQueue.then(async () =>
-    withStoreLock(async () => {
-      // Re-read disk under lock so route/poller module copies don't clobber each other.
-      const { data } = await readStoreFromDisk();
-      mutator(data);
-      await persist(data);
-      return data;
-    }),
-  );
-  writeQueue = run.then(
-    () => undefined,
-    () => undefined,
-  );
-  return run;
+export async function getRatesCount(): Promise<number> {
+  const db = getDb();
+  const [row] = await db.select({ n: count() }).from(rates);
+  return row?.n ?? 0;
 }
 
 export async function getStore(): Promise<StoreData> {
-  return ensureLoaded();
+  const db = getDb();
+  const [
+    exchangerRows,
+    rateRows,
+    blacklistRows,
+    tagRows,
+    reviewRows,
+    achievementRows,
+    adRows,
+    tariffRows,
+    pricingRows,
+    seoRows,
+    metaRows,
+  ] = await Promise.all([
+    db.select().from(exchangers),
+    db.select().from(rates),
+    db.select().from(blacklist),
+    db.select().from(qualityTags),
+    db.select().from(reviews),
+    db.select().from(achievements),
+    db.select().from(ads),
+    db.select().from(adTariffs),
+    db.select().from(adPricing).where(eq(adPricing.id, 1)).limit(1),
+    db.select().from(seo).where(eq(seo.id, 1)).limit(1),
+    db.select().from(appMeta).where(eq(appMeta.id, 1)).limit(1),
+  ]);
+
+  const pricing = pricingRows[0];
+  return {
+    exchangers: exchangerRows.map(mapExchanger),
+    rates: rateRows.map(mapRate),
+    blacklist: blacklistRows,
+    qualityTags: tagRows,
+    reviews: reviewRows.map(mapReview),
+    achievements: achievementRows.map(mapAchievement),
+    ads: adRows.map(mapAd),
+    adTariffs: tariffRows.map(mapTariff),
+    adPricing: pricing
+      ? {
+          contact: pricing.contact,
+          intro: pricing.intro,
+          note: pricing.note,
+        }
+      : structuredClone(seedAdPricing),
+    seo: mapSeo(seoRows[0]),
+    lastGlobalSyncAt: metaRows[0]?.lastGlobalSyncAt ?? null,
+  };
 }
 
 export async function listExchangers(options?: {
   publicOnly?: boolean;
 }): Promise<FeedExchanger[]> {
-  const store = await ensureLoaded();
-  if (options?.publicOnly) {
-    return store.exchangers.filter(
-      (e) =>
-        (e.status === "active" || e.status === "error") &&
-        !isExchangerBlacklisted(e, store.blacklist),
-    );
-  }
-  return store.exchangers;
+  const db = getDb();
+  const [exRows, blRows] = await Promise.all([
+    db.select().from(exchangers),
+    db.select().from(blacklist),
+  ]);
+  const list = exRows.map(mapExchanger);
+  if (!options?.publicOnly) return list;
+  return list.filter(
+    (e) =>
+      (e.status === "active" || e.status === "error") &&
+      !isExchangerBlacklisted(e, blRows),
+  );
 }
 
 export async function getExchangerBySlug(
   slug: string,
   options?: { publicOnly?: boolean },
 ): Promise<FeedExchanger | undefined> {
-  const store = await ensureLoaded();
-  const ex = store.exchangers.find((e) => e.slug === slug);
-  if (!ex) return undefined;
-  if (options?.publicOnly && isExchangerBlacklisted(ex, store.blacklist)) {
-    return undefined;
+  const db = getDb();
+  const [row] = await db
+    .select()
+    .from(exchangers)
+    .where(eq(exchangers.slug, slug))
+    .limit(1);
+  if (!row) return undefined;
+  const ex = mapExchanger(row);
+  if (options?.publicOnly) {
+    const bl = await listBlacklist();
+    if (isExchangerBlacklisted(ex, bl)) return undefined;
   }
   return ex;
 }
@@ -709,31 +467,94 @@ export async function getExchangerBySlug(
 export async function getExchangerById(
   id: string,
 ): Promise<FeedExchanger | undefined> {
-  const store = await ensureLoaded();
-  return store.exchangers.find((e) => e.id === id);
+  const db = getDb();
+  const [row] = await db
+    .select()
+    .from(exchangers)
+    .where(eq(exchangers.id, id))
+    .limit(1);
+  return row ? mapExchanger(row) : undefined;
+}
+
+export async function getExchangerLogoBytes(
+  id: string,
+): Promise<{ format: "svg" | "png"; bytes: Buffer } | null> {
+  const db = getDb();
+  const [row] = await db
+    .select({
+      format: exchangers.logoFormat,
+      data: exchangers.logoData,
+    })
+    .from(exchangers)
+    .where(eq(exchangers.id, id))
+    .limit(1);
+  if (!row?.data || (row.format !== "svg" && row.format !== "png")) {
+    return null;
+  }
+  return { format: row.format, bytes: row.data };
+}
+
+export async function setExchangerLogoData(
+  id: string,
+  prepared: { format: "svg" | "png"; bytes: Buffer },
+): Promise<ExchangerLogo> {
+  const db = getDb();
+  const updatedAt = new Date().toISOString();
+  const result = await db
+    .update(exchangers)
+    .set({
+      logoFormat: prepared.format,
+      logoUpdatedAt: updatedAt,
+      logoData: prepared.bytes,
+    })
+    .where(eq(exchangers.id, id))
+    .returning({ id: exchangers.id });
+  if (!result.length) {
+    throw new Error("EXCHANGER_NOT_FOUND");
+  }
+  return { format: prepared.format, updatedAt };
+}
+
+export async function clearExchangerLogoData(id: string): Promise<void> {
+  const db = getDb();
+  await db
+    .update(exchangers)
+    .set({
+      logoFormat: null,
+      logoUpdatedAt: null,
+      logoData: null,
+    })
+    .where(eq(exchangers.id, id));
 }
 
 export async function getActiveRates(): Promise<StoredRate[]> {
-  const store = await ensureLoaded();
-  const activeIds = new Set(
-    store.exchangers
-      .filter(
-        (e) =>
-          e.status === "active" && !isExchangerBlacklisted(e, store.blacklist),
-      )
-      .map((e) => e.id),
-  );
-  return store.rates.filter((r) => activeIds.has(r.exchangerId));
+  const db = getDb();
+  const [exRows, blRows] = await Promise.all([
+    db
+      .select({ id: exchangers.id, name: exchangers.name, slug: exchangers.slug })
+      .from(exchangers)
+      .where(eq(exchangers.status, "active")),
+    db.select().from(blacklist),
+  ]);
+  const activeIds = exRows
+    .filter((e) => !isExchangerBlacklisted(e, blRows))
+    .map((e) => e.id);
+  if (!activeIds.length) return [];
+  const rateRows = await db
+    .select()
+    .from(rates)
+    .where(inArray(rates.exchangerId, activeIds));
+  return rateRows.map(mapRate);
 }
 
 /** Match blacklist by linked id or by name (legacy free-text entries). */
 export function isExchangerBlacklisted(
   ex: Pick<FeedExchanger, "id" | "name" | "slug">,
-  blacklist: BlacklistItem[],
+  blacklistItems: BlacklistItem[],
 ): boolean {
   const name = ex.name.trim().toLowerCase();
   const slug = ex.slug.trim().toLowerCase();
-  return blacklist.some((b) => {
+  return blacklistItems.some((b) => {
     if (b.exchangerId && b.exchangerId === ex.id) return true;
     const bn = b.name.trim().toLowerCase();
     return bn === name || bn === slug;
@@ -741,11 +562,11 @@ export function isExchangerBlacklisted(
 }
 
 export async function isSlugBlacklisted(slug: string): Promise<boolean> {
-  const store = await ensureLoaded();
-  const ex = store.exchangers.find((e) => e.slug === slug);
-  if (ex) return isExchangerBlacklisted(ex, store.blacklist);
+  const ex = await getExchangerBySlug(slug);
+  const bl = await listBlacklist();
+  if (ex) return isExchangerBlacklisted(ex, bl);
   const needle = slug.trim().toLowerCase();
-  return store.blacklist.some((b) => b.name.trim().toLowerCase() === needle);
+  return bl.some((b) => b.name.trim().toLowerCase() === needle);
 }
 
 export async function addExchangerApplication(input: {
@@ -757,9 +578,11 @@ export async function addExchangerApplication(input: {
   description: string;
   pairCount: number;
   logo?: { format: "svg" | "png"; updatedAt: string } | null;
+  logoData?: Buffer | null;
   ownerLogin: string;
   ownerPasswordHash: string;
 }): Promise<FeedExchanger> {
+  const db = getDb();
   const slugBase = slugify(input.name);
   let slug = slugBase;
   let i = 2;
@@ -768,19 +591,22 @@ export async function addExchangerApplication(input: {
     `ex_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
   const ownerLogin = input.ownerLogin.trim().toLowerCase();
 
-  const created = await enqueueWrite((data) => {
-    while (data.exchangers.some((e) => e.slug === slug)) {
-      slug = `${slugBase}-${i++}`;
-    }
-    if (
-      data.exchangers.some(
-        (e) => e.ownerLogin && e.ownerLogin === ownerLogin,
-      )
-    ) {
-      throw new Error("OWNER_LOGIN_TAKEN");
-    }
+  const existing = await db
+    .select({ slug: exchangers.slug, ownerLogin: exchangers.ownerLogin })
+    .from(exchangers);
+  while (existing.some((e) => e.slug === slug)) {
+    slug = `${slugBase}-${i++}`;
+  }
+  if (existing.some((e) => e.ownerLogin && e.ownerLogin === ownerLogin)) {
+    throw new Error("OWNER_LOGIN_TAKEN");
+  }
 
-    const exchanger: FeedExchanger = {
+  const logoMeta = input.logo ?? null;
+  const hasLogoBytes = Boolean(input.logoData && logoMeta);
+
+  const [row] = await db
+    .insert(exchangers)
+    .values({
       id,
       slug,
       name: input.name,
@@ -801,16 +627,16 @@ export async function addExchangerApplication(input: {
       lastError: null,
       pairCount: input.pairCount,
       achievementIds: [],
-      logo: input.logo ?? null,
-      traffic: emptyExchangerTraffic(),
+      logoFormat: hasLogoBytes ? logoMeta!.format : null,
+      logoUpdatedAt: hasLogoBytes ? logoMeta!.updatedAt : null,
+      logoData: hasLogoBytes ? input.logoData! : null,
+      traffic: emptyExchangerTraffic() as ExchangerTrafficJson,
       ownerLogin,
       ownerPasswordHash: input.ownerPasswordHash,
-    };
+    })
+    .returning();
 
-    data.exchangers.push(exchanger);
-  });
-
-  return created.exchangers.find((e) => e.id === id)!;
+  return mapExchanger(row);
 }
 
 export async function replaceExchangerRates(
@@ -818,9 +644,7 @@ export async function replaceExchangerRates(
   items: ParsedRateItem[],
   meta: { ok: true } | { ok: false; error: string },
 ): Promise<void> {
-  await replaceExchangerRatesBatch([
-    { exchangerId, items, meta },
-  ]);
+  await replaceExchangerRatesBatch([{ exchangerId, items, meta }]);
 }
 
 export async function replaceExchangerRatesBatch(
@@ -832,42 +656,76 @@ export async function replaceExchangerRatesBatch(
 ): Promise<void> {
   if (updates.length === 0) return;
   const syncedAt = new Date().toISOString();
+  const db = getDb();
 
-  await enqueueWrite((data) => {
+  await db.transaction(async (tx) => {
     for (const { exchangerId, items, meta } of updates) {
-      const ex = data.exchangers.find((e) => e.id === exchangerId);
+      const [ex] = await tx
+        .select({ id: exchangers.id, status: exchangers.status })
+        .from(exchangers)
+        .where(eq(exchangers.id, exchangerId))
+        .limit(1);
       if (!ex) continue;
 
-      data.rates = data.rates.filter((r) => r.exchangerId !== exchangerId);
+      await tx.delete(rates).where(eq(rates.exchangerId, exchangerId));
 
       if (meta.ok) {
-        ex.status = "active";
-        ex.lastError = null;
-        ex.lastSyncAt = syncedAt;
-        ex.pairCount = items.length;
-        data.rates.push(
-          ...items.map((item, index) => ({
-            ...item,
-            id: `${exchangerId}_${item.from}_${item.to}_${index}`,
-            exchangerId,
-            syncedAt,
-          })),
-        );
+        await tx
+          .update(exchangers)
+          .set({
+            status: "active",
+            lastError: null,
+            lastSyncAt: syncedAt,
+            pairCount: items.length,
+          })
+          .where(eq(exchangers.id, exchangerId));
+
+        if (items.length) {
+          await tx.insert(rates).values(
+            items.map((item, index) => ({
+              id: `${exchangerId}_${item.from}_${item.to}_${index}`,
+              exchangerId,
+              from: item.from,
+              to: item.to,
+              inAmount: item.in,
+              outAmount: item.out,
+              rate: item.rate,
+              reserve: item.reserve,
+              minAmount: item.minAmount,
+              maxAmount: item.maxAmount,
+              city: item.city ?? null,
+              param: item.param ?? null,
+              tofee: item.tofee ?? null,
+              syncedAt,
+            })),
+          );
+        }
       } else {
-        ex.status = ex.status === "pending" ? "pending" : "error";
-        ex.lastError = meta.error;
-        ex.lastSyncAt = syncedAt;
+        await tx
+          .update(exchangers)
+          .set({
+            status: ex.status === "pending" ? "pending" : "error",
+            lastError: meta.error,
+            lastSyncAt: syncedAt,
+          })
+          .where(eq(exchangers.id, exchangerId));
       }
     }
 
-    data.lastGlobalSyncAt = syncedAt;
+    await tx
+      .insert(appMeta)
+      .values({ id: 1, lastGlobalSyncAt: syncedAt })
+      .onConflictDoUpdate({
+        target: appMeta.id,
+        set: { lastGlobalSyncAt: syncedAt },
+      });
   });
 }
 
 export async function getCurrenciesFromRates(): Promise<string[]> {
-  const rates = await getActiveRates();
+  const active = await getActiveRates();
   const set = new Set<string>();
-  for (const r of rates) {
+  for (const r of active) {
     set.add(r.from);
     set.add(r.to);
   }
@@ -892,64 +750,85 @@ export async function updateExchanger(
     >
   >,
 ): Promise<FeedExchanger | null> {
-  let updated: FeedExchanger | null = null;
-  await enqueueWrite((data) => {
-    const ex = data.exchangers.find((e) => e.id === id);
-    if (!ex) return;
+  const db = getDb();
+  const [current] = await db
+    .select()
+    .from(exchangers)
+    .where(eq(exchangers.id, id))
+    .limit(1);
+  if (!current) return null;
 
-    const clean = Object.fromEntries(
-      Object.entries(patch).filter(([, value]) => value !== undefined),
-    ) as typeof patch;
+  let achievementIds = patch.achievementIds;
+  if (achievementIds !== undefined) {
+    const ach = await db
+      .select({ id: achievements.id })
+      .from(achievements);
+    const valid = new Set(ach.map((a) => a.id));
+    achievementIds = achievementIds.filter((aid) => valid.has(aid));
+  }
 
-    if (clean.achievementIds !== undefined) {
-      const valid = new Set((data.achievements ?? []).map((a) => a.id));
-      clean.achievementIds = clean.achievementIds.filter((aid) =>
-        valid.has(aid),
-      );
-    }
+  const becomingActive =
+    patch.status === "active" && current.status !== "active";
 
-    const becomingActive =
-      clean.status === "active" && ex.status !== "active";
+  const nextApprovedAt =
+    patch.approvedAt !== undefined
+      ? patch.approvedAt
+      : becomingActive && !current.approvedAt
+        ? new Date().toISOString()
+        : current.approvedAt;
 
-    Object.assign(ex, clean);
-    if (!Array.isArray(ex.achievementIds)) ex.achievementIds = [];
-    if (!ex.traffic) ex.traffic = emptyExchangerTraffic();
+  const logoPatch =
+    patch.logo === undefined
+      ? {}
+      : patch.logo === null
+        ? {
+            logoFormat: null as string | null,
+            logoUpdatedAt: null as string | null,
+            logoData: null as Buffer | null,
+          }
+        : {
+            logoFormat: patch.logo.format,
+            logoUpdatedAt: patch.logo.updatedAt,
+          };
 
-    // Первое одобрение фиксирует дату «работает с …»
-    if (becomingActive && !ex.approvedAt) {
-      ex.approvedAt = new Date().toISOString();
-    }
-    if (clean.approvedAt !== undefined) {
-      ex.approvedAt = clean.approvedAt;
-    }
+  const [row] = await db
+    .update(exchangers)
+    .set({
+      ...(patch.name !== undefined ? { name: patch.name } : {}),
+      ...(patch.website !== undefined ? { website: patch.website } : {}),
+      ...(patch.feedUrl !== undefined ? { feedUrl: patch.feedUrl } : {}),
+      ...(patch.contact !== undefined ? { contact: patch.contact } : {}),
+      ...(patch.description !== undefined
+        ? { description: patch.description }
+        : {}),
+      ...(patch.status !== undefined ? { status: patch.status } : {}),
+      ...(patch.verified !== undefined ? { verified: patch.verified } : {}),
+      ...(achievementIds !== undefined ? { achievementIds } : {}),
+      approvedAt: nextApprovedAt,
+      ...logoPatch,
+    })
+    .where(eq(exchangers.id, id))
+    .returning();
 
-    if (clean.status && clean.status !== "active") {
-      data.rates = data.rates.filter((r) => r.exchangerId !== id);
-    }
-    updated = { ...ex };
-  });
-  return updated;
+  if (patch.status && patch.status !== "active") {
+    await db.delete(rates).where(eq(rates.exchangerId, id));
+  }
+
+  return row ? mapExchanger(row) : null;
 }
 
 export async function deleteExchanger(id: string): Promise<boolean> {
-  let removed = false;
-  await enqueueWrite((data) => {
-    const before = data.exchangers.length;
-    data.exchangers = data.exchangers.filter((e) => e.id !== id);
-    data.rates = data.rates.filter((r) => r.exchangerId !== id);
-    data.reviews = data.reviews.filter((r) => r.exchangerId !== id);
-    removed = data.exchangers.length < before;
-  });
-  if (removed) {
-    const { deleteExchangerLogo } = await import("@/lib/logo");
-    await deleteExchangerLogo(id);
-  }
-  return removed;
+  const db = getDb();
+  const result = await db
+    .delete(exchangers)
+    .where(eq(exchangers.id, id))
+    .returning({ id: exchangers.id });
+  return result.length > 0;
 }
 
 export async function listBlacklist(): Promise<BlacklistItem[]> {
-  const store = await ensureLoaded();
-  return store.blacklist;
+  const db = getDb();
+  return db.select().from(blacklist);
 }
 
 export async function addBlacklistItem(input: {
@@ -958,9 +837,17 @@ export async function addBlacklistItem(input: {
   reports?: number;
   exchangerId?: string | null;
 }): Promise<BlacklistItem> {
+  const db = getDb();
   const name = input.name.trim();
   const reason = input.reason.trim();
   const exchangerId = input.exchangerId?.trim() || null;
+
+  const existing = await db.select().from(blacklist);
+  const dup = existing.some((b) => {
+    if (exchangerId && b.exchangerId === exchangerId) return true;
+    return b.name.trim().toLowerCase() === name.toLowerCase();
+  });
+  if (dup) throw new Error("ALREADY_BLACKLISTED");
 
   const item: BlacklistItem = {
     id: `bl_${Date.now().toString(36)}`,
@@ -970,50 +857,37 @@ export async function addBlacklistItem(input: {
     reports: input.reports ?? 1,
     exchangerId,
   };
-
-  await enqueueWrite((data) => {
-    const dup = data.blacklist.some((b) => {
-      if (exchangerId && b.exchangerId === exchangerId) return true;
-      return b.name.trim().toLowerCase() === name.toLowerCase();
-    });
-    if (dup) {
-      throw new Error("ALREADY_BLACKLISTED");
-    }
-    data.blacklist.unshift(item);
-  });
+  await db.insert(blacklist).values(item);
   return item;
 }
 
 export async function removeBlacklistItem(id: string): Promise<boolean> {
-  let removed = false;
-  await enqueueWrite((data) => {
-    const before = data.blacklist.length;
-    data.blacklist = data.blacklist.filter((b) => b.id !== id);
-    removed = data.blacklist.length < before;
-  });
-  return removed;
+  const db = getDb();
+  const result = await db
+    .delete(blacklist)
+    .where(eq(blacklist.id, id))
+    .returning({ id: blacklist.id });
+  return result.length > 0;
 }
 
 export async function listQualityTags(options?: {
   activeOnly?: boolean;
 }): Promise<ReviewQualityTag[]> {
-  const store = await ensureLoaded();
-  const tags = store.qualityTags ?? [];
-  if (options?.activeOnly) return tags.filter((t) => t.active);
-  return tags;
+  const db = getDb();
+  const rows = await db.select().from(qualityTags);
+  if (options?.activeOnly) return rows.filter((t) => t.active);
+  return rows;
 }
 
 export async function addQualityTag(label: string): Promise<ReviewQualityTag> {
+  const db = getDb();
   const tag: ReviewQualityTag = {
     id: `q_${Date.now().toString(36)}`,
     label: label.trim(),
     active: true,
     createdAt: new Date().toISOString(),
   };
-  await enqueueWrite((data) => {
-    data.qualityTags = data.qualityTags ?? [];
-    data.qualityTags.push(tag);
-  });
+  await db.insert(qualityTags).values(tag);
   return tag;
 }
 
@@ -1021,39 +895,49 @@ export async function updateQualityTag(
   id: string,
   patch: Partial<Pick<ReviewQualityTag, "label" | "active">>,
 ): Promise<ReviewQualityTag | null> {
-  let updated: ReviewQualityTag | null = null;
-  await enqueueWrite((data) => {
-    const tag = (data.qualityTags ?? []).find((t) => t.id === id);
-    if (!tag) return;
-    Object.assign(tag, patch);
-    updated = { ...tag };
-  });
-  return updated;
+  const db = getDb();
+  const [row] = await db
+    .update(qualityTags)
+    .set({
+      ...(patch.label !== undefined ? { label: patch.label } : {}),
+      ...(patch.active !== undefined ? { active: patch.active } : {}),
+    })
+    .where(eq(qualityTags.id, id))
+    .returning();
+  return row ?? null;
 }
 
 export async function removeQualityTag(id: string): Promise<boolean> {
-  let removed = false;
-  await enqueueWrite((data) => {
-    const before = (data.qualityTags ?? []).length;
-    data.qualityTags = (data.qualityTags ?? []).filter((t) => t.id !== id);
-    removed = data.qualityTags.length < before;
-  });
-  return removed;
+  const db = getDb();
+  const result = await db
+    .delete(qualityTags)
+    .where(eq(qualityTags.id, id))
+    .returning({ id: qualityTags.id });
+  return result.length > 0;
 }
 
 export async function listReviews(options?: {
   exchangerId?: string;
   status?: ReviewStatus;
 }): Promise<ExchangerReview[]> {
-  const store = await ensureLoaded();
-  let rows = store.reviews ?? [];
+  const db = getDb();
+  const conditions = [];
   if (options?.exchangerId) {
-    rows = rows.filter((r) => r.exchangerId === options.exchangerId);
+    conditions.push(eq(reviews.exchangerId, options.exchangerId));
   }
   if (options?.status) {
-    rows = rows.filter((r) => r.status === options.status);
+    conditions.push(eq(reviews.status, options.status));
   }
-  return [...rows].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const rows =
+    conditions.length === 0
+      ? await db.select().from(reviews)
+      : await db
+          .select()
+          .from(reviews)
+          .where(conditions.length === 1 ? conditions[0] : and(...conditions));
+  return rows
+    .map(mapReview)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 export async function addReview(input: {
@@ -1063,16 +947,22 @@ export async function addReview(input: {
   text: string;
   qualityTagIds: string[];
 }): Promise<ExchangerReview> {
-  const store = await ensureLoaded();
-  const ex = store.exchangers.find((e) => e.id === input.exchangerId);
+  const db = getDb();
+  const [ex] = await db
+    .select()
+    .from(exchangers)
+    .where(eq(exchangers.id, input.exchangerId))
+    .limit(1);
   if (!ex) throw new Error("Обменник не найден");
   if (ex.status !== "active" && ex.status !== "error") {
     throw new Error("Отзывы доступны только для активных обменников");
   }
 
-  const activeTags = new Set(
-    (store.qualityTags ?? []).filter((t) => t.active).map((t) => t.id),
-  );
+  const tags = await db
+    .select()
+    .from(qualityTags)
+    .where(eq(qualityTags.active, true));
+  const activeTags = new Set(tags.map((t) => t.id));
   const qualityTagIds = input.qualityTagIds.filter((id) => activeTags.has(id));
 
   const review: ExchangerReview = {
@@ -1091,11 +981,7 @@ export async function addReview(input: {
     ownerRepliedAt: null,
   };
 
-  await enqueueWrite((data) => {
-    data.reviews = data.reviews ?? [];
-    data.reviews.unshift(review);
-  });
-
+  await db.insert(reviews).values(review);
   return review;
 }
 
@@ -1109,16 +995,22 @@ export async function replyToReview(
     throw new Error("Ответ должен быть от 2 до 2000 символов");
   }
 
-  let updated: ExchangerReview | null = null;
-  await enqueueWrite((data) => {
-    const review = (data.reviews ?? []).find((r) => r.id === reviewId);
-    if (!review || review.exchangerId !== exchangerId) return;
-    if (review.status !== "approved") return;
-    review.ownerReply = text;
-    review.ownerRepliedAt = new Date().toISOString();
-    updated = { ...review };
-  });
-  return updated;
+  const db = getDb();
+  const [row] = await db
+    .update(reviews)
+    .set({
+      ownerReply: text,
+      ownerRepliedAt: new Date().toISOString(),
+    })
+    .where(
+      and(
+        eq(reviews.id, reviewId),
+        eq(reviews.exchangerId, exchangerId),
+        eq(reviews.status, "approved"),
+      ),
+    )
+    .returning();
+  return row ? mapReview(row) : null;
 }
 
 export async function findExchangerByOwnerLogin(
@@ -1126,8 +1018,13 @@ export async function findExchangerByOwnerLogin(
 ): Promise<FeedExchanger | undefined> {
   const needle = login.trim().toLowerCase();
   if (!needle) return undefined;
-  const store = await ensureLoaded();
-  return store.exchangers.find((e) => e.ownerLogin === needle);
+  const db = getDb();
+  const [row] = await db
+    .select()
+    .from(exchangers)
+    .where(eq(exchangers.ownerLogin, needle))
+    .limit(1);
+  return row ? mapExchanger(row) : undefined;
 }
 
 export async function setOwnerCredentials(
@@ -1135,76 +1032,73 @@ export async function setOwnerCredentials(
   input: { ownerLogin: string; ownerPasswordHash: string },
 ): Promise<FeedExchanger | null> {
   const ownerLogin = input.ownerLogin.trim().toLowerCase();
-  let updated: FeedExchanger | null = null;
+  const db = getDb();
 
-  await enqueueWrite((data) => {
-    const ex = data.exchangers.find((e) => e.id === id);
-    if (!ex) return;
+  const taken = await db
+    .select({ id: exchangers.id })
+    .from(exchangers)
+    .where(and(eq(exchangers.ownerLogin, ownerLogin), ne(exchangers.id, id)))
+    .limit(1);
+  if (taken.length) throw new Error("OWNER_LOGIN_TAKEN");
 
-    const taken = data.exchangers.some(
-      (e) => e.id !== id && e.ownerLogin && e.ownerLogin === ownerLogin,
-    );
-    if (taken) {
-      throw new Error("OWNER_LOGIN_TAKEN");
-    }
-
-    ex.ownerLogin = ownerLogin;
-    ex.ownerPasswordHash = input.ownerPasswordHash;
-    updated = { ...ex };
-  });
-
-  return updated;
+  const [row] = await db
+    .update(exchangers)
+    .set({
+      ownerLogin,
+      ownerPasswordHash: input.ownerPasswordHash,
+    })
+    .where(eq(exchangers.id, id))
+    .returning();
+  return row ? mapExchanger(row) : null;
 }
 
 export async function moderateReview(
   id: string,
   status: "approved" | "rejected",
 ): Promise<ExchangerReview | null> {
-  let updated: ExchangerReview | null = null;
-
-  await enqueueWrite((data) => {
-    const review = (data.reviews ?? []).find((r) => r.id === id);
-    if (!review) return;
-
-    review.status = status;
-    review.moderatedAt = new Date().toISOString();
-    updated = { ...review };
-
-    const ex = data.exchangers.find((e) => e.id === review.exchangerId);
-    if (ex) applyReviewStats(ex, data.reviews ?? []);
-  });
-
-  return updated;
+  const db = getDb();
+  const [row] = await db
+    .update(reviews)
+    .set({
+      status,
+      moderatedAt: new Date().toISOString(),
+    })
+    .where(eq(reviews.id, id))
+    .returning();
+  if (!row) return null;
+  await recomputeExchangerReviewStats(row.exchangerId);
+  return mapReview(row);
 }
 
 export async function deleteReview(id: string): Promise<boolean> {
-  let removed = false;
-  await enqueueWrite((data) => {
-    const review = (data.reviews ?? []).find((r) => r.id === id);
-    const before = (data.reviews ?? []).length;
-    data.reviews = (data.reviews ?? []).filter((r) => r.id !== id);
-    removed = data.reviews.length < before;
-    if (removed && review) {
-      const ex = data.exchangers.find((e) => e.id === review.exchangerId);
-      if (ex) applyReviewStats(ex, data.reviews);
-    }
-  });
-  return removed;
+  const db = getDb();
+  const [row] = await db
+    .delete(reviews)
+    .where(eq(reviews.id, id))
+    .returning();
+  if (!row) return false;
+  await recomputeExchangerReviewStats(row.exchangerId);
+  return true;
 }
 
 export async function listAchievements(): Promise<ExchangerAchievement[]> {
-  const store = await ensureLoaded();
-  return [...(store.achievements ?? [])].sort((a, b) =>
-    a.name.localeCompare(b.name, "ru"),
-  );
+  const db = getDb();
+  const rows = await db.select().from(achievements);
+  return rows
+    .map(mapAchievement)
+    .sort((a, b) => a.name.localeCompare(b.name, "ru"));
 }
 
 export async function resolveExchangerAchievements(
   achievementIds: string[] | undefined,
 ): Promise<ExchangerAchievement[]> {
   if (!achievementIds?.length) return [];
-  const store = await ensureLoaded();
-  const map = new Map((store.achievements ?? []).map((a) => [a.id, a]));
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(achievements)
+    .where(inArray(achievements.id, achievementIds));
+  const map = new Map(rows.map((a) => [a.id, mapAchievement(a)]));
   return achievementIds
     .map((id) => map.get(id))
     .filter((a): a is ExchangerAchievement => Boolean(a));
@@ -1215,6 +1109,7 @@ export async function addAchievement(input: {
   description: string;
   svg: string;
 }): Promise<ExchangerAchievement> {
+  const db = getDb();
   const item: ExchangerAchievement = {
     id: `ach_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
     name: input.name.trim(),
@@ -1222,10 +1117,7 @@ export async function addAchievement(input: {
     svg: input.svg,
     createdAt: new Date().toISOString(),
   };
-  await enqueueWrite((data) => {
-    data.achievements = data.achievements ?? [];
-    data.achievements.push(item);
-  });
+  await db.insert(achievements).values(item);
   return item;
 }
 
@@ -1233,44 +1125,54 @@ export async function updateAchievement(
   id: string,
   patch: Partial<Pick<ExchangerAchievement, "name" | "description" | "svg">>,
 ): Promise<ExchangerAchievement | null> {
-  let updated: ExchangerAchievement | null = null;
-  await enqueueWrite((data) => {
-    const item = (data.achievements ?? []).find((a) => a.id === id);
-    if (!item) return;
-    if (typeof patch.name === "string" && patch.name.trim()) {
-      item.name = patch.name.trim();
-    }
-    if (typeof patch.description === "string") {
-      item.description = patch.description.trim();
-    }
-    if (typeof patch.svg === "string" && patch.svg.trim()) {
-      item.svg = patch.svg;
-    }
-    updated = { ...item };
-  });
-  return updated;
+  const db = getDb();
+  const [row] = await db
+    .update(achievements)
+    .set({
+      ...(typeof patch.name === "string" && patch.name.trim()
+        ? { name: patch.name.trim() }
+        : {}),
+      ...(typeof patch.description === "string"
+        ? { description: patch.description.trim() }
+        : {}),
+      ...(typeof patch.svg === "string" && patch.svg.trim()
+        ? { svg: patch.svg }
+        : {}),
+    })
+    .where(eq(achievements.id, id))
+    .returning();
+  return row ? mapAchievement(row) : null;
 }
 
 export async function removeAchievement(id: string): Promise<boolean> {
-  let removed = false;
-  await enqueueWrite((data) => {
-    const before = (data.achievements ?? []).length;
-    data.achievements = (data.achievements ?? []).filter((a) => a.id !== id);
-    removed = data.achievements.length < before;
-    if (removed) {
-      for (const ex of data.exchangers) {
-        ex.achievementIds = (ex.achievementIds ?? []).filter((aid) => aid !== id);
-      }
-    }
-  });
-  return removed;
+  const db = getDb();
+  const result = await db
+    .delete(achievements)
+    .where(eq(achievements.id, id))
+    .returning({ id: achievements.id });
+  if (!result.length) return false;
+
+  const all = await db.select({ id: exchangers.id, achievementIds: exchangers.achievementIds }).from(exchangers);
+  for (const ex of all) {
+    const ids = ex.achievementIds ?? [];
+    if (!ids.includes(id)) continue;
+    await db
+      .update(exchangers)
+      .set({ achievementIds: ids.filter((aid) => aid !== id) })
+      .where(eq(exchangers.id, ex.id));
+  }
+  return true;
 }
 
 export async function listAds(): Promise<AdCreative[]> {
-  const store = await ensureLoaded();
-  return [...(store.ads ?? [])].sort(
-    (a, b) => b.priority - a.priority || b.createdAt.localeCompare(a.createdAt),
-  );
+  const db = getDb();
+  const rows = await db.select().from(ads);
+  return rows
+    .map(mapAd)
+    .sort(
+      (a, b) =>
+        b.priority - a.priority || b.createdAt.localeCompare(a.createdAt),
+    );
 }
 
 export async function listActiveAds(options?: {
@@ -1293,15 +1195,29 @@ export async function addAd(
     stats?: AdCreative["stats"];
   },
 ): Promise<AdCreative> {
+  const db = getDb();
   const item: AdCreative = {
     ...input,
     id: `ad_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
     createdAt: new Date().toISOString(),
     stats: input.stats ? normalizeAdStats(input.stats) : emptyAdStats(),
   };
-  await enqueueWrite((data) => {
-    data.ads = data.ads ?? [];
-    data.ads.unshift(item);
+  await db.insert(ads).values({
+    id: item.id,
+    name: item.name,
+    type: item.type,
+    placement: item.placement,
+    title: item.title,
+    body: item.body,
+    href: item.href,
+    imageUrl: item.imageUrl,
+    exchangerId: item.exchangerId,
+    active: item.active,
+    priority: item.priority,
+    startsAt: item.startsAt,
+    endsAt: item.endsAt,
+    createdAt: item.createdAt,
+    stats: item.stats as AdStatsJson,
   });
   return item;
 }
@@ -1310,27 +1226,49 @@ export async function updateAd(
   id: string,
   patch: Partial<Omit<AdCreative, "id" | "createdAt">>,
 ): Promise<AdCreative | null> {
-  let updated: AdCreative | null = null;
-  await enqueueWrite((data) => {
-    const item = (data.ads ?? []).find((a) => a.id === id);
-    if (!item) return;
-    const { stats: _stats, ...rest } = patch;
-    Object.assign(item, rest);
-    if (patch.stats) item.stats = normalizeAdStats(patch.stats);
-    if (!item.stats) item.stats = emptyAdStats();
-    updated = { ...item, stats: { ...item.stats, daily: [...item.stats.daily] } };
-  });
-  return updated;
+  const db = getDb();
+  const [current] = await db
+    .select()
+    .from(ads)
+    .where(eq(ads.id, id))
+    .limit(1);
+  if (!current) return null;
+
+  const nextStats = patch.stats
+    ? normalizeAdStats(patch.stats)
+    : normalizeAdStats(current.stats);
+
+  const [row] = await db
+    .update(ads)
+    .set({
+      ...(patch.name !== undefined ? { name: patch.name } : {}),
+      ...(patch.type !== undefined ? { type: patch.type } : {}),
+      ...(patch.placement !== undefined ? { placement: patch.placement } : {}),
+      ...(patch.title !== undefined ? { title: patch.title } : {}),
+      ...(patch.body !== undefined ? { body: patch.body } : {}),
+      ...(patch.href !== undefined ? { href: patch.href } : {}),
+      ...(patch.imageUrl !== undefined ? { imageUrl: patch.imageUrl } : {}),
+      ...(patch.exchangerId !== undefined
+        ? { exchangerId: patch.exchangerId }
+        : {}),
+      ...(patch.active !== undefined ? { active: patch.active } : {}),
+      ...(patch.priority !== undefined ? { priority: patch.priority } : {}),
+      ...(patch.startsAt !== undefined ? { startsAt: patch.startsAt } : {}),
+      ...(patch.endsAt !== undefined ? { endsAt: patch.endsAt } : {}),
+      stats: nextStats as AdStatsJson,
+    })
+    .where(eq(ads.id, id))
+    .returning();
+  return row ? mapAd(row) : null;
 }
 
 export async function removeAd(id: string): Promise<boolean> {
-  let removed = false;
-  await enqueueWrite((data) => {
-    const before = (data.ads ?? []).length;
-    data.ads = (data.ads ?? []).filter((a) => a.id !== id);
-    removed = data.ads.length < before;
-  });
-  return removed;
+  const db = getDb();
+  const result = await db
+    .delete(ads)
+    .where(eq(ads.id, id))
+    .returning({ id: ads.id });
+  return result.length > 0;
 }
 
 export type AdStatDelta = {
@@ -1345,31 +1283,40 @@ export async function applyAdStatDeltas(
 ): Promise<void> {
   if (!deltas.length) return;
   const day = utcDayKey();
-  await enqueueWrite((data) => {
-    data.ads = data.ads ?? [];
+  const db = getDb();
+  const ids = deltas.map((d) => d.id);
+  const rows = await db.select().from(ads).where(inArray(ads.id, ids));
+  const byId = new Map(rows.map((r) => [r.id, r]));
+
+  await db.transaction(async (tx) => {
     for (const delta of deltas) {
-      const item = data.ads.find((a) => a.id === delta.id);
+      const item = byId.get(delta.id);
       if (!item) continue;
-      if (!item.stats) item.stats = emptyAdStats();
+      const stats = normalizeAdStats(item.stats);
       const nowIso = new Date().toISOString();
       if (delta.impressions > 0) {
-        item.stats.impressions += delta.impressions;
-        item.stats.lastImpressionAt = nowIso;
+        stats.impressions += delta.impressions;
+        stats.lastImpressionAt = nowIso;
       }
       if (delta.clicks > 0) {
-        item.stats.clicks += delta.clicks;
-        item.stats.lastClickAt = nowIso;
+        stats.clicks += delta.clicks;
+        stats.lastClickAt = nowIso;
       }
-      let daily = item.stats.daily.find((d) => d.date === day);
+      let daily = stats.daily.find((d) => d.date === day);
       if (!daily) {
         daily = { date: day, impressions: 0, clicks: 0 };
-        item.stats.daily.push(daily);
+        stats.daily.push(daily);
       }
       daily.impressions += Math.max(0, delta.impressions);
       daily.clicks += Math.max(0, delta.clicks);
-      item.stats.daily = item.stats.daily
+      stats.daily = stats.daily
         .sort((a, b) => a.date.localeCompare(b.date))
         .slice(-keepDays);
+
+      await tx
+        .update(ads)
+        .set({ stats: stats as AdStatsJson })
+        .where(eq(ads.id, delta.id));
     }
   });
 }
@@ -1381,35 +1328,120 @@ export async function resetAdStats(id: string): Promise<AdCreative | null> {
 export async function listAdTariffs(options?: {
   activeOnly?: boolean;
 }): Promise<AdTariff[]> {
-  const store = await ensureLoaded();
-  let rows = [...(store.adTariffs ?? [])];
-  if (options?.activeOnly) rows = rows.filter((t) => t.active);
-  return rows.sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title, "ru"));
+  const db = getDb();
+  const rows = await db.select().from(adTariffs);
+  let list = rows.map(mapTariff);
+  if (options?.activeOnly) list = list.filter((t) => t.active);
+  return list.sort(
+    (a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title, "ru"),
+  );
 }
 
 export async function getAdPricing(): Promise<AdPricingSettings> {
-  const store = await ensureLoaded();
-  return store.adPricing ?? structuredClone(seedAdPricing);
+  const db = getDb();
+  const [row] = await db
+    .select()
+    .from(adPricing)
+    .where(eq(adPricing.id, 1))
+    .limit(1);
+  if (!row) return structuredClone(seedAdPricing);
+  return {
+    contact: row.contact,
+    intro: row.intro,
+    note: row.note,
+  };
 }
 
 export async function updateAdPricing(
   patch: Partial<AdPricingSettings>,
 ): Promise<AdPricingSettings> {
-  let next = structuredClone(seedAdPricing);
-  await enqueueWrite((data) => {
-    data.adPricing = data.adPricing ?? structuredClone(seedAdPricing);
-    if (typeof patch.contact === "string") {
-      data.adPricing.contact = patch.contact.trim();
-    }
-    if (typeof patch.intro === "string") {
-      data.adPricing.intro = patch.intro.trim();
-    }
-    if (typeof patch.note === "string") {
-      data.adPricing.note = patch.note.trim();
-    }
-    next = { ...data.adPricing };
-  });
+  const current = await getAdPricing();
+  const next = {
+    contact:
+      typeof patch.contact === "string" ? patch.contact.trim() : current.contact,
+    intro: typeof patch.intro === "string" ? patch.intro.trim() : current.intro,
+    note: typeof patch.note === "string" ? patch.note.trim() : current.note,
+  };
+  const db = getDb();
+  await db
+    .insert(adPricing)
+    .values({ id: 1, ...next })
+    .onConflictDoUpdate({
+      target: adPricing.id,
+      set: next,
+    });
   return next;
+}
+
+export async function getSeoSettings(): Promise<SeoSettings> {
+  const db = getDb();
+  const [row] = await db.select().from(seo).where(eq(seo.id, 1)).limit(1);
+  return normalizeSeoSettings(mapSeo(row));
+}
+
+export async function updateSeoSettings(
+  patch: Partial<SeoSettings>,
+): Promise<SeoSettings> {
+  const current = await getSeoSettings();
+  const merged = normalizeSeoSettings({ ...current, ...patch });
+  const db = getDb();
+  await db
+    .insert(seo)
+    .values({
+      id: 1,
+      siteName: merged.siteName,
+      siteUrl: merged.siteUrl,
+      titleDefault: merged.titleDefault,
+      titleTemplate: merged.titleTemplate,
+      description: merged.description,
+      keywords: merged.keywords,
+      ogTitle: merged.ogTitle,
+      ogDescription: merged.ogDescription,
+      ogImageUrl: merged.ogImageUrl,
+      twitterCard: merged.twitterCard,
+      twitterHandle: merged.twitterHandle,
+      robotsIndex: merged.robotsIndex,
+      robotsFollow: merged.robotsFollow,
+      robotsExtra: merged.robotsExtra,
+      robotsTxtExtra: merged.robotsTxtExtra,
+      sitemapEnabled: merged.sitemapEnabled,
+      noindexPaths: merged.noindexPaths,
+      googleVerification: merged.googleVerification,
+      yandexVerification: merged.yandexVerification,
+      bingVerification: merged.bingVerification,
+      jsonLdEnabled: merged.jsonLdEnabled,
+      organizationName: merged.organizationName,
+      organizationLogoUrl: merged.organizationLogoUrl,
+    })
+    .onConflictDoUpdate({
+      target: seo.id,
+      set: {
+        siteName: merged.siteName,
+        siteUrl: merged.siteUrl,
+        titleDefault: merged.titleDefault,
+        titleTemplate: merged.titleTemplate,
+        description: merged.description,
+        keywords: merged.keywords,
+        ogTitle: merged.ogTitle,
+        ogDescription: merged.ogDescription,
+        ogImageUrl: merged.ogImageUrl,
+        twitterCard: merged.twitterCard,
+        twitterHandle: merged.twitterHandle,
+        robotsIndex: merged.robotsIndex,
+        robotsFollow: merged.robotsFollow,
+        robotsExtra: merged.robotsExtra,
+        robotsTxtExtra: merged.robotsTxtExtra,
+        sitemapEnabled: merged.sitemapEnabled,
+        noindexPaths: merged.noindexPaths,
+        googleVerification: merged.googleVerification,
+        yandexVerification: merged.yandexVerification,
+        bingVerification: merged.bingVerification,
+        jsonLdEnabled: merged.jsonLdEnabled,
+        organizationName: merged.organizationName,
+        organizationLogoUrl: merged.organizationLogoUrl,
+      },
+    });
+  return merged;
 }
 
 export async function updateAdTariff(
@@ -1430,44 +1462,53 @@ export async function updateAdTariff(
     >
   >,
 ): Promise<AdTariff | null> {
-  let updated: AdTariff | null = null;
-  await enqueueWrite((data) => {
-    data.adTariffs = data.adTariffs ?? [];
-    const item = data.adTariffs.find((t) => t.id === id);
-    if (!item) return;
-    if (typeof patch.title === "string" && patch.title.trim()) {
-      item.title = patch.title.trim();
-    }
-    if (typeof patch.description === "string") {
-      item.description = patch.description.trim();
-    }
-    if (typeof patch.sizeLabel === "string") {
-      item.sizeLabel = patch.sizeLabel.trim();
-    }
-    if (typeof patch.price === "number" && Number.isFinite(patch.price)) {
-      item.price = Math.max(0, patch.price);
-    }
-    if (
-      patch.period === "day" ||
-      patch.period === "week" ||
-      patch.period === "month"
-    ) {
-      item.period = patch.period;
-    }
-    if (Array.isArray(patch.features)) {
-      item.features = patch.features
-        .filter((f): f is string => typeof f === "string")
-        .map((f) => f.trim())
-        .filter(Boolean);
-    }
-    if (typeof patch.active === "boolean") item.active = patch.active;
-    if (typeof patch.sortOrder === "number") item.sortOrder = patch.sortOrder;
-    if (patch.placement) item.placement = patch.placement;
-    if (patch.type) item.type = patch.type;
-    item.updatedAt = new Date().toISOString();
-    updated = { ...item };
-  });
-  return updated;
+  const db = getDb();
+  const [current] = await db
+    .select()
+    .from(adTariffs)
+    .where(eq(adTariffs.id, id))
+    .limit(1);
+  if (!current) return null;
+
+  const set: Partial<typeof adTariffs.$inferInsert> = {
+    updatedAt: new Date().toISOString(),
+  };
+  if (typeof patch.title === "string" && patch.title.trim()) {
+    set.title = patch.title.trim();
+  }
+  if (typeof patch.description === "string") {
+    set.description = patch.description.trim();
+  }
+  if (typeof patch.sizeLabel === "string") {
+    set.sizeLabel = patch.sizeLabel.trim();
+  }
+  if (typeof patch.price === "number" && Number.isFinite(patch.price)) {
+    set.price = Math.max(0, patch.price);
+  }
+  if (
+    patch.period === "day" ||
+    patch.period === "week" ||
+    patch.period === "month"
+  ) {
+    set.period = patch.period;
+  }
+  if (Array.isArray(patch.features)) {
+    set.features = patch.features
+      .filter((f): f is string => typeof f === "string")
+      .map((f) => f.trim())
+      .filter(Boolean);
+  }
+  if (typeof patch.active === "boolean") set.active = patch.active;
+  if (typeof patch.sortOrder === "number") set.sortOrder = patch.sortOrder;
+  if (patch.placement) set.placement = patch.placement;
+  if (patch.type) set.type = patch.type;
+
+  const [row] = await db
+    .update(adTariffs)
+    .set(set)
+    .where(eq(adTariffs.id, id))
+    .returning();
+  return row ? mapTariff(row) : null;
 }
 
 export async function addAdTariff(input: {
@@ -1481,6 +1522,7 @@ export async function addAdTariff(input: {
   features?: string[];
   sortOrder?: number;
 }): Promise<AdTariff> {
+  const db = getDb();
   const item: AdTariff = {
     id: `tar_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 5)}`,
     placement: input.placement,
@@ -1496,21 +1538,17 @@ export async function addAdTariff(input: {
     sortOrder: input.sortOrder ?? 100,
     updatedAt: new Date().toISOString(),
   };
-  await enqueueWrite((data) => {
-    data.adTariffs = data.adTariffs ?? [];
-    data.adTariffs.push(item);
-  });
+  await db.insert(adTariffs).values(item);
   return item;
 }
 
 export async function removeAdTariff(id: string): Promise<boolean> {
-  let removed = false;
-  await enqueueWrite((data) => {
-    const before = (data.adTariffs ?? []).length;
-    data.adTariffs = (data.adTariffs ?? []).filter((t) => t.id !== id);
-    removed = data.adTariffs.length < before;
-  });
-  return removed;
+  const db = getDb();
+  const result = await db
+    .delete(adTariffs)
+    .where(eq(adTariffs.id, id))
+    .returning({ id: adTariffs.id });
+  return result.length > 0;
 }
 
 export type ExchangerTrafficDelta = {
@@ -1525,30 +1563,43 @@ export async function applyExchangerTrafficDeltas(
 ): Promise<void> {
   if (!deltas.length) return;
   const day = utcDayKey();
-  await enqueueWrite((data) => {
+  const db = getDb();
+  const ids = deltas.map((d) => d.id);
+  const rows = await db
+    .select()
+    .from(exchangers)
+    .where(inArray(exchangers.id, ids));
+  const byId = new Map(rows.map((r) => [r.id, r]));
+
+  await db.transaction(async (tx) => {
     for (const delta of deltas) {
-      const item = data.exchangers.find((e) => e.id === delta.id);
+      const item = byId.get(delta.id);
       if (!item) continue;
-      if (!item.traffic) item.traffic = emptyExchangerTraffic();
+      const traffic = normalizeExchangerTraffic(item.traffic);
       const nowIso = new Date().toISOString();
       if (delta.pageViews > 0) {
-        item.traffic.pageViews += delta.pageViews;
-        item.traffic.lastViewAt = nowIso;
+        traffic.pageViews += delta.pageViews;
+        traffic.lastViewAt = nowIso;
       }
       if (delta.siteClicks > 0) {
-        item.traffic.siteClicks += delta.siteClicks;
-        item.traffic.lastClickAt = nowIso;
+        traffic.siteClicks += delta.siteClicks;
+        traffic.lastClickAt = nowIso;
       }
-      let daily = item.traffic.daily.find((d) => d.date === day);
+      let daily = traffic.daily.find((d) => d.date === day);
       if (!daily) {
         daily = { date: day, pageViews: 0, siteClicks: 0 };
-        item.traffic.daily.push(daily);
+        traffic.daily.push(daily);
       }
       daily.pageViews += Math.max(0, delta.pageViews);
       daily.siteClicks += Math.max(0, delta.siteClicks);
-      item.traffic.daily = item.traffic.daily
+      traffic.daily = traffic.daily
         .sort((a, b) => a.date.localeCompare(b.date))
         .slice(-keepDays);
+
+      await tx
+        .update(exchangers)
+        .set({ traffic: traffic as ExchangerTrafficJson })
+        .where(eq(exchangers.id, delta.id));
     }
   });
 }

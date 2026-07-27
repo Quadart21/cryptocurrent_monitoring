@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { assertAdmin } from "@/lib/admin-guard";
 import {
-  getStore,
+  getLastGlobalSyncAt,
+  getRatesCount,
   listAchievements,
   listAds,
   listBlacklist,
@@ -18,7 +19,8 @@ export async function GET() {
   if (denied) return denied;
 
   const [
-    store,
+    lastGlobalSyncAt,
+    ratesCount,
     exchangers,
     blacklist,
     reviews,
@@ -26,7 +28,8 @@ export async function GET() {
     achievements,
     ads,
   ] = await Promise.all([
-    getStore(),
+    getLastGlobalSyncAt(),
+    getRatesCount(),
     listExchangers(),
     listBlacklist(),
     listReviews(),
@@ -42,13 +45,13 @@ export async function GET() {
   }));
 
   return NextResponse.json({
-    lastGlobalSyncAt: store.lastGlobalSyncAt,
+    lastGlobalSyncAt,
     counts: {
       exchangers: exchangers.length,
       active: exchangers.filter((e) => e.status === "active").length,
       pending: exchangers.filter((e) => e.status === "pending").length,
       error: exchangers.filter((e) => e.status === "error").length,
-      rates: store.rates.length,
+      rates: ratesCount,
       blacklist: blacklist.length,
       pendingReviews: reviews.filter((r) => r.status === "pending").length,
       achievements: achievements.length,

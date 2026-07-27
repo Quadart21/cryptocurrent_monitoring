@@ -1,5 +1,12 @@
-export const ADMIN_COOKIE = "cm_ops";
+import {
+  getSessionSecret,
+  hmacHex,
+  timingSafeEqualStr,
+} from "@/lib/security/session";
+
+export const ADMIN_COOKIE = "gs_ops";
 export const ADMIN_PATH = "/trulala";
+const ADMIN_SESSION_TTL_SEC = 60 * 60 * 24 * 7; // 7 days
 
 export function getAdminLogin(): string {
   return process.env.ADMIN_LOGIN?.trim() || "admin";
@@ -9,40 +16,38 @@ export function getAdminPassword(): string {
   return process.env.ADMIN_PASSWORD?.trim() || "admin";
 }
 
-function timingSafeEqualStr(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let out = 0;
-  for (let i = 0; i < a.length; i += 1) {
-    out |= a.charCodeAt(i) ^ b.charCodeAt(i);
+export function warnIfInsecureAdminConfig(): void {
+  if (process.env.NODE_ENV !== "production") return;
+  const password = getAdminPassword();
+  if (password === "admin" || password.length < 10) {
+    console.error(
+      "[gapsnap] Небезопасный ADMIN_PASSWORD в production. Задайте длинный пароль в .env.",
+    );
   }
-  return out === 0;
+  if (!process.env.SESSION_SECRET?.trim()) {
+    console.error(
+      "[gapsnap] Задайте SESSION_SECRET (>=24 символов) в .env для подписи сессий.",
+    );
+  }
 }
 
+async function signAdminPayload(login: string, exp: number): Promise<string> {
+  return hmacHex(getSessionSecret(), `admin-session-v2|${login}|${exp}`);
+}
+
+/** Signed admin session: v2.<exp>.<hmac> */
+export async function createAdminSessionToken(login: string): Promise<string> {
+  const exp = Math.floor(Date.now() / 1000) + ADMIN_SESSION_TTL_SEC;
+  const sig = await signAdminPayload(login, exp);
+  return `v2.${exp}.${sig}`;
+}
+
+/** @deprecated compatibility alias */
 export async function sessionTokenFromCredentials(
   login: string,
-  password: string,
+  _password: string,
 ): Promise<string> {
-  const data = new TextEncoder().encode(`cryptomon:${login}:${password}`);
-  const digest = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-let cachedExpectedToken: string | null = null;
-let cachedExpectedKey: string | null = null;
-
-export async function expectedSessionToken(): Promise<string> {
-  const login = getAdminLogin();
-  const password = getAdminPassword();
-  const key = `${login}\0${password}`;
-  if (cachedExpectedToken && cachedExpectedKey === key) {
-    return cachedExpectedToken;
-  }
-  const token = await sessionTokenFromCredentials(login, password);
-  cachedExpectedToken = token;
-  cachedExpectedKey = key;
-  return token;
+  return createAdminSessionToken(login);
 }
 
 export function isValidCredentials(login: string, password: string): boolean {
@@ -53,9 +58,18 @@ export function isValidCredentials(login: string, password: string): boolean {
 }
 
 export async function isValidAdminSession(
-  cookieValue: string | null | undefined,
+  token: string | null | undefined,
 ): Promise<boolean> {
-  if (!cookieValue) return false;
-  const expected = await expectedSessionToken();
-  return timingSafeEqualStr(cookieValue, expected);
+  if (!token) return false;
+  const parts = token.split(".");
+  if (parts.length !== 3 || parts[0] !== "v2") return false;
+  const exp = Number(parts[1]);
+  const sig = parts[2] ?? "";
+  if (!Number.isFinite(exp) || exp < Math.floor(Date.now() / 1000)) {
+    return false;
+  }
+  const expected = await signAdminPayload(getAdminLogin(), exp);
+  return timingSafeEqualStr(sig, expected);
 }
+
+export { timingSafeEqualStr };

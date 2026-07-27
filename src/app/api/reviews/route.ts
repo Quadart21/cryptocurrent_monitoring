@@ -6,6 +6,8 @@ import {
   listReviews,
 } from "@/lib/store";
 import type { ReviewSentiment } from "@/lib/store-types";
+import { clientIp, rateLimit } from "@/lib/security/rate-limit";
+import { rateLimitedResponse } from "@/lib/security/request";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -49,6 +51,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const limited = rateLimit(`review:${clientIp(request)}`, 10, 15 * 60_000);
+  if (!limited.ok) return rateLimitedResponse(limited.retryAfterSec);
+
   let body: {
     exchangerId?: string;
     sentiment?: ReviewSentiment;

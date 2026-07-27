@@ -21,10 +21,10 @@ export function Topbar() {
             className="flex shrink-0 items-center gap-2.5"
           >
             <span className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] text-sm font-bold text-white shadow-[var(--glow)]">
-              C
+              G
             </span>
             <span className="font-display text-lg font-semibold tracking-tight text-ink">
-              Cryptomon
+              GapSnap
             </span>
           </Link>
 

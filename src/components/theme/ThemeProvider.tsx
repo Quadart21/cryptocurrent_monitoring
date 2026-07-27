@@ -29,7 +29,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>("dark");
 
   useEffect(() => {
-    const saved = window.localStorage.getItem("cryptomon-theme");
+    const saved =
+      window.localStorage.getItem("gapsnap-theme") ||
+      window.localStorage.getItem("cryptomon-theme");
     const initial: Theme =
       saved === "light" || saved === "dark"
         ? saved
@@ -42,7 +44,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const setTheme = useCallback((next: Theme) => {
     setThemeState(next);
-    window.localStorage.setItem("cryptomon-theme", next);
+    window.localStorage.setItem("gapsnap-theme", next);
     applyTheme(next);
   }, []);
 

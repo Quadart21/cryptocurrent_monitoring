@@ -44,6 +44,7 @@ export type AdminNavId =
   | "achievements"
   | "ads"
   | "ad-tariffs"
+  | "seo"
   | "blacklist"
   | "sync";
 

@@ -1,14 +1,23 @@
-export const OWNER_COOKIE = "cm_owner";
-export const OWNER_PATH = "/cabinet";
+import {
+  hashPasswordScrypt,
+  isScryptHash,
+  verifyPasswordScrypt,
+} from "@/lib/security/crypto";
+import {
+  getSessionSecret,
+  hmacHex,
+  timingSafeEqualStr,
+} from "@/lib/security/session";
 
-function timingSafeEqualStr(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let out = 0;
-  for (let i = 0; i < a.length; i += 1) {
-    out |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-  return out === 0;
-}
+export {
+  OWNER_COOKIE,
+  OWNER_PATH,
+  encodeOwnerCookie,
+  parseOwnerCookie,
+  isOwnerSessionExpired,
+} from "@/lib/owner-cookie";
+
+const OWNER_SESSION_TTL_SEC = 60 * 60 * 24 * 14; // 14 days
 
 async function sha256Hex(value: string): Promise<string> {
   const data = new TextEncoder().encode(value);
@@ -19,36 +28,39 @@ async function sha256Hex(value: string): Promise<string> {
 }
 
 export async function hashOwnerPassword(password: string): Promise<string> {
-  return sha256Hex(`cryptomon-owner-pw:${password}`);
+  return hashPasswordScrypt(password);
+}
+
+export async function verifyOwnerPassword(
+  password: string,
+  storedHash: string,
+): Promise<{ ok: boolean; needsRehash: boolean }> {
+  if (isScryptHash(storedHash)) {
+    const ok = await verifyPasswordScrypt(password, storedHash);
+    return { ok, needsRehash: false };
+  }
+
+  const legacy = await sha256Hex(`gapsnap-owner-pw:${password}`);
+  const legacyOldBrand = await sha256Hex(`cryptomon-owner-pw:${password}`);
+  const ok =
+    timingSafeEqualStr(legacy, storedHash) ||
+    timingSafeEqualStr(legacyOldBrand, storedHash);
+  return { ok, needsRehash: ok };
 }
 
 export async function ownerSessionToken(input: {
   exchangerId: string;
   ownerLogin: string;
   ownerPasswordHash: string;
+  exp?: number;
 }): Promise<string> {
-  return sha256Hex(
-    `cryptomon-owner-session:${input.exchangerId}:${input.ownerLogin}:${input.ownerPasswordHash}`,
+  const exp =
+    input.exp ?? Math.floor(Date.now() / 1000) + OWNER_SESSION_TTL_SEC;
+  const sig = await hmacHex(
+    getSessionSecret(),
+    `owner-session-v2|${input.exchangerId}|${input.ownerLogin}|${input.ownerPasswordHash}|${exp}`,
   );
-}
-
-export function encodeOwnerCookie(
-  exchangerId: string,
-  token: string,
-): string {
-  return `${exchangerId}.${token}`;
-}
-
-export function parseOwnerCookie(
-  cookieValue: string | null | undefined,
-): { exchangerId: string; token: string } | null {
-  if (!cookieValue) return null;
-  const dot = cookieValue.indexOf(".");
-  if (dot <= 0) return null;
-  const exchangerId = cookieValue.slice(0, dot);
-  const token = cookieValue.slice(dot + 1);
-  if (!exchangerId || !token) return null;
-  return { exchangerId, token };
+  return `v2.${exp}.${sig}`;
 }
 
 export { timingSafeEqualStr };

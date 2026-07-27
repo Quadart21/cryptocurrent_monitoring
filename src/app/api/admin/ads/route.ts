@@ -27,6 +27,16 @@ function parseAdBody(body: Record<string, unknown>) {
   const href = String(body.href ?? "").trim();
   if (name.length < 2) return { error: "Укажите название в админке" } as const;
   if (title.length < 2) return { error: "Укажите заголовок" } as const;
+  if (href) {
+    try {
+      const u = new URL(href);
+      if (u.protocol !== "https:" && u.protocol !== "http:") {
+        return { error: "Ссылка рекламы: только http(s)" } as const;
+      }
+    } catch {
+      return { error: "Некорректная ссылка рекламы" } as const;
+    }
+  }
 
   if (type === "highlight" || type === "rates_pin") {
     const exchangerId = String(body.exchangerId ?? "").trim();

@@ -13,7 +13,7 @@ export function Header() {
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link href="/" className="group flex items-baseline gap-2">
           <span className="font-display text-lg font-semibold tracking-tight text-ink sm:text-xl">
-            Cryptomon
+            GapSnap
           </span>
           <span className="hidden text-xs text-ink-muted sm:inline">
             мониторинг

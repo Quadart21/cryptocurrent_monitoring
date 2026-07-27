@@ -183,3 +183,37 @@ export type AdPricingSettings = {
   intro: string;
   note: string;
 };
+
+/** Глобальные SEO-настройки сайта (админка → /trulala/seo) */
+export type SeoSettings = {
+  siteName: string;
+  /** Базовый URL сайта без слэша в конце, напр. https://gapsnap.example */
+  siteUrl: string;
+  titleDefault: string;
+  /** Шаблон заголовка страниц, напр. %s · GapSnap */
+  titleTemplate: string;
+  description: string;
+  /** Ключевые слова через запятую */
+  keywords: string;
+  ogTitle: string;
+  ogDescription: string;
+  ogImageUrl: string;
+  twitterCard: "summary" | "summary_large_image";
+  twitterHandle: string;
+  robotsIndex: boolean;
+  robotsFollow: boolean;
+  /** Доп. директивы robots meta через запятую */
+  robotsExtra: string;
+  /** Доп. строки для /robots.txt */
+  robotsTxtExtra: string;
+  sitemapEnabled: boolean;
+  /** Пути Disallow в robots.txt, по одному на строку */
+  noindexPaths: string;
+  googleVerification: string;
+  yandexVerification: string;
+  bingVerification: string;
+  jsonLdEnabled: boolean;
+  organizationName: string;
+  organizationLogoUrl: string;
+};
+

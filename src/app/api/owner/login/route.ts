@@ -4,14 +4,28 @@ import {
   encodeOwnerCookie,
   hashOwnerPassword,
   ownerSessionToken,
-  timingSafeEqualStr,
+  verifyOwnerPassword,
 } from "@/lib/owner-auth";
-import { findExchangerByOwnerLogin } from "@/lib/store";
+import { clientIp, rateLimit } from "@/lib/security/rate-limit";
+import {
+  assertSameOrigin,
+  rateLimitedResponse,
+} from "@/lib/security/request";
+import {
+  findExchangerByOwnerLogin,
+  setOwnerCredentials,
+} from "@/lib/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  const originDenied = assertSameOrigin(request);
+  if (originDenied) return originDenied;
+
+  const limited = rateLimit(`owner-login:${clientIp(request)}`, 8, 60_000);
+  if (!limited.ok) return rateLimitedResponse(limited.retryAfterSec);
+
   let body: { login?: string; password?: string };
   try {
     body = (await request.json()) as { login?: string; password?: string };
@@ -36,18 +50,27 @@ export async function POST(request: Request) {
     );
   }
 
-  const hash = await hashOwnerPassword(password);
-  if (!timingSafeEqualStr(hash, ex.ownerPasswordHash)) {
+  const verified = await verifyOwnerPassword(password, ex.ownerPasswordHash);
+  if (!verified.ok) {
     return NextResponse.json(
       { error: "Неверный логин или пароль" },
       { status: 401 },
     );
   }
 
+  let passwordHash = ex.ownerPasswordHash;
+  if (verified.needsRehash) {
+    passwordHash = await hashOwnerPassword(password);
+    await setOwnerCredentials(ex.id, {
+      ownerLogin: ex.ownerLogin,
+      ownerPasswordHash: passwordHash,
+    });
+  }
+
   const token = await ownerSessionToken({
     exchangerId: ex.id,
     ownerLogin: ex.ownerLogin,
-    ownerPasswordHash: ex.ownerPasswordHash,
+    ownerPasswordHash: passwordHash,
   });
 
   const res = NextResponse.json({
@@ -65,7 +88,7 @@ export async function POST(request: Request) {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * 24 * 30,
+    maxAge: 60 * 60 * 24 * 14,
   });
 
   return res;

@@ -62,7 +62,7 @@ export function MobileNav() {
             <div className="flex items-center justify-between border-b border-line px-4 py-4">
               <div>
                 <p className="font-display text-lg font-semibold text-ink">
-                  Cryptomon
+                  GapSnap
                 </p>
                 <p className="text-xs text-ink-muted">Разделы сайта</p>
               </div>

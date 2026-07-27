@@ -1,8 +1,9 @@
-import { promises as fs } from "fs";
-import path from "path";
 import { sanitizeAchievementSvg } from "@/lib/sanitize-svg";
+import {
+  clearExchangerLogoData,
+  setExchangerLogoData,
+} from "@/lib/store";
 
-export const LOGO_DIR = path.join(process.cwd(), ".data", "logos");
 export const LOGO_MAX_BYTES = 512 * 1024;
 
 export type LogoFormat = "svg" | "png";
@@ -83,34 +84,15 @@ export async function validateAndPrepareLogo(
   throw new Error("Логотип: только SVG или PNG с прозрачным фоном");
 }
 
-export function logoFilePath(exchangerId: string, format: LogoFormat): string {
-  return path.join(LOGO_DIR, `${exchangerId}.${format}`);
-}
-
 export async function saveExchangerLogo(
   exchangerId: string,
   prepared: { format: LogoFormat; bytes: Buffer },
 ): Promise<SavedLogo> {
-  await fs.mkdir(LOGO_DIR, { recursive: true });
-  // Remove other format if switching svg <-> png
-  for (const ext of ["svg", "png"] as const) {
-    if (ext === prepared.format) continue;
-    await fs.unlink(logoFilePath(exchangerId, ext)).catch(() => undefined);
-  }
-  await fs.writeFile(
-    logoFilePath(exchangerId, prepared.format),
-    prepared.bytes,
-  );
-  return {
-    format: prepared.format,
-    updatedAt: new Date().toISOString(),
-  };
+  return setExchangerLogoData(exchangerId, prepared);
 }
 
 export async function deleteExchangerLogo(exchangerId: string): Promise<void> {
-  for (const ext of ["svg", "png"] as const) {
-    await fs.unlink(logoFilePath(exchangerId, ext)).catch(() => undefined);
-  }
+  await clearExchangerLogoData(exchangerId);
 }
 
 export { logoPublicUrl } from "@/lib/logo-url";

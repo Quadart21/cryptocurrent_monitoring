@@ -3,7 +3,7 @@ import { listActiveAds } from "@/lib/store";
 import type { AdPlacement } from "@/lib/store-types";
 
 export const runtime = "nodejs";
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const placement = new URL(request.url).searchParams.get(

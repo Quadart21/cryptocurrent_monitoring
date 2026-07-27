@@ -33,7 +33,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         >
           <div className="mb-6 px-2">
             <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">
-              cryptomon
+              GapSnap
             </p>
             <Link
               href={ADMIN_PATH}

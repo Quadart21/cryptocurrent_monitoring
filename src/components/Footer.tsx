@@ -5,7 +5,7 @@ export function Footer() {
     <footer className="mt-20 border-t border-line/70 bg-bg-elevated/60">
       <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-10 sm:flex-row sm:items-end sm:justify-between sm:px-6">
         <div>
-          <p className="font-display text-lg font-semibold text-ink">Cryptomon</p>
+          <p className="font-display text-lg font-semibold text-ink">GapSnap</p>
           <p className="mt-2 max-w-md text-sm leading-relaxed text-ink-muted">
             Независимый мониторинг обменных пунктов. Мы не проводим обмен и не
             храним средства — помогаем выбрать надёжный сервис по курсу и

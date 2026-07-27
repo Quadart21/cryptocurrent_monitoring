@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { queryRates } from "@/lib/rates-query";
 
 export const runtime = "nodejs";
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);

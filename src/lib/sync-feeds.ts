@@ -1,42 +1,81 @@
 import {
-  getStore,
+  listExchangers,
   replaceExchangerRatesBatch,
   type FeedExchanger,
 } from "@/lib/store";
+import { assertSafeOutboundUrl } from "@/lib/security/ssrf";
 import { parseRatesXml, type ParsedRateItem } from "@/lib/xml/parse-rates";
 
 const FETCH_TIMEOUT_MS = 12_000;
 const POLL_INTERVAL_MS = 60_000;
 const FETCH_CONCURRENCY = 4;
+const MAX_REDIRECTS = 3;
+const MAX_BODY_BYTES = 2_500_000;
+
+async function fetchWithSsrfGuard(feedUrl: string): Promise<Response> {
+  let current = await assertSafeOutboundUrl(feedUrl, { allowHttp: true });
+
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    try {
+      const res = await fetch(current.toString(), {
+        signal: controller.signal,
+        redirect: "manual",
+        headers: {
+          Accept: "application/xml, text/xml, */*",
+          "User-Agent": "GapSnapMonitor/1.0 (+https://gapsnap.local)",
+          "Cache-Control": "no-cache",
+        },
+        cache: "no-store",
+      });
+
+      if ([301, 302, 303, 307, 308].includes(res.status)) {
+        const location = res.headers.get("location");
+        if (!location) throw new Error("Редирект без Location");
+        if (hop === MAX_REDIRECTS) {
+          throw new Error("Слишком много редиректов фида");
+        }
+        const next = new URL(location, current);
+        current = await assertSafeOutboundUrl(next.toString(), {
+          allowHttp: true,
+        });
+        continue;
+      }
+
+      return res;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  throw new Error("Не удалось загрузить фид");
+}
 
 export async function fetchFeedXml(feedUrl: string): Promise<string> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  await assertSafeOutboundUrl(feedUrl, { allowHttp: true });
+  const res = await fetchWithSsrfGuard(feedUrl);
 
-  try {
-    const res = await fetch(feedUrl, {
-      signal: controller.signal,
-      headers: {
-        Accept: "application/xml, text/xml, */*",
-        "User-Agent": "CryptomonMonitor/1.0 (+https://cryptomon.local)",
-        "Cache-Control": "no-cache",
-      },
-      cache: "no-store",
-    });
-
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status} при запросе фида`);
-    }
-
-    const text = await res.text();
-    if (!text.includes("<") || !/<rates[\s>]/i.test(text)) {
-      throw new Error("Ответ не похож на BestChange XML (<rates>)");
-    }
-
-    return text;
-  } finally {
-    clearTimeout(timer);
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status} при запросе фида`);
   }
+
+  const lengthHeader = res.headers.get("content-length");
+  if (lengthHeader && Number(lengthHeader) > MAX_BODY_BYTES) {
+    throw new Error("Фид слишком большой");
+  }
+
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (buf.length > MAX_BODY_BYTES) {
+    throw new Error("Фид слишком большой");
+  }
+
+  const text = buf.toString("utf8");
+  if (!text.includes("<") || !/<rates[\s>]/i.test(text)) {
+    throw new Error("Ответ не похож на BestChange XML (<rates>)");
+  }
+
+  return text;
 }
 
 export async function validateFeedUrl(feedUrl: string) {
@@ -91,47 +130,65 @@ async function mapPool<T, R>(
   return results;
 }
 
+declare global {
+  // eslint-disable-next-line no-var
+  var __gapsnapPollerStarted: boolean | undefined;
+  // eslint-disable-next-line no-var
+  var __gapsnapSyncInFlight: Promise<{
+    total: number;
+    ok: number;
+    failed: number;
+    syncedAt: string;
+  }> | null | undefined;
+}
+
 export async function syncAllFeeds(): Promise<{
   total: number;
   ok: number;
   failed: number;
   syncedAt: string;
 }> {
-  const store = await getStore();
-  const targets = store.exchangers.filter(
-    (e) => e.status === "active" || e.status === "error",
-  );
-
-  const results = await mapPool(targets, FETCH_CONCURRENCY, fetchOne);
-  await replaceExchangerRatesBatch(results);
-
-  let ok = 0;
-  let failed = 0;
-  for (const r of results) {
-    if (r.meta.ok) ok += 1;
-    else failed += 1;
+  if (globalThis.__gapsnapSyncInFlight) {
+    return globalThis.__gapsnapSyncInFlight;
   }
 
-  return {
-    total: targets.length,
-    ok,
-    failed,
-    syncedAt: new Date().toISOString(),
-  };
-}
+  const run = (async () => {
+    const exchangers = await listExchangers();
+    const targets = exchangers.filter(
+      (e) => e.status === "active" || e.status === "error",
+    );
 
-declare global {
-  // eslint-disable-next-line no-var
-  var __cryptomonPollerStarted: boolean | undefined;
+    const results = await mapPool(targets, FETCH_CONCURRENCY, fetchOne);
+    await replaceExchangerRatesBatch(results);
+
+    let ok = 0;
+    let failed = 0;
+    for (const r of results) {
+      if (r.meta.ok) ok += 1;
+      else failed += 1;
+    }
+
+    return {
+      total: targets.length,
+      ok,
+      failed,
+      syncedAt: new Date().toISOString(),
+    };
+  })().finally(() => {
+    globalThis.__gapsnapSyncInFlight = null;
+  });
+
+  globalThis.__gapsnapSyncInFlight = run;
+  return run;
 }
 
 export function startFeedPoller(): void {
-  if (globalThis.__cryptomonPollerStarted) return;
-  globalThis.__cryptomonPollerStarted = true;
+  if (globalThis.__gapsnapPollerStarted) return;
+  globalThis.__gapsnapPollerStarted = true;
 
   const tick = () => {
     void syncAllFeeds().catch((error) => {
-      console.error("[cryptomon] feed sync failed", error);
+      console.error("[gapsnap] feed sync failed", error);
     });
   };
 
@@ -139,6 +196,6 @@ export function startFeedPoller(): void {
   setInterval(tick, POLL_INTERVAL_MS);
 
   console.info(
-    `[cryptomon] feed poller started (every ${POLL_INTERVAL_MS / 1000}s)`,
+    `[gapsnap] feed poller started (every ${POLL_INTERVAL_MS / 1000}s)`,
   );
 }

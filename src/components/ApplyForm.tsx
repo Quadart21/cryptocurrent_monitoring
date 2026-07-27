@@ -82,7 +82,8 @@ export function ApplyForm() {
             label="Пароль"
             name="ownerPassword"
             type="password"
-            placeholder="минимум 6 символов"
+            placeholder="минимум 8 символов"
+            minLength={8}
             required
             autoComplete="new-password"
           />
@@ -171,6 +172,7 @@ function Field({
   required,
   type = "text",
   autoComplete,
+  minLength,
 }: {
   label: string;
   name: string;
@@ -179,6 +181,7 @@ function Field({
   required?: boolean;
   type?: string;
   autoComplete?: string;
+  minLength?: number;
 }) {
   return (
     <label className="block space-y-2">
@@ -189,6 +192,7 @@ function Field({
         name={name}
         type={type}
         required={required}
+        minLength={minLength}
         placeholder={placeholder}
         autoComplete={autoComplete}
         className="w-full rounded-2xl border border-line bg-input px-3 py-3 text-sm text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"

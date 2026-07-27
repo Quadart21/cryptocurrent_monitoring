@@ -3,7 +3,10 @@ import Script from "next/script";
 import { Manrope, Unbounded } from "next/font/google";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { ConditionalShell } from "@/components/shell/ConditionalShell";
+import { getOrganizationJsonLd, getRootMetadata } from "@/lib/seo";
 import "./globals.css";
+
+export const dynamic = "force-dynamic";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -16,22 +19,19 @@ const unbounded = Unbounded({
   weight: ["400", "500", "600", "700"],
 });
 
-export const metadata: Metadata = {
-  title: {
-    default: "Cryptomon — мониторинг обменников",
-    template: "%s · Cryptomon",
-  },
-  description:
-    "Сравнивайте курсы проверенных обменников криптовалют. XML-фиды, рейтинг и справочники BestChange.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return getRootMetadata();
+}
 
-const themeInit = `(function(){try{var t=localStorage.getItem('cryptomon-theme');if(t==='light'){document.documentElement.classList.remove('dark');document.documentElement.style.colorScheme='light';}else{document.documentElement.classList.add('dark');document.documentElement.style.colorScheme='dark';}}catch(e){}})();`;
+const themeInit = `(function(){try{var t=localStorage.getItem('gapsnap-theme')||localStorage.getItem('cryptomon-theme');if(t==='light'){document.documentElement.classList.remove('dark');document.documentElement.style.colorScheme='light';}else{document.documentElement.classList.add('dark');document.documentElement.style.colorScheme='dark';}}catch(e){}})();`;
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const jsonLd = await getOrganizationJsonLd();
+
   return (
     <html
       lang="ru"
@@ -39,9 +39,15 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full font-sans text-ink">
-        <Script id="cryptomon-theme-init" strategy="beforeInteractive">
+        <Script id="gapsnap-theme-init" strategy="beforeInteractive">
           {themeInit}
         </Script>
+        {jsonLd ? (
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          />
+        ) : null}
         <ThemeProvider>
           <ConditionalShell>{children}</ConditionalShell>
         </ThemeProvider>

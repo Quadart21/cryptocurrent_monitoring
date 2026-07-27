@@ -2,7 +2,8 @@ import "server-only";
 
 import {
   getActiveRates,
-  getStore,
+  getLastGlobalSyncAt,
+  listAchievements,
   listExchangers,
 } from "@/lib/store";
 import { logoPublicUrl } from "@/lib/logo-url";
@@ -79,16 +80,15 @@ export async function queryRates(
   const city = (input.city ?? "").toUpperCase();
   const mode = input.mode === "cash" ? "cash" : "online";
 
-  const [store, rates, exchangers] = await Promise.all([
-    getStore(),
+  const [lastGlobalSyncAt, rates, exchangers, achievements] = await Promise.all([
+    getLastGlobalSyncAt(),
     getActiveRates(),
     listExchangers({ publicOnly: true }),
+    listAchievements(),
   ]);
 
   const byId = new Map(exchangers.map((e) => [e.id, e]));
-  const achievementsById = new Map(
-    (store.achievements ?? []).map((a) => [a.id, a]),
-  );
+  const achievementsById = new Map(achievements.map((a) => [a.id, a]));
 
   let filtered = rates;
   if (from && to) {
@@ -156,7 +156,7 @@ export async function queryRates(
   const activePairCount = new Set(rates.map((r) => `${r.from}:${r.to}`)).size;
 
   return {
-    lastGlobalSyncAt: store.lastGlobalSyncAt,
+    lastGlobalSyncAt,
     activePairCount,
     mode,
     city: city || null,

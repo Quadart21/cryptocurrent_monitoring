@@ -45,6 +45,12 @@ export const ADMIN_NAV: AdminNavItem[] = [
     description: "Цены для /advertise",
   },
   {
+    id: "seo",
+    href: `${ADMIN_PATH}/seo`,
+    label: "SEO",
+    description: "Мета, robots, sitemap",
+  },
+  {
     id: "blacklist",
     href: `${ADMIN_PATH}/blacklist`,
     label: "Чёрный список",
