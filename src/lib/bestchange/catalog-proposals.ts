@@ -76,18 +76,26 @@ export async function countPendingCatalogProposals(): Promise<number> {
   return rows.length;
 }
 
-async function loadRemotePayload() {
+type RemoteCatalogPayload = {
+  catalogs: { fetchedAt: string; counts: CatalogSnapshot["counts"] };
+  currencyByCode: Record<string, BcCurrency>;
+  cityByCode: Record<string, BcCity>;
+  countryByCode: Record<string, BcCountry>;
+};
+
+/** Bypass Next/Turbopack static analysis for a runtime file:// import. */
+const importRuntime = new Function(
+  "specifier",
+  "return import(specifier)",
+) as (specifier: string) => Promise<{
+  buildCatalogPayloadFromApi: () => Promise<RemoteCatalogPayload>;
+}>;
+
+async function loadRemotePayload(): Promise<RemoteCatalogPayload> {
   const scriptUrl = pathToFileURL(
     path.join(process.cwd(), "scripts", "lib", "bestchange-catalogs.mjs"),
   ).href;
-  const mod = (await import(scriptUrl)) as {
-    buildCatalogPayloadFromApi: () => Promise<{
-      catalogs: { fetchedAt: string; counts: CatalogSnapshot["counts"] };
-      currencyByCode: Record<string, BcCurrency>;
-      cityByCode: Record<string, BcCity>;
-      countryByCode: Record<string, BcCountry>;
-    }>;
-  };
+  const mod = await importRuntime(scriptUrl);
   return mod.buildCatalogPayloadFromApi();
 }
 
