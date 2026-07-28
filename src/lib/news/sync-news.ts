@@ -55,105 +55,158 @@ async function mapPool<T, R>(
   return results;
 }
 
+export function isNewsSyncInFlight(): boolean {
+  return Boolean(globalThis.__gapsnapNewsSyncInFlight);
+}
+
+async function assertNewsSyncReady(options?: { force?: boolean }): Promise<{
+  model: string;
+  rewritePrompt: string;
+}> {
+  const settings = await getNewsSettings();
+  if (!options?.force && !settings.enabled) {
+    throw new Error("Автосинк новостей выключен");
+  }
+  if (!codexConfigured()) {
+    throw new Error("CODEX_API_KEY не задан");
+  }
+  if (!settings.model.trim()) {
+    throw new Error("В настройках новостей не выбрана модель");
+  }
+  if (!settings.rewritePrompt.trim()) {
+    throw new Error("В настройках новостей пустой промпт");
+  }
+  return {
+    model: settings.model.trim(),
+    rewritePrompt: settings.rewritePrompt,
+  };
+}
+
+async function runNewsSyncJob(input: {
+  model: string;
+  rewritePrompt: string;
+}): Promise<NewsSyncResultSummary> {
+  const seo = await getSeoSettings();
+  const feed = await fetchRbcCryptoNews();
+  let created = 0;
+  let skipped = 0;
+  let failed = 0;
+  const errors: string[] = [];
+
+  await mapPool(feed.items, concurrency(), async (item) => {
+    try {
+      const existing = await getBlogPostBySourceId(item.id);
+      if (existing) {
+        skipped += 1;
+        return;
+      }
+      const rewritten = await rewriteNewsArticle({
+        model: input.model,
+        promptTemplate: input.rewritePrompt,
+        item,
+        siteName: seo.siteName || "GapSnap",
+        siteUrl: seo.siteUrl || process.env.SITE_URL || "https://gapsnap.org",
+      });
+      await createBlogPost({
+        title: rewritten.title,
+        slug: rewritten.slug || undefined,
+        excerpt: rewritten.excerpt,
+        body: rewritten.bodyMarkdown,
+        coverImageUrl: item.imageUrl ?? "",
+        tags: rewritten.tags.length ? rewritten.tags : item.tags,
+        status: "published",
+        seoTitle: rewritten.seoTitle,
+        seoDescription: rewritten.seoDescription,
+        authorName: "GapSnap",
+        sourceProvider: SOURCE_PROVIDER,
+        sourceId: item.id,
+        sourceUrl: item.link,
+      });
+      created += 1;
+    } catch (err) {
+      failed += 1;
+      const msg = err instanceof Error ? err.message : String(err);
+      errors.push(`${item.id}: ${msg}`);
+      console.error(`[gapsnap] news rewrite failed ${item.id}`, err);
+    }
+  });
+
+  const result: NewsSyncResultSummary = {
+    fetched: feed.items.length,
+    created,
+    skipped,
+    failed,
+    errors: errors.slice(0, 20),
+    syncedAt: new Date().toISOString(),
+  };
+
+  await updateNewsSettings({
+    lastSyncAt: result.syncedAt,
+    lastSyncResult: result,
+  });
+
+  console.info(
+    `[gapsnap] news sync: fetched=${result.fetched} created=${result.created} skipped=${result.skipped} failed=${result.failed}`,
+  );
+  return result;
+}
+
+/** Full awaitable sync (used by daily poller). */
 export async function syncCryptoNews(options?: {
-  /** When true, ignore `enabled` flag (admin manual sync). */
   force?: boolean;
 }): Promise<NewsSyncResultSummary> {
   if (globalThis.__gapsnapNewsSyncInFlight) {
     return globalThis.__gapsnapNewsSyncInFlight;
   }
 
-  const run = (async (): Promise<NewsSyncResultSummary> => {
-    const settings = await getNewsSettings();
-    if (!options?.force && !settings.enabled) {
-      return {
+  const ready = await assertNewsSyncReady(options);
+  const run = runNewsSyncJob(ready).finally(() => {
+    globalThis.__gapsnapNewsSyncInFlight = null;
+  });
+  globalThis.__gapsnapNewsSyncInFlight = run;
+  return run;
+}
+
+/**
+ * Start sync in background and return immediately (avoids proxy HTML timeouts).
+ * Validation errors throw before the job is started.
+ */
+export async function startNewsSync(options?: {
+  force?: boolean;
+}): Promise<{ started: true; alreadyRunning: boolean }> {
+  if (globalThis.__gapsnapNewsSyncInFlight) {
+    return { started: true, alreadyRunning: true };
+  }
+
+  const ready = await assertNewsSyncReady(options);
+  const run = runNewsSyncJob(ready)
+    .catch(async (err) => {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("[gapsnap] news sync failed", err);
+      const failedResult: NewsSyncResultSummary = {
         fetched: 0,
         created: 0,
         skipped: 0,
-        failed: 0,
-        errors: ["Автосинк новостей выключен"],
+        failed: 1,
+        errors: [message],
         syncedAt: new Date().toISOString(),
       };
-    }
-    if (!codexConfigured()) {
-      throw new Error("CODEX_API_KEY не задан");
-    }
-    if (!settings.model.trim()) {
-      throw new Error("В настройках новостей не выбрана модель");
-    }
-    if (!settings.rewritePrompt.trim()) {
-      throw new Error("В настройках новостей пустой промпт");
-    }
-
-    const seo = await getSeoSettings();
-    const feed = await fetchRbcCryptoNews();
-    let created = 0;
-    let skipped = 0;
-    let failed = 0;
-    const errors: string[] = [];
-
-    await mapPool(feed.items, concurrency(), async (item) => {
       try {
-        const existing = await getBlogPostBySourceId(item.id);
-        if (existing) {
-          skipped += 1;
-          return;
-        }
-        const rewritten = await rewriteNewsArticle({
-          model: settings.model,
-          promptTemplate: settings.rewritePrompt,
-          item,
-          siteName: seo.siteName || "GapSnap",
-          siteUrl: seo.siteUrl || process.env.SITE_URL || "https://gapsnap.org",
+        await updateNewsSettings({
+          lastSyncAt: failedResult.syncedAt,
+          lastSyncResult: failedResult,
         });
-        await createBlogPost({
-          title: rewritten.title,
-          slug: rewritten.slug || undefined,
-          excerpt: rewritten.excerpt,
-          body: rewritten.bodyMarkdown,
-          coverImageUrl: item.imageUrl ?? "",
-          tags: rewritten.tags.length ? rewritten.tags : item.tags,
-          status: "published",
-          seoTitle: rewritten.seoTitle,
-          seoDescription: rewritten.seoDescription,
-          authorName: "GapSnap",
-          sourceProvider: SOURCE_PROVIDER,
-          sourceId: item.id,
-          sourceUrl: item.link,
-        });
-        created += 1;
-      } catch (err) {
-        failed += 1;
-        const msg = err instanceof Error ? err.message : String(err);
-        errors.push(`${item.id}: ${msg}`);
-        console.error(`[gapsnap] news rewrite failed ${item.id}`, err);
+      } catch {
+        /* ignore */
       }
+      return failedResult;
+    })
+    .finally(() => {
+      globalThis.__gapsnapNewsSyncInFlight = null;
     });
-
-    const result: NewsSyncResultSummary = {
-      fetched: feed.items.length,
-      created,
-      skipped,
-      failed,
-      errors: errors.slice(0, 20),
-      syncedAt: new Date().toISOString(),
-    };
-
-    await updateNewsSettings({
-      lastSyncAt: result.syncedAt,
-      lastSyncResult: result,
-    });
-
-    console.info(
-      `[gapsnap] news sync: fetched=${result.fetched} created=${result.created} skipped=${result.skipped} failed=${result.failed}`,
-    );
-    return result;
-  })().finally(() => {
-    globalThis.__gapsnapNewsSyncInFlight = null;
-  });
 
   globalThis.__gapsnapNewsSyncInFlight = run;
-  return run;
+  return { started: true, alreadyRunning: false };
 }
 
 export function startNewsPoller(): void {

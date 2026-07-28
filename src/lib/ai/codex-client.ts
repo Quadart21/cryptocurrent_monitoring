@@ -27,6 +27,26 @@ function apiBase(): string {
   return raw.replace(/\/+$/, "") || DEFAULT_BASE;
 }
 
+async function readJsonOrThrow(res: Response, label: string): Promise<unknown> {
+  const text = await res.text();
+  const trimmed = text.trim();
+  if (!trimmed) {
+    throw new Error(`${label}: пустой ответ (HTTP ${res.status})`);
+  }
+  if (trimmed.startsWith("<!") || trimmed.startsWith("<html")) {
+    throw new Error(
+      `${label}: получен HTML вместо JSON (HTTP ${res.status}). Проверьте CODEX_API_BASE и доступность API.`,
+    );
+  }
+  try {
+    return JSON.parse(trimmed) as unknown;
+  } catch {
+    throw new Error(
+      `${label}: невалидный JSON (HTTP ${res.status}): ${trimmed.slice(0, 180)}`,
+    );
+  }
+}
+
 export function codexConfigured(): boolean {
   return Boolean(apiKey());
 }
@@ -81,7 +101,7 @@ export async function listCodexModels(): Promise<CodexModel[]> {
     const body = await res.text().catch(() => "");
     throw new Error(`Не удалось получить модели: HTTP ${res.status} ${body.slice(0, 200)}`);
   }
-  const json = (await res.json()) as {
+  const json = (await readJsonOrThrow(res, "listModels")) as {
     data?: Array<{ id?: string; owned_by?: string }>;
   };
   const models = (json.data ?? [])
@@ -113,7 +133,7 @@ export async function chatCompletion(input: {
     const body = await res.text().catch(() => "");
     throw new Error(`Chat completion failed: HTTP ${res.status} ${body.slice(0, 300)}`);
   }
-  const json = (await res.json()) as {
+  const json = (await readJsonOrThrow(res, "chatCompletion")) as {
     choices?: Array<{ message?: { content?: string | null } }>;
   };
   const content = json.choices?.[0]?.message?.content;

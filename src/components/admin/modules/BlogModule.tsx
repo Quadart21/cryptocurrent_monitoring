@@ -132,19 +132,73 @@ export function BlogModule() {
     setSettingsMsg(null);
     try {
       const res = await fetch("/api/admin/news/sync", { method: "POST" });
-      const body = (await res.json()) as {
-        result?: NewsSyncResultSummary;
+      const raw = await res.text();
+      let body: {
         error?: string;
-      };
-      if (!res.ok || !body.result) {
+        message?: string;
+        alreadyRunning?: boolean;
+      } = {};
+      try {
+        body = raw ? (JSON.parse(raw) as typeof body) : {};
+      } catch {
+        throw new Error(
+          raw.trim().startsWith("<!")
+            ? "Сервер вернул HTML вместо JSON (часто таймаут прокси или не пересобранный деплой). Обновите код и перезапустите."
+            : `Невалидный ответ API: ${raw.slice(0, 160)}`,
+        );
+      }
+      if (!res.ok) {
         throw new Error(body.error || "Синхронизация не удалась");
       }
-      setSyncResult(body.result);
-      await loadPosts();
-      await loadSettings();
+
       setSettingsMsg(
-        `Готово: создано ${body.result.created}, пропущено ${body.result.skipped}, ошибок ${body.result.failed}`,
+        body.alreadyRunning
+          ? "Синхронизация уже идёт — жду завершения…"
+          : "Синхронизация запущена в фоне — жду завершения…",
       );
+
+      const startedAt = Date.now();
+      for (;;) {
+        await new Promise((r) => setTimeout(r, 2500));
+        const statusRes = await fetch("/api/admin/news/sync", {
+          cache: "no-store",
+        });
+        const statusRaw = await statusRes.text();
+        let statusBody: {
+          inFlight?: boolean;
+          lastSyncResult?: NewsSyncResultSummary | null;
+          error?: string;
+        } = {};
+        try {
+          statusBody = statusRaw
+            ? (JSON.parse(statusRaw) as typeof statusBody)
+            : {};
+        } catch {
+          throw new Error("Не удалось прочитать статус синка");
+        }
+        if (!statusRes.ok) {
+          throw new Error(statusBody.error || "Ошибка статуса синка");
+        }
+        if (!statusBody.inFlight) {
+          if (statusBody.lastSyncResult) {
+            setSyncResult(statusBody.lastSyncResult);
+            setSettingsMsg(
+              `Готово: создано ${statusBody.lastSyncResult.created}, пропущено ${statusBody.lastSyncResult.skipped}, ошибок ${statusBody.lastSyncResult.failed}`,
+            );
+          } else {
+            setSettingsMsg("Синхронизация завершена");
+          }
+          await loadPosts();
+          await loadSettings();
+          break;
+        }
+        if (Date.now() - startedAt > 45 * 60 * 1000) {
+          throw new Error(
+            "Синк всё ещё выполняется дольше 45 минут — обновите страницу позже",
+          );
+        }
+        setSettingsMsg("Синхронизация в фоне… (можно подождать)");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ошибка синка");
     } finally {
