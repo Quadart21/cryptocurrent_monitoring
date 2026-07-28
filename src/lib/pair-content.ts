@@ -1,4 +1,5 @@
 import { currencyLabel } from "@/lib/bestchange/catalog";
+import { formatRate } from "@/lib/format";
 
 export type PairFaq = { q: string; a: string };
 
@@ -86,11 +87,4 @@ function pluralOffers(n: number): string {
   if (mod10 === 1 && mod100 !== 11) return "обменник";
   if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "обменника";
   return "обменников";
-}
-
-function formatRate(n: number): string {
-  if (!Number.isFinite(n)) return "—";
-  if (n >= 1000) return n.toLocaleString("ru-RU", { maximumFractionDigits: 2 });
-  if (n >= 1) return n.toLocaleString("ru-RU", { maximumFractionDigits: 4 });
-  return n.toLocaleString("ru-RU", { maximumFractionDigits: 8 });
 }

@@ -10,7 +10,7 @@ import type { LiveOffer } from "@/components/RateTable";
 import { currencyDecimals } from "@/lib/bestchange/currency-decimals";
 import { pairPath } from "@/lib/bestchange/pair-slug";
 import { pickWeightedRandom } from "@/lib/ads";
-import { formatAmount, formatRating, formatReserve } from "@/lib/format";
+import { formatAmount, formatRate, formatRating, formatReserve } from "@/lib/format";
 
 export type RatesSortBy = "rate" | "reserve" | "rating";
 
@@ -393,8 +393,7 @@ export function RatesBoard({
                         <span className="text-ink-muted">{to}</span>
                         {amount > 0 ? (
                           <p className="text-[11px] text-ink-muted">
-                            курс{" "}
-                            {formatAmount(offer.rate, currencyDecimals(to))}
+                            курс {formatRate(offer.rate)}
                           </p>
                         ) : null}
                       </td>

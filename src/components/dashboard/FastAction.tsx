@@ -5,6 +5,7 @@ import {
   CityAutocomplete,
   type CityOption,
 } from "@/components/dashboard/CityAutocomplete";
+import { formatRate } from "@/lib/format";
 
 export type ExchangeMode = "online" | "cash";
 
@@ -172,7 +173,7 @@ export function FastAction({
           </p>
           <p className="mt-1 text-lg font-semibold tabular-nums text-accent-deep">
             {bestRate != null
-              ? `${bestRate.toLocaleString("ru-RU", { maximumFractionDigits: 6 })} ${to}`
+              ? `${formatRate(bestRate)} ${to}`
               : "нет предложений"}
           </p>
           <p className="mt-1 text-xs text-ink-muted">

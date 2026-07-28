@@ -2,7 +2,7 @@
 export function currencyDecimals(code: string): number {
   const upper = code.toUpperCase();
   if (upper.startsWith("CASH")) return 0;
-  if (upper === "BTC" || upper.startsWith("BTC")) return 6;
+  if (upper === "BTC" || upper.startsWith("BTC")) return 8;
   if (upper === "ETH" || upper.startsWith("ETH")) return 5;
   if (
     upper.includes("RUB") ||

@@ -12,6 +12,7 @@ import {
 import { ensureCatalogsHydrated } from "@/lib/bestchange/catalog-store";
 import { parsePairSlug, pairPath, pairSlug } from "@/lib/bestchange/pair-slug";
 import { buildPairDescription, buildPairFaqs } from "@/lib/pair-content";
+import { formatRate } from "@/lib/format";
 import { queryRates } from "@/lib/rates-query";
 import { absoluteUrl, normalizeSiteUrl } from "@/lib/seo";
 import {
@@ -210,7 +211,7 @@ export default async function RatePairPage({ params }: Props) {
                     {o.exchanger.name}
                   </span>
                   <span className="tabular-nums text-ink-muted">
-                    {o.rate} {parsed.to}
+                    {formatRate(o.rate)} {parsed.to}
                   </span>
                 </Link>
               </li>
