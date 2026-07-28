@@ -6,10 +6,13 @@ import {
   listCurrencies,
   listGroups,
 } from "@/lib/bestchange/catalog";
+import { ensureCatalogsHydrated } from "@/lib/bestchange/catalog-store";
 
 export const metadata: Metadata = { title: "Справочники BestChange" };
+export const dynamic = "force-dynamic";
 
-export default function CatalogsPage() {
+export default async function CatalogsPage() {
+  await ensureCatalogsHydrated();
   const meta = catalogMeta();
   const groups = listGroups();
   const currencies = listCurrencies();

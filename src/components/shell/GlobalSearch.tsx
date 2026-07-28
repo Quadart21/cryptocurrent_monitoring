@@ -172,7 +172,7 @@ export function GlobalSearch({ className = "" }: { className?: string }) {
         <div
           id={listId}
           role="listbox"
-          className="absolute z-40 mt-2 max-h-[70vh] w-full min-w-[280px] overflow-auto rounded-2xl border border-line bg-bg-elevated py-2 shadow-[var(--card-shadow)]"
+          className="absolute left-0 right-0 z-[60] mt-2 max-h-[min(70vh,28rem)] w-full overflow-auto rounded-2xl border border-line bg-bg-elevated py-2 shadow-[var(--card-shadow)]"
         >
           {loading && flat.length === 0 ? (
             <p className="px-3 py-2 text-sm text-ink-muted">Ищем…</p>

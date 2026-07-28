@@ -36,6 +36,20 @@
       "when": 1785196200000,
       "tag": "0004_email_contacts",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1785197000000,
+      "tag": "0005_catalog_proposals",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785197800000,
+      "tag": "0006_bc_catalog_tables",
+      "breakpoints": true
     }
   ]
 }

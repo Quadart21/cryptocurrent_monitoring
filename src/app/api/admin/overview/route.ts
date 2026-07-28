@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { assertAdmin } from "@/lib/admin-guard";
+import { countPendingCatalogProposals } from "@/lib/bestchange/catalog-proposals";
 import {
   getLastGlobalSyncAt,
   getRatesCount,
@@ -34,6 +35,7 @@ export async function GET() {
     qualityTags,
     achievements,
     ads,
+    pendingCatalog,
   ] = await Promise.all([
     getLastGlobalSyncAt(),
     getRatesCount(),
@@ -43,6 +45,7 @@ export async function GET() {
     listQualityTags(),
     listAchievements(),
     listAds(),
+    countPendingCatalogProposals(),
   ]);
 
   const tagMap = Object.fromEntries(qualityTags.map((t) => [t.id, t.label]));
@@ -63,6 +66,7 @@ export async function GET() {
       rates: ratesCount,
       blacklist: blacklist.length,
       pendingReviews: visibleReviews.filter((r) => r.status === "pending").length,
+      pendingCatalog,
       achievements: achievements.length,
       ads: ads.length,
     },

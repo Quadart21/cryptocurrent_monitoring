@@ -34,6 +34,7 @@ const emptyCounts: AdminCounts = {
   rates: 0,
   blacklist: 0,
   pendingReviews: 0,
+  pendingCatalog: 0,
   achievements: 0,
   ads: 0,
 };

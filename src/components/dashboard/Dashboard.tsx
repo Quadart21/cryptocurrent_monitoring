@@ -247,7 +247,7 @@ export function Dashboard({
   return (
     <div className="space-y-5">
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className="order-2 grid gap-5 sm:grid-cols-2 xl:order-1">
           <OverviewCards
             exchangers={exchangerCount}
             pairs={pairCount}
@@ -256,27 +256,29 @@ export function Dashboard({
           <StatsChart />
         </div>
 
-        <FastAction
-          mode={mode}
-          city={city}
-          from={from}
-          to={to}
-          currencies={currencies}
-          cities={cities}
-          popularPairs={
-            mode === "cash"
-              ? catalog.popularCashPairs
-              : catalog.popularOnlinePairs
-          }
-          bestRate={offers[0]?.rate}
-          offerCount={offers.length}
-          onModeChange={onModeChange}
-          onCityChange={onCityChange}
-          onFromChange={onFromChange}
-          onToChange={onToChange}
-          onPairChange={onPairChange}
-          onSwap={onSwap}
-        />
+        <div className="order-1 xl:order-2">
+          <FastAction
+            mode={mode}
+            city={city}
+            from={from}
+            to={to}
+            currencies={currencies}
+            cities={cities}
+            popularPairs={
+              mode === "cash"
+                ? catalog.popularCashPairs
+                : catalog.popularOnlinePairs
+            }
+            bestRate={offers[0]?.rate}
+            offerCount={offers.length}
+            onModeChange={onModeChange}
+            onCityChange={onCityChange}
+            onFromChange={onFromChange}
+            onToChange={onToChange}
+            onPairChange={onPairChange}
+            onSwap={onSwap}
+          />
+        </div>
       </div>
 
       <div id="rates-board" className="space-y-4">

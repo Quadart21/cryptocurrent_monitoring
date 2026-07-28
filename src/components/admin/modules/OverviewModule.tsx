@@ -144,6 +144,7 @@ export function OverviewModule() {
             ["Реклама", `${ADMIN_PATH}/ads`],
             ["SEO", `${ADMIN_PATH}/seo`],
             ["Чёрный список", `${ADMIN_PATH}/blacklist`],
+            ["Каталог", `${ADMIN_PATH}/catalog`],
             ["Синхронизация", `${ADMIN_PATH}/sync`],
           ].map(([label, href]) => (
             <Link

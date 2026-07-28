@@ -12,6 +12,7 @@ function badgeFor(id: string, counts: ReturnType<typeof useAdmin>["counts"]) {
   if (!counts) return 0;
   if (id === "exchangers") return counts.pending;
   if (id === "reviews") return counts.pendingReviews;
+  if (id === "sync") return counts.pendingCatalog;
   return 0;
 }
 
@@ -21,13 +22,15 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const pendingTotal =
-    (counts?.pending ?? 0) + (counts?.pendingReviews ?? 0);
+    (counts?.pending ?? 0) +
+    (counts?.pendingReviews ?? 0) +
+    (counts?.pendingCatalog ?? 0);
 
   return (
     <div className="relative z-10 min-h-screen bg-bg text-ink">
       <div className="mx-auto flex min-h-screen max-w-[1400px]">
         <aside
-          className={`fixed inset-y-0 left-0 z-40 w-72 border-r border-line bg-sidebar p-4 transition-transform lg:static lg:translate-x-0 ${
+          className={`fixed inset-y-0 left-0 z-[60] w-[min(100%,18rem)] border-r border-line bg-sidebar p-4 transition-transform lg:static lg:z-auto lg:w-72 lg:translate-x-0 ${
             mobileOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
@@ -109,13 +112,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             aria-label="Закрыть меню"
-            className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+            className="fixed inset-0 z-[50] bg-black/40 lg:hidden"
             onClick={() => setMobileOpen(false)}
           />
         )}
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-line bg-[var(--topbar)] px-4 py-3 backdrop-blur sm:px-6">
+          <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-line bg-[var(--topbar)] px-3 py-3 backdrop-blur sm:px-6">
             <div className="flex items-center gap-3">
               <button
                 type="button"

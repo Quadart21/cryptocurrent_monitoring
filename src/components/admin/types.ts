@@ -17,6 +17,7 @@ export type AdminCounts = {
   rates: number;
   blacklist: number;
   pendingReviews: number;
+  pendingCatalog: number;
   achievements: number;
   ads: number;
 };
@@ -47,6 +48,7 @@ export type AdminNavId =
   | "seo"
   | "email"
   | "blacklist"
+  | "catalog"
   | "sync";
 
 export type AdminNavItem = {

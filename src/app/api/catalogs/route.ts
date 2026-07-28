@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import catalogs from "@/data/bestchange/catalogs.json";
 import {
   catalogMeta,
   listCities,
@@ -7,24 +6,20 @@ import {
   listCurrencies,
   listGroups,
 } from "@/lib/bestchange/catalog";
+import { ensureCatalogsHydrated } from "@/lib/bestchange/catalog-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const full = searchParams.get("full") === "1";
+export async function GET() {
+  await ensureCatalogsHydrated();
   const meta = catalogMeta();
 
-  if (!full) {
-    return NextResponse.json({
-      ...meta,
-      groups: listGroups(),
-      countries: listCountries(),
-      cities: listCities(),
-      currencies: listCurrencies(),
-    });
-  }
-
-  return NextResponse.json(catalogs);
+  return NextResponse.json({
+    ...meta,
+    groups: listGroups(),
+    countries: listCountries(),
+    cities: listCities(),
+    currencies: listCurrencies(),
+  });
 }

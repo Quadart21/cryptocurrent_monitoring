@@ -182,7 +182,7 @@ export function FastAction({
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2 pt-1">
+        <div className="flex flex-wrap gap-1.5 pt-1">
           {popular.map(([a, b]) => {
             const inList =
               options.some((c) => c.code === a) &&
@@ -193,7 +193,7 @@ export function FastAction({
                 key={`${a}-${b}`}
                 type="button"
                 onClick={() => onPairChange(a, b)}
-                className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                className={`max-w-full truncate rounded-full px-2.5 py-1 text-[11px] font-semibold ${
                   from === a && to === b
                     ? "bg-accent text-white"
                     : "bg-accent-soft text-accent"

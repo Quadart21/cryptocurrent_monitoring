@@ -63,9 +63,15 @@ export const ADMIN_NAV: AdminNavItem[] = [
     description: "Скам и жалобы",
   },
   {
+    id: "catalog",
+    href: `${ADMIN_PATH}/catalog`,
+    label: "Каталог",
+    description: "Валюты, города, страны в БД",
+  },
+  {
     id: "sync",
     href: `${ADMIN_PATH}/sync`,
     label: "Синхронизация",
-    description: "XML-фиды и статус",
+    description: "Фиды и новые коды BestChange",
   },
 ];

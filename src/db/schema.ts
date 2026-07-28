@@ -288,3 +288,86 @@ export const emailContacts = pgTable(
     index("email_contacts_unsubscribed_idx").on(t.unsubscribed),
   ],
 );
+
+/**
+ * New BestChange currencies/cities/countries awaiting admin moderation.
+ * Live catalog is NOT updated until status = approved.
+ */
+export const catalogProposals = pgTable(
+  "catalog_proposals",
+  {
+    id: text("id").primaryKey(),
+    kind: text("kind").notNull(), // currency | city | country
+    code: text("code").notNull(),
+    name: text("name").notNull().default(""),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+    status: text("status").notNull().default("pending"), // pending | approved | rejected
+    discoveredAt: text("discovered_at").notNull(),
+    moderatedAt: text("moderated_at"),
+  },
+  (t) => [
+    index("catalog_proposals_status_idx").on(t.status),
+    index("catalog_proposals_kind_code_idx").on(t.kind, t.code),
+  ],
+);
+
+/** Live BestChange-style catalogs — editable in admin, source of truth in DB. */
+export const bcGroups = pgTable("bc_groups", {
+  id: integer("id").primaryKey(),
+  name: text("name").notNull(),
+  nameEn: text("name_en").notNull().default(""),
+});
+
+export const bcCountries = pgTable("bc_countries", {
+  code: text("code").primaryKey(),
+  id: integer("id").notNull(),
+  name: text("name").notNull(),
+  nameEn: text("name_en").notNull().default(""),
+  rank: integer("rank").notNull().default(9999),
+});
+
+export const bcCities = pgTable(
+  "bc_cities",
+  {
+    code: text("code").primaryKey(),
+    id: integer("id").notNull(),
+    name: text("name").notNull(),
+    nameEn: text("name_en").notNull().default(""),
+    countryId: integer("country_id"),
+    countryCode: text("country_code").notNull().default(""),
+    countryName: text("country_name").notNull().default(""),
+    rank: integer("rank").notNull().default(9999),
+  },
+  (t) => [index("bc_cities_country_code_idx").on(t.countryCode)],
+);
+
+export const bcCurrencies = pgTable(
+  "bc_currencies",
+  {
+    code: text("code").primaryKey(),
+    id: integer("id").notNull(),
+    name: text("name").notNull(),
+    nameEn: text("name_en").notNull().default(""),
+    viewname: text("viewname").notNull().default(""),
+    urlname: text("urlname").notNull().default(""),
+    crypto: boolean("crypto").notNull().default(false),
+    cash: boolean("cash").notNull().default(false),
+    groupId: integer("group_id").notNull().default(0),
+    ps: integer("ps").notNull().default(0),
+    defamt: doublePrecision("defamt").notNull().default(0),
+    bigamt: doublePrecision("bigamt").notNull().default(0),
+    rank: integer("rank").notNull().default(9999),
+  },
+  (t) => [
+    index("bc_currencies_cash_idx").on(t.cash),
+    index("bc_currencies_group_id_idx").on(t.groupId),
+  ],
+);
+
+export const bcCatalogMeta = pgTable("bc_catalog_meta", {
+  id: integer("id").primaryKey().default(1),
+  fetchedAt: text("fetched_at"),
+  updatedAt: text("updated_at").notNull(),
+  source: text("source").notNull().default("db"),
+});
+

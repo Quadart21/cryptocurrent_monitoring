@@ -38,6 +38,14 @@ npm run sync:catalogs
 npm run dev
 ```
 
+`sync:catalogs` обновляет seed-JSON в `src/data/bestchange/` (для репозитория). Живой каталог сайта — в PostgreSQL и правится в админке.
+
+Справочники BestChange (валюты, города, страны):
+- живой каталог: таблицы PostgreSQL (`bc_currencies`, `bc_cities`, `bc_countries`, `bc_groups`)
+- seed при первом старте из `src/data/bestchange/*.json` (если таблицы пустые)
+- правка в админке: **/trulala/catalog**
+- новые коды с API: очередь на модерацию → **Синхронизация** (поллер раз в 12ч); после одобрения пишутся в БД
+
 Сайт: http://localhost:3000  
 Админка: http://localhost:3000/trulala
 

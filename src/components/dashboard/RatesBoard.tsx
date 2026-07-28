@@ -53,14 +53,18 @@ export function RatesBoard({
     ? `${from} → ${to} · ${cityLabel}`
     : `${from} → ${to}`;
 
+  function onExchangeClick(sponsored: boolean) {
+    if (sponsored && pinnedAdId) trackAdClick(pinnedAdId);
+  }
+
   return (
     <div className="card animate-rise-delay-2 overflow-hidden">
-      <div className="flex items-center justify-between border-b border-line px-5 py-4">
-        <div>
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line px-4 py-4 sm:px-5">
+        <div className="min-w-0">
           <h2 className="font-display text-lg font-semibold text-ink">
             Лучшие предложения
           </h2>
-          <p className="text-sm text-ink-muted">
+          <p className="mt-0.5 break-words text-sm text-ink-muted">
             {loading
               ? "Загрузка…"
               : ordered.length
@@ -68,137 +72,229 @@ export function RatesBoard({
                 : `${pairLabel} · нет в мониторинге`}
           </p>
         </div>
-        <span className="inline-flex items-center gap-2 text-xs text-ink-muted">
+        <span className="inline-flex shrink-0 items-center gap-2 text-xs text-ink-muted">
           <span className="live-dot size-2 rounded-full bg-ok" />
           XML-фиды
         </span>
       </div>
 
       {loading && !ordered.length ? (
-        <div className="px-5 py-14 text-center text-sm text-ink-muted">
+        <div className="px-4 py-14 text-center text-sm text-ink-muted sm:px-5">
           Ищем обменники по направлению {pairLabel}…
         </div>
       ) : !ordered.length ? (
-        <div className="px-5 py-14 text-center text-sm text-ink-muted">
+        <div className="px-4 py-14 text-center text-sm text-ink-muted sm:px-5">
           Ни один обменник пока не отдаёт направление {pairLabel}.
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="text-xs uppercase tracking-[0.12em] text-ink-muted">
-              <tr>
-                <th className="px-5 py-3 font-medium">Обменник</th>
-                <th className="px-5 py-3 font-medium">Курс</th>
-                <th className="hidden px-5 py-3 font-medium md:table-cell">
-                  Резерв
-                </th>
-                <th className="hidden px-5 py-3 font-medium lg:table-cell">
-                  Лимиты
-                </th>
-                <th className="px-5 py-3 font-medium">Действие</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ordered.map((offer) => {
-                const name = offer.exchanger?.name?.trim() || "Обменник";
-                const slug = offer.exchanger?.slug || offer.exchanger?.id || "";
-                const sponsored = offer.exchanger?.id === pinnedId;
-                return (
-                  <tr
-                    key={offer.id}
-                    className={`border-t border-line/70 transition hover:bg-accent-soft/40 ${
-                      sponsored ? "bg-accent-soft/50" : ""
-                    }`}
-                  >
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        {offer.exchanger.logoUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={offer.exchanger.logoUrl}
-                            alt=""
-                            width={40}
-                            height={40}
-                            className="size-10 rounded-2xl bg-bg-soft object-contain"
-                          />
-                        ) : (
-                          <div className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] text-xs font-bold text-white">
-                            {name.slice(0, 1)}
-                          </div>
-                        )}
-                        <div>
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <Link
-                              href={`/exchangers/${slug}`}
-                              className="font-semibold text-ink hover:text-accent"
-                              onClick={() => {
-                                if (sponsored && pinnedAdId) {
-                                  trackAdClick(pinnedAdId);
-                                }
-                              }}
-                            >
-                              {name}
-                            </Link>
-                            <AchievementBadges
-                              achievements={offer.exchanger.achievements ?? []}
-                              size={16}
-                            />
-                            {sponsored ? (
-                              <span className="rounded-lg bg-accent/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent">
-                                Реклама
-                              </span>
-                            ) : null}
-                          </div>
-                          <p className="text-xs text-ink-muted">
-                            ★{" "}
-                            {formatRating(
-                              offer.exchanger.rating,
-                              offer.exchanger.reviews,
-                            )}{" "}
-                            · {offer.exchanger.reviews} отз.
-                          </p>
-                        </div>
+        <>
+          {/* Mobile cards */}
+          <div className="divide-y divide-line md:hidden">
+            {ordered.map((offer) => {
+              const name = offer.exchanger?.name?.trim() || "Обменник";
+              const slug = offer.exchanger?.slug || offer.exchanger?.id || "";
+              const sponsored = offer.exchanger?.id === pinnedId;
+              return (
+                <div
+                  key={offer.id}
+                  className={`space-y-3 px-4 py-4 ${
+                    sponsored ? "bg-accent-soft/50" : ""
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    {offer.exchanger.logoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={offer.exchanger.logoUrl}
+                        alt=""
+                        width={40}
+                        height={40}
+                        className="size-10 shrink-0 rounded-2xl bg-bg-soft object-contain"
+                      />
+                    ) : (
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] text-xs font-bold text-white">
+                        {name.slice(0, 1)}
                       </div>
-                    </td>
-                    <td className="px-5 py-4">
-                      <span className="font-semibold tabular-nums text-accent-deep">
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Link
+                          href={`/exchangers/${slug}`}
+                          className="truncate font-semibold text-ink hover:text-accent"
+                          onClick={() => onExchangeClick(sponsored)}
+                        >
+                          {name}
+                        </Link>
+                        <AchievementBadges
+                          achievements={offer.exchanger.achievements ?? []}
+                          size={16}
+                        />
+                        {sponsored ? (
+                          <span className="rounded-lg bg-accent/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent">
+                            Реклама
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-0.5 text-xs text-ink-muted">
+                        ★{" "}
+                        {formatRating(
+                          offer.exchanger.rating,
+                          offer.exchanger.reviews,
+                        )}{" "}
+                        · {offer.exchanger.reviews} отз.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="rounded-xl bg-bg-soft/60 px-3 py-2">
+                      <p className="text-[11px] text-ink-muted">Курс</p>
+                      <p className="font-semibold tabular-nums text-accent-deep">
                         {formatAmount(offer.rate, currencyDecimals(to))}
-                      </span>{" "}
-                      <span className="text-ink-muted">
+                      </p>
+                      <p className="text-[11px] text-ink-muted">
                         {to} / 1 {from}
-                      </span>
-                    </td>
-                    <td className="hidden px-5 py-4 tabular-nums text-ink-muted md:table-cell">
-                      {formatReserve(offer.reserve, to)}
-                    </td>
-                    <td className="hidden px-5 py-4 tabular-nums text-ink-muted lg:table-cell">
-                      {formatAmount(offer.minAmount, 4)} –{" "}
-                      {Number.isFinite(offer.maxAmount)
-                        ? formatAmount(offer.maxAmount, 4)
-                        : "∞"}{" "}
-                      {from}
-                    </td>
-                    <td className="px-5 py-4">
-                      <a
-                        href={offer.exchanger.website || "#"}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn-primary inline-flex rounded-xl px-3 py-2 text-xs font-semibold"
-                        onClick={() => {
-                          if (sponsored && pinnedAdId) {
-                            trackAdClick(pinnedAdId);
-                          }
-                        }}
-                      >
-                        Обменять
-                      </a>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                      </p>
+                    </div>
+                    <div className="rounded-xl bg-bg-soft/60 px-3 py-2">
+                      <p className="text-[11px] text-ink-muted">Резерв</p>
+                      <p className="font-medium tabular-nums text-ink">
+                        {formatReserve(offer.reserve, to)}
+                      </p>
+                      <p className="text-[11px] text-ink-muted">
+                        {formatAmount(offer.minAmount, 4)}–
+                        {Number.isFinite(offer.maxAmount)
+                          ? formatAmount(offer.maxAmount, 4)
+                          : "∞"}{" "}
+                        {from}
+                      </p>
+                    </div>
+                  </div>
+
+                  <a
+                    href={offer.exchanger.website || "#"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-primary flex w-full items-center justify-center rounded-xl px-3 py-2.5 text-sm font-semibold"
+                    onClick={() => onExchangeClick(sponsored)}
+                  >
+                    Обменять
+                  </a>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden overflow-x-auto md:block">
+            <table className="min-w-full text-left text-sm">
+              <thead className="text-xs uppercase tracking-[0.12em] text-ink-muted">
+                <tr>
+                  <th className="px-5 py-3 font-medium">Обменник</th>
+                  <th className="px-5 py-3 font-medium">Курс</th>
+                  <th className="px-5 py-3 font-medium">Резерв</th>
+                  <th className="hidden px-5 py-3 font-medium lg:table-cell">
+                    Лимиты
+                  </th>
+                  <th className="px-5 py-3 font-medium">Действие</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ordered.map((offer) => {
+                  const name = offer.exchanger?.name?.trim() || "Обменник";
+                  const slug = offer.exchanger?.slug || offer.exchanger?.id || "";
+                  const sponsored = offer.exchanger?.id === pinnedId;
+                  return (
+                    <tr
+                      key={offer.id}
+                      className={`border-t border-line/70 transition hover:bg-accent-soft/40 ${
+                        sponsored ? "bg-accent-soft/50" : ""
+                      }`}
+                    >
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          {offer.exchanger.logoUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={offer.exchanger.logoUrl}
+                              alt=""
+                              width={40}
+                              height={40}
+                              className="size-10 rounded-2xl bg-bg-soft object-contain"
+                            />
+                          ) : (
+                            <div className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] text-xs font-bold text-white">
+                              {name.slice(0, 1)}
+                            </div>
+                          )}
+                          <div>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <Link
+                                href={`/exchangers/${slug}`}
+                                className="font-semibold text-ink hover:text-accent"
+                                onClick={() => onExchangeClick(sponsored)}
+                              >
+                                {name}
+                              </Link>
+                              <AchievementBadges
+                                achievements={
+                                  offer.exchanger.achievements ?? []
+                                }
+                                size={16}
+                              />
+                              {sponsored ? (
+                                <span className="rounded-lg bg-accent/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent">
+                                  Реклама
+                                </span>
+                              ) : null}
+                            </div>
+                            <p className="text-xs text-ink-muted">
+                              ★{" "}
+                              {formatRating(
+                                offer.exchanger.rating,
+                                offer.exchanger.reviews,
+                              )}{" "}
+                              · {offer.exchanger.reviews} отз.
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="font-semibold tabular-nums text-accent-deep">
+                          {formatAmount(offer.rate, currencyDecimals(to))}
+                        </span>{" "}
+                        <span className="text-ink-muted">
+                          {to} / 1 {from}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 tabular-nums text-ink-muted">
+                        {formatReserve(offer.reserve, to)}
+                      </td>
+                      <td className="hidden px-5 py-4 tabular-nums text-ink-muted lg:table-cell">
+                        {formatAmount(offer.minAmount, 4)} –{" "}
+                        {Number.isFinite(offer.maxAmount)
+                          ? formatAmount(offer.maxAmount, 4)
+                          : "∞"}{" "}
+                        {from}
+                      </td>
+                      <td className="px-5 py-4">
+                        <a
+                          href={offer.exchanger.website || "#"}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-primary inline-flex rounded-xl px-3 py-2 text-xs font-semibold"
+                          onClick={() => onExchangeClick(sponsored)}
+                        >
+                          Обменять
+                        </a>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );

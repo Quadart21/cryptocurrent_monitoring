@@ -1,0 +1,19 @@
+---
+description: After meaningful product changes, bump version, commit, push, and GitHub release without waiting for a reminder.
+alwaysApply: true
+---
+
+# Auto commit, push, and release
+
+When finishing a meaningful change set for GapSnap (features, fixes, migrations, admin/UX that should hit production):
+
+1. Bump `package.json` version (patch for fixes, minor for features).
+2. Commit with a clear release-style message (do not wait for the user to ask).
+3. Create annotated tag `vX.Y.Z` matching the version.
+4. Push `main` and tags to `origin`.
+5. Create a GitHub release with `gh release create` (title + short notes).
+6. In the reply, give the release URL and the server update command (backup `.env`, `git fetch` + `reset --hard origin/main`, restore `.env`, `npm install`, build/migrate, `pm2 restart gapsnap`).
+
+Skip auto-release only for tiny WIP experiments the user explicitly says not to ship, or when secrets would be committed.
+
+Never force-push `main`. Never commit `.env` or credentials.

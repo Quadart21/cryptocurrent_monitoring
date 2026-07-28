@@ -1,72 +1,47 @@
 import "server-only";
 
-import currencyByCode from "@/data/bestchange/currency-by-code.json";
-import cityByCode from "@/data/bestchange/city-by-code.json";
-import countryByCode from "@/data/bestchange/country-by-code.json";
-import groups from "@/data/bestchange/groups.json";
-import index from "@/data/bestchange/index.json";
+import {
+  ensureCatalogsHydrated,
+  getCatalogSnapshot,
+} from "@/lib/bestchange/catalog-store";
+import type {
+  BcCity,
+  BcCountry,
+  BcCurrency,
+  BcGroup,
+} from "@/lib/bestchange/catalog-types";
 
+export type { BcCity, BcCountry, BcCurrency, BcGroup };
 export { currencyDecimals } from "@/lib/bestchange/currency-decimals";
 export {
   POPULAR_CASH_PAIRS,
   POPULAR_FEED_PAIRS,
 } from "@/lib/bestchange/popular-pairs";
 
-export type BcCurrency = {
-  id: number;
-  code: string;
-  name: string;
-  nameEn: string;
-  viewname: string;
-  urlname?: string;
-  crypto: boolean;
-  cash: boolean;
-  groupId: number;
-  ps?: number;
-  defamt?: number;
-  bigamt?: number;
-  rank: number;
-};
+void ensureCatalogsHydrated();
 
-export type BcCity = {
-  id: number;
-  code: string;
-  name: string;
-  nameEn: string;
-  countryId?: number;
-  countryCode: string;
-  countryName: string;
-  rank: number;
-};
+function currenciesMap(): Record<string, BcCurrency> {
+  return getCatalogSnapshot().currencies;
+}
 
-export type BcCountry = {
-  id: number;
-  code: string;
-  name: string;
-  nameEn: string;
-  rank: number;
-};
+function citiesMap(): Record<string, BcCity> {
+  return getCatalogSnapshot().cities;
+}
 
-export type BcGroup = {
-  id: number;
-  name: string;
-  nameEn: string;
-};
-
-const currencies = currencyByCode as Record<string, BcCurrency>;
-const cities = cityByCode as Record<string, BcCity>;
-const countries = countryByCode as Record<string, BcCountry>;
+function countriesMap(): Record<string, BcCountry> {
+  return getCatalogSnapshot().countries;
+}
 
 export function getCurrency(code: string): BcCurrency | undefined {
-  return currencies[code.toUpperCase()];
+  return currenciesMap()[code.toUpperCase()];
 }
 
 export function getCity(code: string): BcCity | undefined {
-  return cities[code.toUpperCase()];
+  return citiesMap()[code.toUpperCase()];
 }
 
 export function getCountry(code: string): BcCountry | undefined {
-  return countries[code.toUpperCase()];
+  return countriesMap()[code.toUpperCase()];
 }
 
 export function currencyLabel(code: string): string {
@@ -100,7 +75,7 @@ export function defaultAmountFor(code: string): number {
 }
 
 export function listCurrencies(options?: { cash?: boolean }): BcCurrency[] {
-  return Object.values(currencies)
+  return Object.values(currenciesMap())
     .filter((c) => {
       if (options?.cash === true) return c.cash;
       if (options?.cash === false) return !c.cash;
@@ -110,19 +85,19 @@ export function listCurrencies(options?: { cash?: boolean }): BcCurrency[] {
 }
 
 export function listCities(): BcCity[] {
-  return Object.values(cities).sort((a, b) =>
+  return Object.values(citiesMap()).sort((a, b) =>
     a.name.localeCompare(b.name, "ru", { sensitivity: "base" }),
   );
 }
 
 export function listCountries(): BcCountry[] {
-  return Object.values(countries).sort(
+  return Object.values(countriesMap()).sort(
     (a, b) => a.rank - b.rank || a.name.localeCompare(b.name, "ru"),
   );
 }
 
 export function listGroups(): BcGroup[] {
-  return groups as BcGroup[];
+  return getCatalogSnapshot().groups;
 }
 
 export function listOnlineCurrencies(): BcCurrency[] {
@@ -134,14 +109,10 @@ export function listCashCurrencies(): BcCurrency[] {
 }
 
 export function catalogMeta() {
+  const snap = getCatalogSnapshot();
   return {
-    fetchedAt: index.fetchedAt as string,
-    counts: index.counts as {
-      groups: number;
-      countries: number;
-      cities: number;
-      currencies: number;
-      changers: number;
-    },
+    fetchedAt: snap.fetchedAt,
+    counts: snap.counts,
+    source: snap.source,
   };
 }

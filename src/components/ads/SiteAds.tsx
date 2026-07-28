@@ -15,13 +15,13 @@ function SiteAdsInner({ children }: { children: React.ReactNode }) {
     <>
       {ticker.length > 0 ? <AdTicker ads={ticker} /> : null}
       {header.length > 0 ? (
-        <div className="px-4 pt-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1400px] px-3 pt-4 sm:px-6 lg:px-8">
           <AdBannerSlot ads={header} />
         </div>
       ) : null}
       {children}
       {footer.length > 0 ? (
-        <div className="px-4 pb-6 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1400px] px-3 pb-6 sm:px-6 lg:px-8">
           <AdBannerSlot ads={footer} />
         </div>
       ) : null}
