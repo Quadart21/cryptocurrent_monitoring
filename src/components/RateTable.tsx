@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { AchievementBadges } from "@/components/AchievementBadges";
-import { currencyDecimals } from "@/lib/bestchange/currency-decimals";
-import { formatAmount, formatRating, formatReserve } from "@/lib/format";
+import {
+  formatCurrencyAmount,
+  formatRate,
+  formatRating,
+  formatReserve,
+} from "@/lib/format";
 
 export type LiveOffer = {
   id: string;
@@ -131,19 +135,21 @@ export function RateTable({
                     </div>
                   </td>
                   <td className="px-4 py-4 tabular-nums sm:px-5">
-                    {formatAmount(amount || 0, currencyDecimals(from))}{" "}
+                    {formatCurrencyAmount(amount || 0, from)}{" "}
                     <span className="text-ink-muted">{from}</span>
                   </td>
                   <td className="px-4 py-4 sm:px-5">
                     <div className="font-semibold tabular-nums text-accent-deep">
-                      {formatAmount(offer.receive, currencyDecimals(to))}{" "}
+                      {amount > 0
+                        ? formatCurrencyAmount(offer.receive, to)
+                        : formatRate(offer.rate)}{" "}
                       <span className="font-medium text-ink-muted">{to}</span>
                     </div>
                     {outOfRange && (
                       <p className="mt-1 text-xs text-[var(--warn)]">
-                        Вне лимита {formatAmount(offer.minAmount, 4)}–
+                        Вне лимита {formatCurrencyAmount(offer.minAmount, from)}–
                         {Number.isFinite(offer.maxAmount)
-                          ? formatAmount(offer.maxAmount, 4)
+                          ? formatCurrencyAmount(offer.maxAmount, from)
                           : "∞"}{" "}
                         {from}
                       </p>

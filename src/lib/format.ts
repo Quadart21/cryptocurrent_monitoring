@@ -1,18 +1,28 @@
+import { currencyDecimals } from "@/lib/bestchange/currency-decimals";
+
+function fractionDigitsFor(value: number, preferred: number): number {
+  if (!Number.isFinite(value) || value === 0) return preferred;
+  const abs = Math.abs(value);
+  // Prefer currency decimals, but bump precision so non-zero never shows as "0".
+  if (abs >= 1 || abs >= 5 * 10 ** -preferred) return preferred;
+  const needed = Math.ceil(-Math.log10(abs)) + 1;
+  return Math.min(12, Math.max(preferred, needed));
+}
+
 export function formatAmount(value: number, decimals = 2): string {
   if (!Number.isFinite(value)) return "—";
-  let maxFrac = decimals;
-  // Fiat→crypto unit rates (e.g. ACRUB→BTC ≈ 1e-7) must not round to "0".
-  if (value !== 0 && Math.abs(value) < 5 * 10 ** -decimals) {
-    const needed = Math.ceil(-Math.log10(Math.abs(value))) + 1;
-    maxFrac = Math.min(12, Math.max(decimals, needed));
-  }
   return new Intl.NumberFormat("ru-RU", {
     minimumFractionDigits: 0,
-    maximumFractionDigits: maxFrac,
+    maximumFractionDigits: fractionDigitsFor(value, decimals),
   }).format(value);
 }
 
-/** Unit exchange rate: adaptive precision so tiny crypto rates stay readable. */
+/** Amount in a known currency code — adaptive so tiny crypto never collapses to 0. */
+export function formatCurrencyAmount(value: number, code: string): string {
+  return formatAmount(value, currencyDecimals(code));
+}
+
+/** Unit exchange rate (to per 1 from): adaptive for any pair. */
 export function formatRate(value: number): string {
   if (!Number.isFinite(value)) return "—";
   if (value === 0) return "0";
@@ -27,9 +37,10 @@ export function formatRate(value: number): string {
       value,
     );
   }
+  // Fiat→crypto unit rates (≈1e-7…1e-3): keep enough significant digits.
   const needed = Math.ceil(-Math.log10(abs)) + 2;
   return new Intl.NumberFormat("ru-RU", {
-    maximumFractionDigits: Math.min(12, Math.max(8, needed)),
+    maximumFractionDigits: Math.min(12, Math.max(6, needed)),
   }).format(value);
 }
 

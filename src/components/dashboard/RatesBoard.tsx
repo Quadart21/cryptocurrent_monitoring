@@ -7,10 +7,14 @@ import { useAds } from "@/components/ads/useAds";
 import { trackAdClick, trackAdImpression } from "@/components/ads/track";
 import { RelativeSyncTimer } from "@/components/seo/RelativeSyncTimer";
 import type { LiveOffer } from "@/components/RateTable";
-import { currencyDecimals } from "@/lib/bestchange/currency-decimals";
 import { pairPath } from "@/lib/bestchange/pair-slug";
 import { pickWeightedRandom } from "@/lib/ads";
-import { formatAmount, formatRate, formatRating, formatReserve } from "@/lib/format";
+import {
+  formatCurrencyAmount,
+  formatRate,
+  formatRating,
+  formatReserve,
+} from "@/lib/format";
 
 export type RatesSortBy = "rate" | "reserve" | "rating";
 
@@ -113,6 +117,11 @@ export function RatesBoard({
   function benefitFor(rate: number) {
     const mult = amount > 0 ? amount : 1;
     return (rate - worstRate) * mult;
+  }
+
+  /** Unit rate when amount is empty; otherwise currency amount. */
+  function formatReceiveValue(value: number) {
+    return amount > 0 ? formatCurrencyAmount(value, to) : formatRate(value);
   }
 
   function isWarned(offer: LiveOffer) {
@@ -266,12 +275,12 @@ export function RatesBoard({
                     <div className="rounded-xl bg-bg-soft/60 px-3 py-2">
                       <p className="text-[11px] text-ink-muted">Получите</p>
                       <p className="font-semibold tabular-nums text-accent-deep">
-                        {formatAmount(receive, currencyDecimals(to))} {to}
+                        {formatReceiveValue(receive)} {to}
                       </p>
                       {benefit > 0 ? (
                         <p className="text-[11px] font-medium text-ok">
                           Выгода: +
-                          {formatAmount(benefit, currencyDecimals(to))}
+                          {formatReceiveValue(benefit)}
                         </p>
                       ) : null}
                     </div>
@@ -388,7 +397,7 @@ export function RatesBoard({
                       </td>
                       <td className="px-5 py-4">
                         <span className="font-semibold tabular-nums text-accent-deep">
-                          {formatAmount(receive, currencyDecimals(to))}
+                          {formatReceiveValue(receive)}
                         </span>{" "}
                         <span className="text-ink-muted">{to}</span>
                         {amount > 0 ? (
@@ -400,7 +409,7 @@ export function RatesBoard({
                       <td className="px-5 py-4">
                         {benefit > 0 ? (
                           <span className="font-medium tabular-nums text-ok">
-                            +{formatAmount(benefit, currencyDecimals(to))}
+                            +{formatReceiveValue(benefit)}
                           </span>
                         ) : (
                           <span className="text-ink-muted">—</span>

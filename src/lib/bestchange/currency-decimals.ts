@@ -2,26 +2,28 @@
 export function currencyDecimals(code: string): number {
   const upper = code.toUpperCase();
   if (upper.startsWith("CASH")) return 0;
-  if (upper === "BTC" || upper.startsWith("BTC")) return 8;
-  if (upper === "ETH" || upper.startsWith("ETH")) return 5;
+
+  // Stablecoins (check before fiat markers — USDT contains "USD")
   if (
-    upper.includes("RUB") ||
-    upper.includes("UAH") ||
-    upper.includes("KZT") ||
-    upper.includes("BYN") ||
-    upper.includes("USD") ||
-    upper.includes("EUR")
+    /^(USDT|USDC|DAI|BUSD|TUSD|USDP|FDUSD|PYUSD|EURC|EURT|UST|FRAX)/.test(
+      upper,
+    )
   ) {
     return 2;
   }
+
+  // Fiat / bank / e-money codes (ACRUB, SBERRUB, CARDUSD, …)
   if (
-    upper.startsWith("USDT") ||
-    upper.startsWith("USDC") ||
-    upper.startsWith("DAI")
+    /(RUB|UAH|KZT|BYN|USD|EUR|GBP|TRY|GEL|AZN|CNY|PLN|THB|AED|AMD|UZS|KGS|TJS|MDL|CHF|JPY|CAD|AUD|NZD|SEK|NOK|DKK|CZK|HUF|RON|BGN|INR|IDR|VND|BRL|ARS|MXN|ZAR|KRW|HKD|SGD)/.test(
+      upper,
+    )
   ) {
     return 2;
   }
-  // Unknown codes: crypto-ish default
-  if (/^[A-Z0-9]+$/.test(upper) && upper.length <= 10) return 4;
+
+  // Crypto (BTC, ETH, LTC, XMR, SOL, …) and unknown ticker-like codes:
+  // 8 decimals so fiat→crypto unit rates never round to 0.
+  if (/^[A-Z0-9]+$/.test(upper) && upper.length <= 16) return 8;
+
   return 2;
 }
