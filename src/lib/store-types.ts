@@ -289,6 +289,8 @@ export type NewsSettings = {
   proxyHosts: string;
   /** Parsed unique IPv4 hosts. */
   proxyHostList: string[];
+  syncProgress: string;
+  syncStartedAt: string | null;
   updatedAt: string;
 };
 

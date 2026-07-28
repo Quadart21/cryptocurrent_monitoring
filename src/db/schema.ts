@@ -281,6 +281,9 @@ export const newsSettings = pgTable("news_settings", {
   proxyPass: text("proxy_pass").notNull().default(""),
   proxyPort: integer("proxy_port").notNull().default(7165),
   proxyHosts: text("proxy_hosts").notNull().default(""),
+  /** Live sync status for admin polling (survives across requests). */
+  syncProgress: text("sync_progress").notNull().default(""),
+  syncStartedAt: text("sync_started_at"),
   updatedAt: text("updated_at").notNull().default(""),
 });
 

@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
 import { assertAdmin } from "@/lib/admin-guard";
 import {
-  getNewsSyncProgress,
-  isNewsSyncInFlight,
+  getNewsSyncStatus,
   startNewsSync,
 } from "@/lib/news/sync-news";
-import { getNewsSettings } from "@/lib/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,15 +11,13 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const denied = await assertAdmin();
   if (denied) return denied;
-  const settings = await getNewsSettings();
-  const progress = getNewsSyncProgress();
-  return NextResponse.json({
-    inFlight: isNewsSyncInFlight(),
-    progress: progress.progress,
-    elapsedMs: progress.elapsedMs,
-    lastSyncAt: settings.lastSyncAt,
-    lastSyncResult: settings.lastSyncResult,
-  });
+  try {
+    const status = await getNewsSyncStatus();
+    return NextResponse.json(status);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "status failed";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
 
 export async function POST() {

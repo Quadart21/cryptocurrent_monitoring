@@ -8,6 +8,7 @@ import {
   getBlogPostBySourceId,
   getNewsSettings,
   getSeoSettings,
+  setNewsSyncLiveStatus,
   updateNewsSettings,
   type NewsSyncResultSummary,
 } from "@/lib/store";
@@ -15,6 +16,7 @@ import {
 const SOURCE_PROVIDER = "rbc-crypto";
 const DEFAULT_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const START_DELAY_MS = 90_000;
+const STALE_SYNC_MS = 15 * 60 * 1000;
 
 declare global {
   // eslint-disable-next-line no-var
@@ -25,11 +27,34 @@ declare global {
   var __gapsnapNewsSyncProgress: string | undefined;
   // eslint-disable-next-line no-var
   var __gapsnapNewsSyncStartedAt: number | undefined;
+  // eslint-disable-next-line no-var
+  var __gapsnapNewsSyncProgressWriteAt: number | undefined;
 }
 
 function setProgress(msg: string) {
   globalThis.__gapsnapNewsSyncProgress = msg;
   console.info(`[gapsnap] news: ${msg}`);
+  const now = Date.now();
+  const last = globalThis.__gapsnapNewsSyncProgressWriteAt ?? 0;
+  if (now - last < 700) return;
+  globalThis.__gapsnapNewsSyncProgressWriteAt = now;
+  void setNewsSyncLiveStatus({ progress: msg }).catch(() => undefined);
+}
+
+async function markSyncStarted() {
+  const iso = new Date().toISOString();
+  globalThis.__gapsnapNewsSyncStartedAt = Date.now();
+  globalThis.__gapsnapNewsSyncProgressWriteAt = 0;
+  await setNewsSyncLiveStatus({
+    progress: "Старт…",
+    startedAt: iso,
+  }).catch(() => undefined);
+}
+
+async function markSyncFinished() {
+  globalThis.__gapsnapNewsSyncProgress = "";
+  globalThis.__gapsnapNewsSyncStartedAt = undefined;
+  await setNewsSyncLiveStatus({ clear: true }).catch(() => undefined);
 }
 
 function intervalMs(): number {
@@ -70,6 +95,36 @@ export function getNewsSyncProgress(): {
     progress: globalThis.__gapsnapNewsSyncProgress ?? "",
     startedAt,
     elapsedMs: startedAt ? Date.now() - startedAt : null,
+  };
+}
+
+/** Prefer memory; fall back to DB so admin polling works if workers differ. */
+export async function getNewsSyncStatus(): Promise<{
+  inFlight: boolean;
+  progress: string;
+  elapsedMs: number | null;
+  lastSyncAt: string | null;
+  lastSyncResult: NewsSyncResultSummary | null;
+}> {
+  const settings = await getNewsSettings();
+  const mem = getNewsSyncProgress();
+  const dbStartedMs = settings.syncStartedAt
+    ? Date.parse(settings.syncStartedAt)
+    : NaN;
+  const dbFresh =
+    Number.isFinite(dbStartedMs) && Date.now() - dbStartedMs < STALE_SYNC_MS;
+  const inFlight = mem.inFlight || (dbFresh && Boolean(settings.syncStartedAt));
+  const startedAt = mem.startedAt ?? (dbFresh ? dbStartedMs : null);
+  const progress =
+    mem.progress ||
+    settings.syncProgress ||
+    (inFlight ? "Синхронизация в фоне…" : "");
+  return {
+    inFlight,
+    progress,
+    elapsedMs: startedAt ? Date.now() - startedAt : null,
+    lastSyncAt: settings.lastSyncAt,
+    lastSyncResult: settings.lastSyncResult,
   };
 }
 
@@ -240,14 +295,14 @@ export async function syncCryptoNews(options?: {
   }
 
   const ready = await assertNewsSyncReady(options);
-  globalThis.__gapsnapNewsSyncStartedAt = Date.now();
+  await markSyncStarted();
   setProgress("Старт…");
   const run = runNewsSyncJob({
     ...ready,
     maxCreate: batchSize(options?.maxCreate),
   }).finally(() => {
     globalThis.__gapsnapNewsSyncInFlight = null;
-    globalThis.__gapsnapNewsSyncStartedAt = undefined;
+    void markSyncFinished();
   });
   globalThis.__gapsnapNewsSyncInFlight = run;
   return run;
@@ -266,7 +321,7 @@ export async function startNewsSync(options?: {
   }
 
   const ready = await assertNewsSyncReady(options);
-  globalThis.__gapsnapNewsSyncStartedAt = Date.now();
+  await markSyncStarted();
   setProgress("Старт…");
   const run = runNewsSyncJob({
     ...ready,
@@ -296,7 +351,7 @@ export async function startNewsSync(options?: {
     })
     .finally(() => {
       globalThis.__gapsnapNewsSyncInFlight = null;
-      globalThis.__gapsnapNewsSyncStartedAt = undefined;
+      void markSyncFinished();
     });
 
   globalThis.__gapsnapNewsSyncInFlight = run;

@@ -85,6 +85,13 @@
       "when": 1785282000000,
       "tag": "0011_news_proxy_pool",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1785283000000,
+      "tag": "0012_news_sync_progress",
+      "breakpoints": true
     }
   ]
 }

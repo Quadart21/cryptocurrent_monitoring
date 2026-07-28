@@ -167,12 +167,9 @@ export function BlogModule() {
       );
 
       const startedAt = Date.now();
+      let badStatusStreak = 0;
       for (;;) {
-        await new Promise((r) => setTimeout(r, 2500));
-        const statusRes = await fetch("/api/admin/news/sync", {
-          cache: "no-store",
-        });
-        const statusRaw = await statusRes.text();
+        await new Promise((r) => setTimeout(r, 2000));
         let statusBody: {
           inFlight?: boolean;
           progress?: string;
@@ -181,15 +178,57 @@ export function BlogModule() {
           error?: string;
         } = {};
         try {
-          statusBody = statusRaw
-            ? (JSON.parse(statusRaw) as typeof statusBody)
-            : {};
-        } catch {
-          throw new Error("Не удалось прочитать статус синка");
+          const statusRes = await fetch("/api/admin/news/sync", {
+            cache: "no-store",
+          });
+          const statusRaw = await statusRes.text();
+          try {
+            statusBody = statusRaw
+              ? (JSON.parse(statusRaw) as typeof statusBody)
+              : {};
+          } catch {
+            badStatusStreak += 1;
+            if (badStatusStreak >= 5) {
+              throw new Error(
+                statusRaw.trim().startsWith("<!")
+                  ? "Статус синка: сервер/nginx отдал HTML (таймаут или 502). Смотрите pm2 logs gapsnap."
+                  : `Не удалось прочитать статус синка: ${statusRaw.slice(0, 120)}`,
+              );
+            }
+            setSettingsMsg(
+              `Синхронизация в фоне… статус временно недоступен, повтор ${badStatusStreak}/5`,
+            );
+            continue;
+          }
+          if (!statusRes.ok) {
+            badStatusStreak += 1;
+            if (badStatusStreak >= 5) {
+              throw new Error(statusBody.error || "Ошибка статуса синка");
+            }
+            continue;
+          }
+          badStatusStreak = 0;
+        } catch (err) {
+          if (
+            err instanceof Error &&
+            (err.message.startsWith("Статус синка:") ||
+              err.message.startsWith("Не удалось прочитать") ||
+              err.message.startsWith("Ошибка статуса"))
+          ) {
+            throw err;
+          }
+          badStatusStreak += 1;
+          if (badStatusStreak >= 5) {
+            throw err instanceof Error
+              ? err
+              : new Error("Не удалось прочитать статус синка");
+          }
+          setSettingsMsg(
+            `Синхронизация в фоне… сеть/статус временно недоступны, повтор ${badStatusStreak}/5`,
+          );
+          continue;
         }
-        if (!statusRes.ok) {
-          throw new Error(statusBody.error || "Ошибка статуса синка");
-        }
+
         if (!statusBody.inFlight) {
           if (statusBody.lastSyncResult) {
             setSyncResult(statusBody.lastSyncResult);

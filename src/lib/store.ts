@@ -1979,6 +1979,8 @@ function mapNewsSettings(row: typeof newsSettings.$inferSelect | undefined): New
     proxyPort: Number(row?.proxyPort) > 0 ? Number(row?.proxyPort) : DEFAULT_PROXY_PORT,
     proxyHosts,
     proxyHostList: parseProxyHosts(proxyHosts),
+    syncProgress: row?.syncProgress ?? "",
+    syncStartedAt: row?.syncStartedAt ?? null,
     updatedAt: row?.updatedAt ?? "",
   };
 }
@@ -2239,6 +2241,8 @@ async function ensureNewsSettingsRow(): Promise<void> {
             ? Math.floor(envPort)
             : DEFAULT_PROXY_PORT,
         proxyHosts: defaultHosts,
+        syncProgress: "",
+        syncStartedAt: null,
         updatedAt: now,
       })
       .onConflictDoNothing();
@@ -2363,6 +2367,29 @@ export async function updateNewsSettings(
   }
 
   return getNewsSettings();
+}
+
+/** Lightweight live sync status — does not touch proxy settings / pool. */
+export async function setNewsSyncLiveStatus(input: {
+  progress?: string;
+  startedAt?: string | null;
+  clear?: boolean;
+}): Promise<void> {
+  await ensureNewsSettingsRow();
+  const db = getDb();
+  const patch: {
+    syncProgress?: string;
+    syncStartedAt?: string | null;
+  } = {};
+  if (input.clear) {
+    patch.syncProgress = "";
+    patch.syncStartedAt = null;
+  } else {
+    if (typeof input.progress === "string") patch.syncProgress = input.progress;
+    if (input.startedAt !== undefined) patch.syncStartedAt = input.startedAt;
+  }
+  if (!Object.keys(patch).length) return;
+  await db.update(newsSettings).set(patch).where(eq(newsSettings.id, 1));
 }
 
 /** Distinct active (from,to) pairs for sitemap / hub pages. */
