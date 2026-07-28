@@ -78,7 +78,11 @@ export function apiRateLimitForPath(
     };
   }
 
-  if (pathname === "/api/admin/sync" || pathname === "/api/sync" || pathname === "/api/admin/news/sync") {
+  // Only POST starts a heavy job; GET status polls must not share the tiny sync budget.
+  if (
+    (pathname === "/api/admin/sync" || pathname === "/api/sync") ||
+    (pathname === "/api/admin/news/sync" && m === "POST")
+  ) {
     return {
       tier: "sync",
       limit: envInt("RATE_LIMIT_SYNC_PER_MIN", 4),

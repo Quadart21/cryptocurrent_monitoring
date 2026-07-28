@@ -1,7 +1,7 @@
 import "server-only";
 
 import { codexConfigured } from "@/lib/ai/codex-client";
-import { fetchRbcCryptoNews } from "@/lib/news/rbc-crypto";
+import { fetchRbcCryptoNews, type RbcCryptoNewsItem } from "@/lib/news/rbc-crypto";
 import { rewriteNewsArticle } from "@/lib/news/rewrite-article";
 import {
   createBlogPost,
@@ -29,31 +29,20 @@ function intervalMs(): number {
   return DEFAULT_INTERVAL_MS;
 }
 
-function concurrency(): number {
-  const raw = Number(process.env.NEWS_SYNC_CONCURRENCY ?? "");
-  if (Number.isFinite(raw) && raw >= 1 && raw <= 5) return Math.floor(raw);
-  // Default 1: codex.sale aggressively rate-limits parallel upstreams
+/** How many new articles to create per sync run (default 1). */
+function batchSize(override?: number): number {
+  if (typeof override === "number" && override >= 1) {
+    return Math.min(30, Math.floor(override));
+  }
+  const raw = Number(process.env.NEWS_SYNC_BATCH_SIZE ?? "");
+  if (Number.isFinite(raw) && raw >= 1) return Math.min(30, Math.floor(raw));
   return 1;
 }
 
-async function mapPool<T, R>(
-  items: T[],
-  limit: number,
-  worker: (item: T) => Promise<R>,
-): Promise<R[]> {
-  const results: R[] = new Array(items.length);
-  let next = 0;
-  async function run() {
-    while (next < items.length) {
-      const i = next++;
-      results[i] = await worker(items[i]!);
-    }
-  }
-  const runners = Array.from({ length: Math.min(limit, items.length) }, () =>
-    run(),
-  );
-  await Promise.all(runners);
-  return results;
+function pauseMs(): number {
+  const pause = Number(process.env.NEWS_SYNC_PAUSE_MS ?? "");
+  if (Number.isFinite(pause) && pause >= 0) return pause;
+  return 3_000;
 }
 
 export function isNewsSyncInFlight(): boolean {
@@ -83,23 +72,49 @@ async function assertNewsSyncReady(options?: { force?: boolean }): Promise<{
   };
 }
 
+async function pickNewItems(
+  items: RbcCryptoNewsItem[],
+  maxCreate: number,
+): Promise<{ toCreate: RbcCryptoNewsItem[]; skipped: number }> {
+  const toCreate: RbcCryptoNewsItem[] = [];
+  let skipped = 0;
+  for (const item of items) {
+    const existing = await getBlogPostBySourceId(item.id);
+    if (existing) {
+      skipped += 1;
+      continue;
+    }
+    toCreate.push(item);
+    if (toCreate.length >= maxCreate) break;
+  }
+  return { toCreate, skipped };
+}
+
 async function runNewsSyncJob(input: {
   model: string;
   rewritePrompt: string;
+  maxCreate: number;
 }): Promise<NewsSyncResultSummary> {
   const seo = await getSeoSettings();
   const feed = await fetchRbcCryptoNews();
+  const { toCreate, skipped: alreadyKnown } = await pickNewItems(
+    feed.items,
+    input.maxCreate,
+  );
+
   let created = 0;
-  let skipped = 0;
   let failed = 0;
+  let skipped = alreadyKnown;
   const errors: string[] = [];
 
-  await mapPool(feed.items, concurrency(), async (item) => {
+  // One-by-one, never parallel
+  for (const item of toCreate) {
     try {
+      // Re-check in case another run created it
       const existing = await getBlogPostBySourceId(item.id);
       if (existing) {
         skipped += 1;
-        return;
+        continue;
       }
       const rewritten = await rewriteNewsArticle({
         model: input.model,
@@ -129,14 +144,15 @@ async function runNewsSyncJob(input: {
       const msg = err instanceof Error ? err.message : String(err);
       errors.push(`${item.id}: ${msg}`);
       console.error(`[gapsnap] news rewrite failed ${item.id}`, err);
-    } finally {
-      // Pace requests — helps with upstream_busy even behind proxy
-      const pause = Number(process.env.NEWS_SYNC_PAUSE_MS ?? "");
-      const ms =
-        Number.isFinite(pause) && pause >= 0 ? pause : 2_500;
-      if (ms > 0) await new Promise((r) => setTimeout(r, ms));
     }
-  });
+    const ms = pauseMs();
+    if (ms > 0) await new Promise((r) => setTimeout(r, ms));
+  }
+
+  const remainingNew = Math.max(
+    0,
+    feed.items.length - alreadyKnown - toCreate.length,
+  );
 
   const result: NewsSyncResultSummary = {
     fetched: feed.items.length,
@@ -149,25 +165,47 @@ async function runNewsSyncJob(input: {
 
   await updateNewsSettings({
     lastSyncAt: result.syncedAt,
-    lastSyncResult: result,
+    lastSyncResult: {
+      ...result,
+      errors:
+        remainingNew > 0
+          ? [
+              ...result.errors,
+              `Осталось новых в ленте: ~${remainingNew}. Нажмите синк ещё раз.`,
+            ]
+          : result.errors,
+    },
   });
 
   console.info(
-    `[gapsnap] news sync: fetched=${result.fetched} created=${result.created} skipped=${result.skipped} failed=${result.failed}`,
+    `[gapsnap] news sync: fetched=${result.fetched} created=${result.created} skipped=${result.skipped} failed=${result.failed} batch=${input.maxCreate}`,
   );
-  return result;
+  return {
+    ...result,
+    errors:
+      remainingNew > 0
+        ? [
+            ...result.errors,
+            `Осталось новых в ленте: ~${remainingNew}. Нажмите синк ещё раз.`,
+          ]
+        : result.errors,
+  };
 }
 
 /** Full awaitable sync (used by daily poller). */
 export async function syncCryptoNews(options?: {
   force?: boolean;
+  maxCreate?: number;
 }): Promise<NewsSyncResultSummary> {
   if (globalThis.__gapsnapNewsSyncInFlight) {
     return globalThis.__gapsnapNewsSyncInFlight;
   }
 
   const ready = await assertNewsSyncReady(options);
-  const run = runNewsSyncJob(ready).finally(() => {
+  const run = runNewsSyncJob({
+    ...ready,
+    maxCreate: batchSize(options?.maxCreate),
+  }).finally(() => {
     globalThis.__gapsnapNewsSyncInFlight = null;
   });
   globalThis.__gapsnapNewsSyncInFlight = run;
@@ -180,13 +218,17 @@ export async function syncCryptoNews(options?: {
  */
 export async function startNewsSync(options?: {
   force?: boolean;
+  maxCreate?: number;
 }): Promise<{ started: true; alreadyRunning: boolean }> {
   if (globalThis.__gapsnapNewsSyncInFlight) {
     return { started: true, alreadyRunning: true };
   }
 
   const ready = await assertNewsSyncReady(options);
-  const run = runNewsSyncJob(ready)
+  const run = runNewsSyncJob({
+    ...ready,
+    maxCreate: batchSize(options?.maxCreate ?? 1),
+  })
     .catch(async (err) => {
       const message = err instanceof Error ? err.message : String(err);
       console.error("[gapsnap] news sync failed", err);
@@ -224,6 +266,7 @@ export function startNewsPoller(): void {
     void (async () => {
       const settings = await getNewsSettings();
       if (!settings.enabled) return;
+      // Auto: still one-by-one per tick (batch size from env, default 1)
       await syncCryptoNews();
     })().catch((error) => {
       console.error("[gapsnap] news sync failed", error);
@@ -232,6 +275,6 @@ export function startNewsPoller(): void {
   setTimeout(tick, START_DELAY_MS);
   setInterval(tick, ms);
   console.info(
-    `[gapsnap] news poller started (every ${Math.round(ms / 3_600_000)}h)`,
+    `[gapsnap] news poller started (every ${Math.round(ms / 3_600_000)}h, batch=${batchSize()})`,
   );
 }

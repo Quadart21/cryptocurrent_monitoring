@@ -382,7 +382,7 @@ export function BlogModule() {
               className="rounded-xl border border-accent/40 bg-accent/10 px-4 py-2.5 text-sm font-semibold text-accent-deep"
               onClick={() => void runSync()}
             >
-              Синхронизировать сейчас
+              Синхронизировать 1 новость
             </button>
           </div>
 
