@@ -703,6 +703,18 @@ export async function addExchangerApplication(input: {
     })
     .returning();
 
+  try {
+    const { upsertEmailContact } = await import("@/lib/email/contacts");
+    await upsertEmailContact({
+      email: ownerEmail,
+      source: "exchanger",
+      label: input.name,
+      exchangerId: id,
+    });
+  } catch {
+    // mailing list is best-effort
+  }
+
   return mapExchanger(row);
 }
 
@@ -1061,6 +1073,18 @@ export async function addReview(input: {
       confirmExpiresAt: input.confirmExpiresAt,
     })
     .returning();
+
+  try {
+    const { upsertEmailContact } = await import("@/lib/email/contacts");
+    await upsertEmailContact({
+      email,
+      source: "review",
+      label: ex.name,
+      exchangerId: ex.id,
+    });
+  } catch {
+    // mailing list is best-effort
+  }
 
   return mapReview(row);
 }

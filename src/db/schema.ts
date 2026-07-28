@@ -271,3 +271,20 @@ export const emailLog = pgTable(
     index("email_log_status_idx").on(t.status),
   ],
 );
+
+/** Aggregated mailing list: exchanger owners + review authors. */
+export const emailContacts = pgTable(
+  "email_contacts",
+  {
+    email: text("email").primaryKey(),
+    sources: text("sources").array().notNull().default([]),
+    label: text("label").notNull().default(""),
+    exchangerIds: text("exchanger_ids").array().notNull().default([]),
+    unsubscribed: boolean("unsubscribed").notNull().default(false),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => [
+    index("email_contacts_unsubscribed_idx").on(t.unsubscribed),
+  ],
+);

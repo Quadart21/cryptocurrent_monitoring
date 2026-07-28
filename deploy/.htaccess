@@ -1,0 +1,61 @@
+# GapSnap — Apache .htaccess
+# Работает только если фронт — Apache (mod_rewrite, mod_headers, mod_ssl).
+# На текущем сервере (nginx + PM2/Next.js) этот файл НЕ применяется —
+# правила уже в nginx / next.config.ts.
+
+RewriteEngine On
+
+# HTTPS
+RewriteCond %{HTTPS} !=on
+RewriteCond %{HTTP:X-Forwarded-Proto} !https
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# www → без www
+RewriteCond %{HTTP_HOST} ^www\.gapsnap\.org$ [NC]
+RewriteRule ^ https://gapsnap.org%{REQUEST_URI} [L,R=301]
+
+# Скрыть служебные файлы
+<FilesMatch "(^\.env|\.env\.|package(-lock)?\.json|composer\.(json|lock)|yarn\.lock|pnpm-lock\.yaml)$">
+  Require all denied
+</FilesMatch>
+RedirectMatch 404 /\.git
+
+# Заголовки безопасности (как в next.config.ts)
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "DENY"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+  Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+  Header always set Content-Security-Policy "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; upgrade-insecure-requests"
+  Header always unset X-Powered-By
+</IfModule>
+
+# Если Apache проксирует на Next.js (PM2 :3000) — раскомментируй:
+# <IfModule mod_proxy.c>
+#   ProxyPreserveHost On
+#   ProxyPass / http://127.0.0.1:3000/
+#   ProxyPassReverse / http://127.0.0.1:3000/
+# </IfModule>
+
+# Если это статический экспорт (out/) без Node — раскомментируй:
+# RewriteCond %{REQUEST_FILENAME} !-f
+# RewriteCond %{REQUEST_FILENAME} !-d
+# RewriteRule ^ index.html [L]
+
+# Gzip
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/css application/javascript application/json image/svg+xml
+</IfModule>
+
+# Кэш статики
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/css "access plus 7 days"
+  ExpiresByType application/javascript "access plus 7 days"
+  ExpiresByType image/png "access plus 30 days"
+  ExpiresByType image/jpeg "access plus 30 days"
+  ExpiresByType image/webp "access plus 30 days"
+  ExpiresByType image/svg+xml "access plus 30 days"
+  ExpiresByType font/woff2 "access plus 30 days"
+</IfModule>

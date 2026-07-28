@@ -3,6 +3,20 @@ export type EmailTemplateId =
   | "owner_approved"
   | "owner_new_review";
 
+export type EmailContactSource = "exchanger" | "review" | "manual";
+
+export type EmailContact = {
+  email: string;
+  sources: EmailContactSource[];
+  label: string;
+  exchangerIds: string[];
+  unsubscribed: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type BroadcastSegment = "all" | "exchangers" | "reviewers";
+
 export type EmailSettings = {
   fromEmail: string;
   fromName: string;

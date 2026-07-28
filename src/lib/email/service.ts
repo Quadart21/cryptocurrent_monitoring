@@ -13,6 +13,7 @@ import type {
   EmailSettings,
   EmailTemplate,
   EmailTemplateId,
+  BroadcastSegment,
 } from "@/lib/email/types";
 import { sendSmtpBzEmail, smtpBzConfigStatus } from "@/lib/smtp-bz";
 import { getSeoSettings } from "@/lib/store";
@@ -407,6 +408,56 @@ export async function sendRawAdminEmail(input: {
     });
     throw error;
   }
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export async function broadcastEmail(input: {
+  segment: BroadcastSegment;
+  subject: string;
+  html: string;
+  text?: string;
+}): Promise<{
+  audience: number;
+  sent: number;
+  failed: number;
+}> {
+  const subject = input.subject.trim();
+  const html = input.html.trim();
+  if (!subject) throw new Error("Укажите тему");
+  if (!html) throw new Error("Укажите текст письма");
+
+  const {
+    contactMatchesSegment,
+    listEmailContacts,
+  } = await import("@/lib/email/contacts");
+
+  const contacts = (await listEmailContacts()).filter(
+    (c) => !c.unsubscribed && contactMatchesSegment(c, input.segment),
+  );
+
+  let sent = 0;
+  let failed = 0;
+
+  for (const contact of contacts) {
+    try {
+      await sendRawAdminEmail({
+        to: contact.email,
+        subject,
+        html,
+        text: input.text,
+        tag: `broadcast:${input.segment}`,
+      });
+      sent += 1;
+    } catch {
+      failed += 1;
+    }
+    await sleep(150);
+  }
+
+  return { audience: contacts.length, sent, failed };
 }
 
 export async function getEmailAdminSnapshot() {

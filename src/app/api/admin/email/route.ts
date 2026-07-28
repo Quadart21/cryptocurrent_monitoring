@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { assertAdmin } from "@/lib/admin-guard";
 import {
+  contactMatchesSegment,
+  listEmailContacts,
+  setEmailContactUnsubscribed,
+  syncEmailContactsFromStore,
+} from "@/lib/email/contacts";
+import {
+  broadcastEmail,
   getEmailAdminSnapshot,
   getEmailSettings,
   listEmailLog,
@@ -10,21 +17,12 @@ import {
   updateEmailSettings,
   updateEmailTemplate,
 } from "@/lib/email/service";
-import { EMAIL_TEMPLATE_VARS } from "@/lib/email/types";
-import {
-  smtpBzAddUnsubscribe,
-  smtpBzCheckEmail,
-  smtpBzGetDomains,
-  smtpBzGetMessage,
-  smtpBzGetMessages,
-  smtpBzGetStats,
-  smtpBzGetUser,
-  smtpBzListUnsubscribe,
-  smtpBzRemoveUnsubscribe,
-} from "@/lib/smtp-bz";
+import { EMAIL_TEMPLATE_VARS, type BroadcastSegment } from "@/lib/email/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const SEGMENTS = new Set<BroadcastSegment>(["all", "exchangers", "reviewers"]);
 
 export async function GET(request: Request) {
   const denied = await assertAdmin();
@@ -35,11 +33,30 @@ export async function GET(request: Request) {
 
   try {
     if (view === "snapshot") {
-      const snapshot = await getEmailAdminSnapshot();
+      const [snapshot, contacts] = await Promise.all([
+        getEmailAdminSnapshot(),
+        listEmailContacts(),
+      ]);
+      const active = contacts.filter((c) => !c.unsubscribed);
       return NextResponse.json({
         ...snapshot,
         templateVars: EMAIL_TEMPLATE_VARS,
+        contacts,
+        contactStats: {
+          total: contacts.length,
+          active: active.length,
+          exchangers: active.filter((c) =>
+            contactMatchesSegment(c, "exchangers"),
+          ).length,
+          reviewers: active.filter((c) =>
+            contactMatchesSegment(c, "reviewers"),
+          ).length,
+          unsubscribed: contacts.filter((c) => c.unsubscribed).length,
+        },
       });
+    }
+    if (view === "contacts") {
+      return NextResponse.json({ contacts: await listEmailContacts() });
     }
     if (view === "log") {
       const limit = Number(searchParams.get("limit") ?? 100);
@@ -50,60 +67,6 @@ export async function GET(request: Request) {
     }
     if (view === "settings") {
       return NextResponse.json({ settings: await getEmailSettings() });
-    }
-    if (view === "smtp-user") {
-      const res = await smtpBzGetUser();
-      return NextResponse.json({ ok: res.ok, status: res.status, data: res.json ?? res.text });
-    }
-    if (view === "smtp-stats") {
-      const res = await smtpBzGetStats();
-      return NextResponse.json({ ok: res.ok, status: res.status, data: res.json ?? res.text });
-    }
-    if (view === "smtp-domains") {
-      const res = await smtpBzGetDomains();
-      return NextResponse.json({ ok: res.ok, status: res.status, data: res.json ?? res.text });
-    }
-    if (view === "smtp-messages") {
-      const query: Record<string, string> = {};
-      for (const key of [
-        "limit",
-        "offset",
-        "from",
-        "to",
-        "tag",
-        "status",
-        "startDate",
-        "endDate",
-        "is_open",
-        "is_unsubscribe",
-      ]) {
-        const v = searchParams.get(key);
-        if (v) query[key] = v;
-      }
-      if (!query.limit) query.limit = "50";
-      const res = await smtpBzGetMessages(query);
-      return NextResponse.json({ ok: res.ok, status: res.status, data: res.json ?? res.text });
-    }
-    if (view === "smtp-message") {
-      const id = searchParams.get("id") ?? "";
-      if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
-      const res = await smtpBzGetMessage(id);
-      return NextResponse.json({ ok: res.ok, status: res.status, data: res.json ?? res.text });
-    }
-    if (view === "smtp-check") {
-      const email = searchParams.get("email") ?? "";
-      if (!email) return NextResponse.json({ error: "email required" }, { status: 400 });
-      const res = await smtpBzCheckEmail(email);
-      return NextResponse.json({ ok: res.ok, status: res.status, data: res.json ?? res.text });
-    }
-    if (view === "smtp-unsubscribe") {
-      const query: Record<string, string> = {};
-      for (const key of ["limit", "offset", "address", "reason"]) {
-        const v = searchParams.get(key);
-        if (v) query[key] = v;
-      }
-      const res = await smtpBzListUnsubscribe(query);
-      return NextResponse.json({ ok: res.ok, status: res.status, data: res.json ?? res.text });
     }
 
     return NextResponse.json({ error: "unknown view" }, { status: 400 });
@@ -129,26 +92,48 @@ export async function PUT(request: Request) {
       text?: string;
       enabled?: boolean;
     };
+    email?: string;
+    unsubscribed?: boolean;
   };
 
-  if (body.action === "settings" && body.settings) {
-    const settings = await updateEmailSettings(body.settings);
-    return NextResponse.json({ settings });
-  }
+  try {
+    if (body.action === "settings" && body.settings) {
+      const settings = await updateEmailSettings(body.settings);
+      return NextResponse.json({ settings });
+    }
 
-  if (body.action === "template" && body.template?.id) {
-    const template = await updateEmailTemplate(body.template.id, body.template);
-    if (!template) return NextResponse.json({ error: "not found" }, { status: 404 });
-    return NextResponse.json({ template });
-  }
+    if (body.action === "template" && body.template?.id) {
+      const template = await updateEmailTemplate(body.template.id, body.template);
+      if (!template) {
+        return NextResponse.json({ error: "not found" }, { status: 404 });
+      }
+      return NextResponse.json({ template });
+    }
 
-  if (body.action === "reset-template" && body.template?.id) {
-    const template = await resetEmailTemplate(body.template.id);
-    if (!template) return NextResponse.json({ error: "not found" }, { status: 404 });
-    return NextResponse.json({ template });
-  }
+    if (body.action === "reset-template" && body.template?.id) {
+      const template = await resetEmailTemplate(body.template.id);
+      if (!template) {
+        return NextResponse.json({ error: "not found" }, { status: 404 });
+      }
+      return NextResponse.json({ template });
+    }
 
-  return NextResponse.json({ error: "unknown action" }, { status: 400 });
+    if (body.action === "contact-unsubscribe" && body.email) {
+      const contact = await setEmailContactUnsubscribed(
+        body.email,
+        body.unsubscribed !== false,
+      );
+      if (!contact) {
+        return NextResponse.json({ error: "not found" }, { status: 404 });
+      }
+      return NextResponse.json({ contact });
+    }
+
+    return NextResponse.json({ error: "unknown action" }, { status: 400 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "fail";
+    return NextResponse.json({ error: message }, { status: 502 });
+  }
 }
 
 export async function POST(request: Request) {
@@ -162,11 +147,29 @@ export async function POST(request: Request) {
     html?: string;
     text?: string;
     tag?: string;
-    addresses?: string;
-    address?: string;
+    segment?: BroadcastSegment;
   };
 
   try {
+    if (body.action === "sync-contacts") {
+      const stats = await syncEmailContactsFromStore();
+      return NextResponse.json({ ok: true, stats });
+    }
+
+    if (body.action === "broadcast") {
+      const segment = body.segment ?? "all";
+      if (!SEGMENTS.has(segment)) {
+        return NextResponse.json({ error: "Неверный сегмент" }, { status: 400 });
+      }
+      const result = await broadcastEmail({
+        segment,
+        subject: String(body.subject ?? ""),
+        html: String(body.html ?? ""),
+        text: body.text,
+      });
+      return NextResponse.json({ ok: true, result });
+    }
+
     if (body.action === "test" || body.action === "send") {
       const to = String(body.to ?? "").trim().toLowerCase();
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
@@ -189,24 +192,6 @@ export async function POST(request: Request) {
         tag: body.tag ?? (body.action === "test" ? "admin-test" : "admin-manual"),
       });
       return NextResponse.json({ ok: true });
-    }
-
-    if (body.action === "unsubscribe-add") {
-      const addresses = String(body.addresses ?? "").trim();
-      if (!addresses) {
-        return NextResponse.json({ error: "Укажите адреса" }, { status: 400 });
-      }
-      const res = await smtpBzAddUnsubscribe(addresses);
-      return NextResponse.json({ ok: res.ok, status: res.status, data: res.json ?? res.text });
-    }
-
-    if (body.action === "unsubscribe-remove") {
-      const address = String(body.address ?? "").trim();
-      if (!address) {
-        return NextResponse.json({ error: "Укажите адрес" }, { status: 400 });
-      }
-      const res = await smtpBzRemoveUnsubscribe(address);
-      return NextResponse.json({ ok: res.ok, status: res.status, data: res.json ?? res.text });
     }
 
     return NextResponse.json({ error: "unknown action" }, { status: 400 });
