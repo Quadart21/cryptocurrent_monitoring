@@ -11,6 +11,7 @@ import {
   blacklist,
   blogPosts,
   exchangers,
+  newsSettings,
   qualityTags,
   rates,
   reviews,
@@ -41,6 +42,8 @@ import type {
   BlacklistItem,
   BlogPost,
   BlogPostStatus,
+  NewsSettings,
+  NewsSyncResultSummary,
   ExchangerAchievement,
   ExchangerLogo,
   ExchangerReview,
@@ -60,6 +63,10 @@ export type {
   AdTariffPeriod,
   AdType,
   BlacklistItem,
+  BlogPost,
+  BlogPostStatus,
+  NewsSettings,
+  NewsSyncResultSummary,
   ExchangerAchievement,
   ExchangerReview,
   FeedExchanger,
@@ -1915,9 +1922,51 @@ function mapBlogPost(row: typeof blogPosts.$inferSelect): BlogPost {
     seoTitle: row.seoTitle,
     seoDescription: row.seoDescription,
     authorName: row.authorName,
+    sourceProvider: row.sourceProvider ?? "",
+    sourceId: row.sourceId ?? null,
+    sourceUrl: row.sourceUrl ?? "",
     publishedAt: row.publishedAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+  };
+}
+
+function parseNewsSyncResult(raw: string): NewsSyncResultSummary | null {
+  if (!raw.trim()) return null;
+  try {
+    const parsed = JSON.parse(raw) as NewsSyncResultSummary;
+    if (
+      typeof parsed?.fetched !== "number" ||
+      typeof parsed?.created !== "number"
+    ) {
+      return null;
+    }
+    return {
+      fetched: parsed.fetched,
+      created: parsed.created,
+      skipped: Number(parsed.skipped) || 0,
+      failed: Number(parsed.failed) || 0,
+      errors: Array.isArray(parsed.errors)
+        ? parsed.errors.map(String)
+        : [],
+      syncedAt:
+        typeof parsed.syncedAt === "string"
+          ? parsed.syncedAt
+          : new Date().toISOString(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function mapNewsSettings(row: typeof newsSettings.$inferSelect | undefined): NewsSettings {
+  return {
+    model: row?.model ?? "",
+    rewritePrompt: row?.rewritePrompt ?? "",
+    enabled: Boolean(row?.enabled),
+    lastSyncAt: row?.lastSyncAt ?? null,
+    lastSyncResult: parseNewsSyncResult(row?.lastSyncResult ?? ""),
+    updatedAt: row?.updatedAt ?? "",
   };
 }
 
@@ -1968,6 +2017,20 @@ export async function getBlogPostById(
   return row ? mapBlogPost(row) : undefined;
 }
 
+export async function getBlogPostBySourceId(
+  sourceId: string,
+): Promise<BlogPost | undefined> {
+  const id = sourceId.trim();
+  if (!id) return undefined;
+  const db = getDb();
+  const [row] = await db
+    .select()
+    .from(blogPosts)
+    .where(eq(blogPosts.sourceId, id))
+    .limit(1);
+  return row ? mapBlogPost(row) : undefined;
+}
+
 export async function createBlogPost(input: {
   title: string;
   slug?: string;
@@ -1979,6 +2042,9 @@ export async function createBlogPost(input: {
   seoTitle?: string;
   seoDescription?: string;
   authorName?: string;
+  sourceProvider?: string;
+  sourceId?: string | null;
+  sourceUrl?: string;
 }): Promise<BlogPost> {
   const db = getDb();
   const now = new Date().toISOString();
@@ -1997,6 +2063,7 @@ export async function createBlogPost(input: {
   const status: BlogPostStatus =
     input.status === "published" ? "published" : "draft";
   const id = `bp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+  const sourceId = input.sourceId?.trim() || null;
   const [row] = await db
     .insert(blogPosts)
     .values({
@@ -2011,6 +2078,9 @@ export async function createBlogPost(input: {
       seoTitle: (input.seoTitle ?? "").trim(),
       seoDescription: (input.seoDescription ?? "").trim(),
       authorName: (input.authorName ?? "").trim() || "GapSnap",
+      sourceProvider: (input.sourceProvider ?? "").trim(),
+      sourceId,
+      sourceUrl: (input.sourceUrl ?? "").trim(),
       publishedAt: status === "published" ? now : null,
       createdAt: now,
       updatedAt: now,
@@ -2034,6 +2104,9 @@ export async function updateBlogPost(
       | "seoTitle"
       | "seoDescription"
       | "authorName"
+      | "sourceProvider"
+      | "sourceId"
+      | "sourceUrl"
     >
   >,
 ): Promise<BlogPost | null> {
@@ -2063,6 +2136,11 @@ export async function updateBlogPost(
         ? null
         : current.publishedAt;
 
+  const sourceId =
+    patch.sourceId !== undefined
+      ? patch.sourceId?.trim() || null
+      : current.sourceId;
+
   const [row] = await getDb()
     .update(blogPosts)
     .set({
@@ -2089,6 +2167,15 @@ export async function updateBlogPost(
         patch.authorName !== undefined
           ? patch.authorName.trim()
           : current.authorName,
+      sourceProvider:
+        patch.sourceProvider !== undefined
+          ? patch.sourceProvider.trim()
+          : current.sourceProvider,
+      sourceId,
+      sourceUrl:
+        patch.sourceUrl !== undefined
+          ? patch.sourceUrl.trim()
+          : current.sourceUrl,
       publishedAt,
       updatedAt: now,
     })
@@ -2103,6 +2190,99 @@ export async function deleteBlogPost(id: string): Promise<boolean> {
     .where(eq(blogPosts.id, id))
     .returning({ id: blogPosts.id });
   return result.length > 0;
+}
+
+async function ensureNewsSettingsRow(): Promise<void> {
+  const db = getDb();
+  const [row] = await db
+    .select({ id: newsSettings.id })
+    .from(newsSettings)
+    .where(eq(newsSettings.id, 1))
+    .limit(1);
+  if (row) return;
+  const { DEFAULT_NEWS_REWRITE_PROMPT } = await import(
+    "@/lib/news/default-prompt"
+  );
+  const now = new Date().toISOString();
+  await db
+    .insert(newsSettings)
+    .values({
+      id: 1,
+      model: "",
+      rewritePrompt: DEFAULT_NEWS_REWRITE_PROMPT,
+      enabled: false,
+      lastSyncAt: null,
+      lastSyncResult: "",
+      updatedAt: now,
+    })
+    .onConflictDoNothing();
+}
+
+export async function getNewsSettings(): Promise<NewsSettings> {
+  await ensureNewsSettingsRow();
+  const db = getDb();
+  const [row] = await db
+    .select()
+    .from(newsSettings)
+    .where(eq(newsSettings.id, 1))
+    .limit(1);
+  const mapped = mapNewsSettings(row);
+  if (!mapped.rewritePrompt.trim()) {
+    const { DEFAULT_NEWS_REWRITE_PROMPT } = await import(
+      "@/lib/news/default-prompt"
+    );
+    return { ...mapped, rewritePrompt: DEFAULT_NEWS_REWRITE_PROMPT };
+  }
+  return mapped;
+}
+
+export async function updateNewsSettings(
+  patch: Partial<
+    Pick<NewsSettings, "model" | "rewritePrompt" | "enabled">
+  > & {
+    lastSyncAt?: string | null;
+    lastSyncResult?: NewsSyncResultSummary | null;
+  },
+): Promise<NewsSettings> {
+  await ensureNewsSettingsRow();
+  const current = await getNewsSettings();
+  const now = new Date().toISOString();
+  const next: {
+    model: string;
+    rewritePrompt: string;
+    enabled: boolean;
+    lastSyncAt: string | null;
+    lastSyncResult: string;
+    updatedAt: string;
+  } = {
+    model: typeof patch.model === "string" ? patch.model.trim() : current.model,
+    rewritePrompt:
+      typeof patch.rewritePrompt === "string"
+        ? patch.rewritePrompt
+        : current.rewritePrompt,
+    enabled:
+      typeof patch.enabled === "boolean" ? patch.enabled : current.enabled,
+    lastSyncAt:
+      patch.lastSyncAt !== undefined ? patch.lastSyncAt : current.lastSyncAt,
+    lastSyncResult:
+      patch.lastSyncResult !== undefined
+        ? patch.lastSyncResult
+          ? JSON.stringify(patch.lastSyncResult)
+          : ""
+        : current.lastSyncResult
+          ? JSON.stringify(current.lastSyncResult)
+          : "",
+    updatedAt: now,
+  };
+  const db = getDb();
+  await db
+    .insert(newsSettings)
+    .values({ id: 1, ...next })
+    .onConflictDoUpdate({
+      target: newsSettings.id,
+      set: next,
+    });
+  return getNewsSettings();
 }
 
 /** Distinct active (from,to) pairs for sitemap / hub pages. */

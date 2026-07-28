@@ -71,6 +71,13 @@
       "when": 1785202000000,
       "tag": "0009_banner_check",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1785279600000,
+      "tag": "0010_blog_news_source",
+      "breakpoints": true
     }
   ]
 }

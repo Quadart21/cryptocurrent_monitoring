@@ -258,8 +258,29 @@ export type BlogPost = {
   seoTitle: string;
   seoDescription: string;
   authorName: string;
+  sourceProvider: string;
+  sourceId: string | null;
+  sourceUrl: string;
   publishedAt: string | null;
   createdAt: string;
+  updatedAt: string;
+};
+
+export type NewsSyncResultSummary = {
+  fetched: number;
+  created: number;
+  skipped: number;
+  failed: number;
+  errors: string[];
+  syncedAt: string;
+};
+
+export type NewsSettings = {
+  model: string;
+  rewritePrompt: string;
+  enabled: boolean;
+  lastSyncAt: string | null;
+  lastSyncResult: NewsSyncResultSummary | null;
   updatedAt: string;
 };
 

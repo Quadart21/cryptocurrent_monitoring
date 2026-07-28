@@ -53,8 +53,8 @@ export const ADMIN_NAV: AdminNavItem[] = [
   {
     id: "blog",
     href: `${ADMIN_PATH}/blog`,
-    label: "Блог",
-    description: "Статьи и публикация",
+    label: "Новости",
+    description: "AI-импорт и публикации",
   },
   {
     id: "email",

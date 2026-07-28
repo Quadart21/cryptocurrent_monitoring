@@ -18,5 +18,7 @@ export async function register() {
     startCatalogPoller();
     const { startBannerCheckPoller } = await import("@/lib/banner-check");
     startBannerCheckPoller();
+    const { startNewsPoller } = await import("@/lib/news/sync-news");
+    startNewsPoller();
   }
 }

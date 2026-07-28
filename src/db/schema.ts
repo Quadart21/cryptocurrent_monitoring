@@ -8,6 +8,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 const bytea = customType<{ data: Buffer; driverData: Buffer }>({
@@ -238,7 +239,7 @@ export const seo = pgTable("seo", {
   gtmId: text("gtm_id").notNull().default(""),
 });
 
-/** Public blog / SEO content */
+/** Public blog / SEO content (also AI-rewritten news). */
 export const blogPosts = pgTable(
   "blog_posts",
   {
@@ -253,6 +254,9 @@ export const blogPosts = pgTable(
     seoTitle: text("seo_title").notNull().default(""),
     seoDescription: text("seo_description").notNull().default(""),
     authorName: text("author_name").notNull().default(""),
+    sourceProvider: text("source_provider").notNull().default(""),
+    sourceId: text("source_id"),
+    sourceUrl: text("source_url").notNull().default(""),
     publishedAt: text("published_at"),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
@@ -260,8 +264,20 @@ export const blogPosts = pgTable(
   (t) => [
     index("blog_posts_status_idx").on(t.status),
     index("blog_posts_published_at_idx").on(t.publishedAt),
+    uniqueIndex("blog_posts_source_id_uidx").on(t.sourceId),
   ],
 );
+
+/** AI news import settings (single row id=1). */
+export const newsSettings = pgTable("news_settings", {
+  id: integer("id").primaryKey().default(1),
+  model: text("model").notNull().default(""),
+  rewritePrompt: text("rewrite_prompt").notNull().default(""),
+  enabled: boolean("enabled").notNull().default(false),
+  lastSyncAt: text("last_sync_at"),
+  lastSyncResult: text("last_sync_result").notNull().default(""),
+  updatedAt: text("updated_at").notNull().default(""),
+});
 
 export const appMeta = pgTable("app_meta", {
   id: integer("id").primaryKey().default(1),

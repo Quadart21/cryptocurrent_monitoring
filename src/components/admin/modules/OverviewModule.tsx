@@ -195,7 +195,7 @@ export function OverviewModule() {
             ["Ачивки", `${ADMIN_PATH}/achievements`],
             ["Реклама", `${ADMIN_PATH}/ads`],
             ["SEO", `${ADMIN_PATH}/seo`],
-            ["Блог", `${ADMIN_PATH}/blog`],
+            ["Новости", `${ADMIN_PATH}/blog`],
             ["Чёрный список", `${ADMIN_PATH}/blacklist`],
             ["Каталог", `${ADMIN_PATH}/catalog`],
             ["Синхронизация", `${ADMIN_PATH}/sync`],

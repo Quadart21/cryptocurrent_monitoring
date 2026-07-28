@@ -118,3 +118,43 @@ export function buildPairProductJsonLd(input: {
     offers,
   };
 }
+
+export function buildBlogPostingJsonLd(input: {
+  seo: SeoSettings;
+  title: string;
+  description: string;
+  urlPath: string;
+  authorName?: string;
+  publishedAt?: string | null;
+  updatedAt?: string | null;
+  imageUrl?: string | null;
+}): object | null {
+  if (!input.seo.jsonLdEnabled) return null;
+  const url = absoluteUrl(input.seo.siteUrl, input.urlPath);
+  if (!url) return null;
+  return {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: input.title,
+    description: input.description || undefined,
+    url,
+    mainEntityOfPage: url,
+    datePublished: input.publishedAt || undefined,
+    dateModified: input.updatedAt || input.publishedAt || undefined,
+    author: {
+      "@type": "Organization",
+      name: input.authorName || input.seo.organizationName || "GapSnap",
+    },
+    publisher: {
+      "@type": "Organization",
+      name: input.seo.organizationName || input.seo.siteName || "GapSnap",
+      logo: input.seo.organizationLogoUrl
+        ? {
+            "@type": "ImageObject",
+            url: input.seo.organizationLogoUrl,
+          }
+        : undefined,
+    },
+    image: input.imageUrl || undefined,
+  };
+}

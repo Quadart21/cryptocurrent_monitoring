@@ -20,7 +20,7 @@ export function Footer() {
             Обменники
           </Link>
           <Link href="/blog" className="hover:text-accent-deep">
-            Блог
+            Новости
           </Link>
           <Link href="/advertise" className="hover:text-accent-deep">
             Реклама

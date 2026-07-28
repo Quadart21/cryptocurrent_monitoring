@@ -25,6 +25,7 @@ export async function POST(request: Request) {
     slug?: string;
     excerpt?: string;
     body?: string;
+    coverImageUrl?: string;
     status?: BlogPostStatus;
     seoTitle?: string;
     seoDescription?: string;
@@ -39,6 +40,7 @@ export async function POST(request: Request) {
     slug: body.slug,
     excerpt: body.excerpt,
     body: body.body,
+    coverImageUrl: body.coverImageUrl,
     status: body.status,
     seoTitle: body.seoTitle,
     seoDescription: body.seoDescription,
@@ -57,6 +59,7 @@ export async function PATCH(request: Request) {
     slug?: string;
     excerpt?: string;
     body?: string;
+    coverImageUrl?: string;
     status?: BlogPostStatus;
     seoTitle?: string;
     seoDescription?: string;
