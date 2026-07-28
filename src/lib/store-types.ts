@@ -281,6 +281,14 @@ export type NewsSettings = {
   enabled: boolean;
   lastSyncAt: string | null;
   lastSyncResult: NewsSyncResultSummary | null;
+  proxyEnabled: boolean;
+  proxyUser: string;
+  proxyPass: string;
+  proxyPort: number;
+  /** Raw multiline / comma-separated IP list from admin. */
+  proxyHosts: string;
+  /** Parsed unique IPv4 hosts. */
+  proxyHostList: string[];
   updatedAt: string;
 };
 

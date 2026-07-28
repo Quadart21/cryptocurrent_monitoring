@@ -1,12 +1,15 @@
 import "server-only";
 
-const DEFAULT_LIST_URL = "https://super-proxy.net/ruip.html";
-const DEFAULT_PORT = 7165;
-const LIST_CACHE_MS = 30 * 60 * 1000;
+import { DEFAULT_PROXY_PORT } from "@/lib/ai/default-proxies";
+import { getNewsSettings } from "@/lib/store";
 
 type ProxyPoolState = {
   hosts: string[];
-  fetchedAt: number;
+  user: string;
+  pass: string;
+  port: number;
+  enabled: boolean;
+  loadedAt: number;
   cursor: number;
 };
 
@@ -17,87 +20,73 @@ declare global {
 
 function pool(): ProxyPoolState {
   if (!globalThis.__gapsnapProxyPool) {
-    globalThis.__gapsnapProxyPool = { hosts: [], fetchedAt: 0, cursor: 0 };
+    globalThis.__gapsnapProxyPool = {
+      hosts: [],
+      user: "",
+      pass: "",
+      port: DEFAULT_PROXY_PORT,
+      enabled: false,
+      loadedAt: 0,
+      cursor: 0,
+    };
   }
   return globalThis.__gapsnapProxyPool;
 }
 
-export function proxyAuthConfigured(): boolean {
-  return Boolean(
-    process.env.CODEX_PROXY_USER?.trim() &&
-      process.env.CODEX_PROXY_PASS?.trim(),
-  );
+export function resetProxyPool(): void {
+  globalThis.__gapsnapProxyPool = {
+    hosts: [],
+    user: "",
+    pass: "",
+    port: DEFAULT_PROXY_PORT,
+    enabled: false,
+    loadedAt: 0,
+    cursor: 0,
+  };
 }
 
-function proxyPort(): number {
-  const raw = Number(process.env.CODEX_PROXY_PORT ?? DEFAULT_PORT);
-  return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : DEFAULT_PORT;
-}
-
-function hostsFromEnv(): string[] {
-  const raw = process.env.CODEX_PROXY_HOSTS?.trim() ?? "";
-  if (!raw) return [];
-  return raw
-    .split(/[\s,;]+/)
-    .map((h) => h.trim())
-    .filter((h) => /^\d{1,3}(\.\d{1,3}){3}$/.test(h));
-}
-
-function parseHostsFromHtml(html: string): string[] {
-  const matches = html.match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g) ?? [];
-  const uniq = new Set<string>();
-  for (const ip of matches) {
-    const parts = ip.split(".").map(Number);
-    if (
-      parts.length === 4 &&
-      parts.every((n) => Number.isInteger(n) && n >= 0 && n <= 255)
-    ) {
-      uniq.add(ip);
-    }
-  }
-  return [...uniq];
-}
-
-async function refreshHosts(force = false): Promise<string[]> {
+async function loadPool(force = false): Promise<ProxyPoolState> {
   const state = pool();
-  const envHosts = hostsFromEnv();
-  if (envHosts.length) {
-    state.hosts = envHosts;
-    state.fetchedAt = Date.now();
-    return state.hosts;
+  if (!force && state.loadedAt && Date.now() - state.loadedAt < 5_000) {
+    return state;
   }
 
-  if (
-    !force &&
-    state.hosts.length &&
-    Date.now() - state.fetchedAt < LIST_CACHE_MS
-  ) {
-    return state.hosts;
-  }
+  const settings = await getNewsSettings();
+  // Env can still override credentials if DB empty
+  const user =
+    settings.proxyUser.trim() ||
+    process.env.CODEX_PROXY_USER?.trim() ||
+    "";
+  const pass =
+    settings.proxyPass || process.env.CODEX_PROXY_PASS?.trim() || "";
+  const port =
+    settings.proxyPort > 0
+      ? settings.proxyPort
+      : Number(process.env.CODEX_PROXY_PORT ?? DEFAULT_PROXY_PORT) ||
+        DEFAULT_PROXY_PORT;
+  const hosts =
+    settings.proxyHostList.length > 0
+      ? settings.proxyHostList
+      : (process.env.CODEX_PROXY_HOSTS ?? "")
+          .split(/[\s,;]+/)
+          .map((h) => h.trim())
+          .filter(Boolean);
 
-  const listUrl =
-    process.env.CODEX_PROXY_LIST_URL?.trim() || DEFAULT_LIST_URL;
-  try {
-    const res = await fetch(listUrl, {
-      cache: "no-store",
-      headers: { Accept: "text/html,*/*", "User-Agent": "GapSnapNews/1.0" },
-      signal: AbortSignal.timeout(20_000),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const html = await res.text();
-    const hosts = parseHostsFromHtml(html);
-    if (hosts.length) {
-      state.hosts = hosts;
-      state.fetchedAt = Date.now();
-      state.cursor = state.cursor % state.hosts.length;
-      console.info(`[gapsnap] proxy pool loaded: ${hosts.length} hosts`);
-      return state.hosts;
-    }
-  } catch (err) {
-    console.error("[gapsnap] proxy list fetch failed", err);
+  state.enabled = Boolean(settings.proxyEnabled && user && pass && hosts.length);
+  state.user = user;
+  state.pass = pass;
+  state.port = port;
+  state.hosts = hosts;
+  state.loadedAt = Date.now();
+  if (state.hosts.length) {
+    state.cursor = state.cursor % state.hosts.length;
   }
+  return state;
+}
 
-  return state.hosts;
+export async function proxyAuthConfigured(): Promise<boolean> {
+  const state = await loadPool();
+  return state.enabled;
 }
 
 export type ProxyEndpoint = {
@@ -110,23 +99,23 @@ export type ProxyEndpoint = {
 };
 
 export async function nextProxyEndpoint(): Promise<ProxyEndpoint | null> {
-  if (!proxyAuthConfigured()) return null;
-  const hosts = await refreshHosts();
-  if (!hosts.length) return null;
+  const state = await loadPool();
+  if (!state.enabled || !state.hosts.length) return null;
 
-  const state = pool();
-  const host = hosts[state.cursor % hosts.length]!;
-  state.cursor = (state.cursor + 1) % hosts.length;
+  const host = state.hosts[state.cursor % state.hosts.length]!;
+  state.cursor = (state.cursor + 1) % state.hosts.length;
 
-  const user = process.env.CODEX_PROXY_USER!.trim();
-  const pass = process.env.CODEX_PROXY_PASS!.trim();
-  const port = proxyPort();
-  const url = `http://${encodeURIComponent(user)}:${encodeURIComponent(pass)}@${host}:${port}`;
-  return { host, port, user, pass, url };
+  const url = `http://${encodeURIComponent(state.user)}:${encodeURIComponent(state.pass)}@${host}:${state.port}`;
+  return {
+    host,
+    port: state.port,
+    user: state.user,
+    pass: state.pass,
+    url,
+  };
 }
 
-/** Force rotate to next IP (e.g. after 429). Does not re-download the list. */
+/** Auto-rotate to next IP (e.g. after 429). */
 export async function rotateProxyEndpoint(): Promise<ProxyEndpoint | null> {
-  await refreshHosts(false);
   return nextProxyEndpoint();
 }

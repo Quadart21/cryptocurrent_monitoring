@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { assertAdmin } from "@/lib/admin-guard";
+import {
+  DEFAULT_PROXY_HOSTS,
+  formatProxyHosts,
+} from "@/lib/ai/default-proxies";
 import { DEFAULT_NEWS_REWRITE_PROMPT } from "@/lib/news/default-prompt";
 import { getNewsSettings, updateNewsSettings } from "@/lib/store";
 
@@ -13,6 +17,7 @@ export async function GET() {
   return NextResponse.json({
     settings,
     defaultPrompt: DEFAULT_NEWS_REWRITE_PROMPT,
+    defaultProxyHosts: formatProxyHosts(DEFAULT_PROXY_HOSTS),
     placeholders: [
       "{{title}}",
       "{{anons}}",
@@ -33,6 +38,12 @@ export async function PATCH(request: Request) {
     rewritePrompt?: string;
     enabled?: boolean;
     resetPrompt?: boolean;
+    proxyEnabled?: boolean;
+    proxyUser?: string;
+    proxyPass?: string;
+    proxyPort?: number;
+    proxyHosts?: string;
+    resetProxyHosts?: boolean;
   };
   const settings = await updateNewsSettings({
     model: body.model,
@@ -40,6 +51,13 @@ export async function PATCH(request: Request) {
       ? DEFAULT_NEWS_REWRITE_PROMPT
       : body.rewritePrompt,
     enabled: body.enabled,
+    proxyEnabled: body.proxyEnabled,
+    proxyUser: body.proxyUser,
+    proxyPass: body.proxyPass,
+    proxyPort: body.proxyPort,
+    proxyHosts: body.resetProxyHosts
+      ? formatProxyHosts(DEFAULT_PROXY_HOSTS)
+      : body.proxyHosts,
   });
   return NextResponse.json({ settings });
 }

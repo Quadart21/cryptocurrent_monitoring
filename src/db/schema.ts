@@ -276,6 +276,11 @@ export const newsSettings = pgTable("news_settings", {
   enabled: boolean("enabled").notNull().default(false),
   lastSyncAt: text("last_sync_at"),
   lastSyncResult: text("last_sync_result").notNull().default(""),
+  proxyEnabled: boolean("proxy_enabled").notNull().default(true),
+  proxyUser: text("proxy_user").notNull().default(""),
+  proxyPass: text("proxy_pass").notNull().default(""),
+  proxyPort: integer("proxy_port").notNull().default(7165),
+  proxyHosts: text("proxy_hosts").notNull().default(""),
   updatedAt: text("updated_at").notNull().default(""),
 });
 

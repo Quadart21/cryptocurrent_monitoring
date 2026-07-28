@@ -45,6 +45,7 @@ export function BlogModule() {
 
   const [settings, setSettings] = useState<NewsSettings | null>(null);
   const [defaultPrompt, setDefaultPrompt] = useState("");
+  const [defaultProxyHosts, setDefaultProxyHosts] = useState("");
   const [placeholders, setPlaceholders] = useState<string[]>([]);
   const [models, setModels] = useState<CodexModel[]>([]);
   const [modelsError, setModelsError] = useState<string | null>(null);
@@ -66,10 +67,12 @@ export function BlogModule() {
     const body = (await res.json()) as {
       settings: NewsSettings;
       defaultPrompt: string;
+      defaultProxyHosts?: string;
       placeholders: string[];
     };
     setSettings(body.settings);
     setDefaultPrompt(body.defaultPrompt ?? "");
+    setDefaultProxyHosts(body.defaultProxyHosts ?? "");
     setPlaceholders(body.placeholders ?? []);
     if (body.settings.lastSyncResult) {
       setSyncResult(body.settings.lastSyncResult);
@@ -100,6 +103,12 @@ export function BlogModule() {
     rewritePrompt?: string;
     enabled?: boolean;
     resetPrompt?: boolean;
+    proxyEnabled?: boolean;
+    proxyUser?: string;
+    proxyPass?: string;
+    proxyPort?: number;
+    proxyHosts?: string;
+    resetProxyHosts?: boolean;
   }) {
     setBusy(true);
     setSettingsMsg(null);
@@ -414,6 +423,119 @@ export function BlogModule() {
               ) : null}
             </div>
           ) : null}
+        </div>
+      </AdminSection>
+
+      <AdminSection title="Прокси-пул (авторотация)">
+        <div className="grid gap-4 p-5">
+          <p className="text-xs text-ink-muted">
+            HTTP/HTTPS прокси. При 429 от codex.sale IP автоматически меняется
+            на следующий из списка. Сейчас в пуле:{" "}
+            {settings?.proxyHostList?.length ?? 0} адресов.
+          </p>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={Boolean(settings?.proxyEnabled)}
+              disabled={busy || !settings}
+              onChange={(e) =>
+                setSettings((s) =>
+                  s ? { ...s, proxyEnabled: e.target.checked } : s,
+                )
+              }
+            />
+            <span>Использовать прокси для запросов к codex.sale</span>
+          </label>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className="grid gap-1 text-sm">
+              <span className="text-ink-muted">Логин</span>
+              <input
+                className="rounded-2xl border border-line bg-input px-3 py-2.5 text-sm"
+                value={settings?.proxyUser ?? ""}
+                disabled={busy || !settings}
+                onChange={(e) =>
+                  setSettings((s) =>
+                    s ? { ...s, proxyUser: e.target.value } : s,
+                  )
+                }
+              />
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span className="text-ink-muted">Пароль</span>
+              <input
+                type="password"
+                className="rounded-2xl border border-line bg-input px-3 py-2.5 text-sm"
+                value={settings?.proxyPass ?? ""}
+                disabled={busy || !settings}
+                onChange={(e) =>
+                  setSettings((s) =>
+                    s ? { ...s, proxyPass: e.target.value } : s,
+                  )
+                }
+              />
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span className="text-ink-muted">Порт</span>
+              <input
+                type="number"
+                className="rounded-2xl border border-line bg-input px-3 py-2.5 text-sm"
+                value={settings?.proxyPort ?? 7165}
+                disabled={busy || !settings}
+                onChange={(e) =>
+                  setSettings((s) =>
+                    s
+                      ? {
+                          ...s,
+                          proxyPort: Number(e.target.value) || 7165,
+                        }
+                      : s,
+                  )
+                }
+              />
+            </label>
+          </div>
+          <label className="grid gap-1 text-sm">
+            <span className="text-ink-muted">
+              Список IP (по одному в строке или через запятую)
+            </span>
+            <textarea
+              className="min-h-[180px] rounded-2xl border border-line bg-input px-3 py-2.5 font-mono text-xs leading-relaxed"
+              value={settings?.proxyHosts ?? ""}
+              disabled={busy || !settings}
+              placeholder={"185.66.12.4\n185.39.148.130\n..."}
+              onChange={(e) =>
+                setSettings((s) =>
+                  s ? { ...s, proxyHosts: e.target.value } : s,
+                )
+              }
+            />
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={busy || !settings}
+              className="btn-primary rounded-xl px-4 py-2.5 text-sm font-semibold"
+              onClick={() =>
+                void saveSettings({
+                  proxyEnabled: settings?.proxyEnabled,
+                  proxyUser: settings?.proxyUser,
+                  proxyPass: settings?.proxyPass,
+                  proxyPort: settings?.proxyPort,
+                  proxyHosts: settings?.proxyHosts,
+                })
+              }
+            >
+              Сохранить прокси
+            </button>
+            <button
+              type="button"
+              disabled={busy || !defaultProxyHosts}
+              className="rounded-xl border border-line px-4 py-2.5 text-sm"
+              onClick={() => void saveSettings({ resetProxyHosts: true })}
+            >
+              Вставить дефолтный пул Super-Proxy (100 IP)
+            </button>
+          </div>
         </div>
       </AdminSection>
 

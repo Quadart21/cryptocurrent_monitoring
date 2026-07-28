@@ -21,6 +21,12 @@ import {
   type ExchangerTrafficJson,
 } from "@/db/schema";
 import { seedAdPricing, seedSeo } from "@/db/seed";
+import {
+  DEFAULT_PROXY_HOSTS,
+  DEFAULT_PROXY_PORT,
+  formatProxyHosts,
+  parseProxyHosts,
+} from "@/lib/ai/default-proxies";
 import { emptyAdStats, normalizeAdStats, utcDayKey } from "@/lib/ads";
 import {
   emptyBannerCheck,
@@ -1960,12 +1966,19 @@ function parseNewsSyncResult(raw: string): NewsSyncResultSummary | null {
 }
 
 function mapNewsSettings(row: typeof newsSettings.$inferSelect | undefined): NewsSettings {
+  const proxyHosts = row?.proxyHosts ?? "";
   return {
     model: row?.model ?? "",
     rewritePrompt: row?.rewritePrompt ?? "",
     enabled: Boolean(row?.enabled),
     lastSyncAt: row?.lastSyncAt ?? null,
     lastSyncResult: parseNewsSyncResult(row?.lastSyncResult ?? ""),
+    proxyEnabled: row?.proxyEnabled ?? true,
+    proxyUser: row?.proxyUser ?? "",
+    proxyPass: row?.proxyPass ?? "",
+    proxyPort: Number(row?.proxyPort) > 0 ? Number(row?.proxyPort) : DEFAULT_PROXY_PORT,
+    proxyHosts,
+    proxyHostList: parseProxyHosts(proxyHosts),
     updatedAt: row?.updatedAt ?? "",
   };
 }
@@ -2195,27 +2208,61 @@ export async function deleteBlogPost(id: string): Promise<boolean> {
 async function ensureNewsSettingsRow(): Promise<void> {
   const db = getDb();
   const [row] = await db
-    .select({ id: newsSettings.id })
+    .select()
     .from(newsSettings)
     .where(eq(newsSettings.id, 1))
     .limit(1);
-  if (row) return;
   const { DEFAULT_NEWS_REWRITE_PROMPT } = await import(
     "@/lib/news/default-prompt"
   );
   const now = new Date().toISOString();
-  await db
-    .insert(newsSettings)
-    .values({
-      id: 1,
-      model: "",
-      rewritePrompt: DEFAULT_NEWS_REWRITE_PROMPT,
-      enabled: false,
-      lastSyncAt: null,
-      lastSyncResult: "",
-      updatedAt: now,
-    })
-    .onConflictDoNothing();
+  const envUser = process.env.CODEX_PROXY_USER?.trim() ?? "";
+  const envPass = process.env.CODEX_PROXY_PASS?.trim() ?? "";
+  const envPort = Number(process.env.CODEX_PROXY_PORT ?? "");
+  const defaultHosts = formatProxyHosts(DEFAULT_PROXY_HOSTS);
+
+  if (!row) {
+    await db
+      .insert(newsSettings)
+      .values({
+        id: 1,
+        model: "",
+        rewritePrompt: DEFAULT_NEWS_REWRITE_PROMPT,
+        enabled: false,
+        lastSyncAt: null,
+        lastSyncResult: "",
+        proxyEnabled: true,
+        proxyUser: envUser,
+        proxyPass: envPass,
+        proxyPort:
+          Number.isFinite(envPort) && envPort > 0
+            ? Math.floor(envPort)
+            : DEFAULT_PROXY_PORT,
+        proxyHosts: defaultHosts,
+        updatedAt: now,
+      })
+      .onConflictDoNothing();
+    return;
+  }
+
+  // Backfill empty proxy pool / credentials once after migration
+  const patch: Record<string, unknown> = {};
+  if (!(row.proxyHosts ?? "").trim()) patch.proxyHosts = defaultHosts;
+  if (!(row.proxyUser ?? "").trim() && envUser) patch.proxyUser = envUser;
+  if (!(row.proxyPass ?? "").trim() && envPass) patch.proxyPass = envPass;
+  if (!row.proxyPort || row.proxyPort <= 0) {
+    patch.proxyPort =
+      Number.isFinite(envPort) && envPort > 0
+        ? Math.floor(envPort)
+        : DEFAULT_PROXY_PORT;
+  }
+  if (Object.keys(patch).length) {
+    patch.updatedAt = now;
+    await db
+      .update(newsSettings)
+      .set(patch)
+      .where(eq(newsSettings.id, 1));
+  }
 }
 
 export async function getNewsSettings(): Promise<NewsSettings> {
@@ -2238,7 +2285,17 @@ export async function getNewsSettings(): Promise<NewsSettings> {
 
 export async function updateNewsSettings(
   patch: Partial<
-    Pick<NewsSettings, "model" | "rewritePrompt" | "enabled">
+    Pick<
+      NewsSettings,
+      | "model"
+      | "rewritePrompt"
+      | "enabled"
+      | "proxyEnabled"
+      | "proxyUser"
+      | "proxyPass"
+      | "proxyPort"
+      | "proxyHosts"
+    >
   > & {
     lastSyncAt?: string | null;
     lastSyncResult?: NewsSyncResultSummary | null;
@@ -2247,14 +2304,13 @@ export async function updateNewsSettings(
   await ensureNewsSettingsRow();
   const current = await getNewsSettings();
   const now = new Date().toISOString();
-  const next: {
-    model: string;
-    rewritePrompt: string;
-    enabled: boolean;
-    lastSyncAt: string | null;
-    lastSyncResult: string;
-    updatedAt: string;
-  } = {
+
+  const proxyHostsRaw =
+    typeof patch.proxyHosts === "string"
+      ? formatProxyHosts(parseProxyHosts(patch.proxyHosts))
+      : current.proxyHosts;
+
+  const next = {
     model: typeof patch.model === "string" ? patch.model.trim() : current.model,
     rewritePrompt:
       typeof patch.rewritePrompt === "string"
@@ -2272,8 +2328,24 @@ export async function updateNewsSettings(
         : current.lastSyncResult
           ? JSON.stringify(current.lastSyncResult)
           : "",
+    proxyEnabled:
+      typeof patch.proxyEnabled === "boolean"
+        ? patch.proxyEnabled
+        : current.proxyEnabled,
+    proxyUser:
+      typeof patch.proxyUser === "string"
+        ? patch.proxyUser.trim()
+        : current.proxyUser,
+    proxyPass:
+      typeof patch.proxyPass === "string" ? patch.proxyPass : current.proxyPass,
+    proxyPort:
+      typeof patch.proxyPort === "number" && patch.proxyPort > 0
+        ? Math.floor(patch.proxyPort)
+        : current.proxyPort,
+    proxyHosts: proxyHostsRaw,
     updatedAt: now,
   };
+
   const db = getDb();
   await db
     .insert(newsSettings)
@@ -2282,6 +2354,14 @@ export async function updateNewsSettings(
       target: newsSettings.id,
       set: next,
     });
+
+  try {
+    const { resetProxyPool } = await import("@/lib/ai/proxy-pool");
+    resetProxyPool();
+  } catch {
+    /* ignore */
+  }
+
   return getNewsSettings();
 }
 

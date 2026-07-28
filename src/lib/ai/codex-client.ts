@@ -74,7 +74,8 @@ export function codexConfigured(): boolean {
 async function resolveProxy(
   preferRotate: boolean,
 ): Promise<ProxyEndpoint | null> {
-  if (!proxyAuthConfigured()) return null;
+  const configured = await proxyAuthConfigured();
+  if (!configured) return null;
   return preferRotate ? rotateProxyEndpoint() : nextProxyEndpoint();
 }
 
