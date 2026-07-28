@@ -23,6 +23,11 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const exchangerId = searchParams.get("exchangerId") ?? undefined;
   const slug = searchParams.get("slug");
+  const limitRaw = Number(searchParams.get("limit") ?? "");
+  const limit =
+    Number.isFinite(limitRaw) && limitRaw > 0
+      ? Math.min(50, Math.floor(limitRaw))
+      : undefined;
 
   let id = exchangerId;
   if (!id && slug) {
@@ -39,20 +44,23 @@ export async function GET(request: Request) {
   ]);
 
   const tagMap = Object.fromEntries(tags.map((t) => [t.id, t.label]));
+  const mapped = reviews.map((r) => ({
+    id: r.id,
+    exchangerName: r.exchangerName,
+    exchangerSlug: r.exchangerSlug,
+    sentiment: r.sentiment,
+    orderId: r.orderId,
+    text: r.text,
+    createdAt: r.createdAt,
+    ownerReply: r.ownerReply,
+    ownerRepliedAt: r.ownerRepliedAt,
+    qualityLabels: r.qualityTagIds
+      .map((tid) => tagMap[tid])
+      .filter(Boolean),
+  }));
 
   return NextResponse.json({
-    reviews: reviews.map((r) => ({
-      id: r.id,
-      sentiment: r.sentiment,
-      orderId: r.orderId,
-      text: r.text,
-      createdAt: r.createdAt,
-      ownerReply: r.ownerReply,
-      ownerRepliedAt: r.ownerRepliedAt,
-      qualityLabels: r.qualityTagIds
-        .map((tid) => tagMap[tid])
-        .filter(Boolean),
-    })),
+    reviews: limit ? mapped.slice(0, limit) : mapped,
     tags,
   });
 }

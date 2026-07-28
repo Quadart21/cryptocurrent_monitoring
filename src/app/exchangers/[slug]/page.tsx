@@ -8,9 +8,19 @@ import {
   ExchangerPageViewBeacon,
 } from "@/components/ExchangerOutboundLink";
 import { ExchangerReviews } from "@/components/ExchangerReviews";
+import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { ShareButtons } from "@/components/seo/ShareButtons";
+import { pairPath } from "@/lib/bestchange/pair-slug";
+import { absoluteUrl, normalizeSiteUrl } from "@/lib/seo";
+import {
+  buildAggregateRatingJsonLd,
+  buildBreadcrumbJsonLd,
+} from "@/lib/seo-jsonld";
 import {
   getActiveRates,
   getExchangerBySlug,
+  getSeoSettings,
   resolveExchangerAchievements,
 } from "@/lib/store";
 import { formatRating, formatWorkingSince } from "@/lib/format";
@@ -21,7 +31,20 @@ export const revalidate = 60;
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const ex = await getExchangerBySlug(slug, { publicOnly: true });
-  return { title: ex ? ex.name : "Обменник" };
+  if (!ex) return { title: "Обменник" };
+  const seo = await getSeoSettings();
+  const title = `${ex.name} — отзывы, рейтинг и курсы`;
+  const description =
+    ex.description?.trim() ||
+    `Обменник ${ex.name}: рейтинг ${formatRating(ex.rating, ex.reviews)}, ${ex.reviews} отзывов, актуальные направления на GapSnap.`;
+  const path = `/exchangers/${ex.slug}`;
+  const canonical = absoluteUrl(seo.siteUrl, path) ?? path;
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    openGraph: { title, description, url: canonical, type: "website" },
+  };
 }
 
 export default async function ExchangerPage({ params }: Props) {
@@ -29,20 +52,52 @@ export default async function ExchangerPage({ params }: Props) {
   const ex = await getExchangerBySlug(slug, { publicOnly: true });
   if (!ex) notFound();
 
-  const [livePairs, badges] = await Promise.all([
-    getActiveRates().then((rates) =>
-      rates.filter((o) => o.exchangerId === ex.id).length,
-    ),
+  const [liveRates, badges, seo] = await Promise.all([
+    getActiveRates(),
     resolveExchangerAchievements(ex.achievementIds),
+    getSeoSettings(),
   ]);
+  const ownRates = liveRates.filter((o) => o.exchangerId === ex.id);
+  const livePairs = ownRates.length;
   const directions = Math.max(ex.pairCount, livePairs);
+  const pairLinks = [
+    ...new Map(
+      ownRates.map((r) => [`${r.from}:${r.to}`, [r.from, r.to] as const]),
+    ).values(),
+  ].slice(0, 24);
+
+  const path = `/exchangers/${ex.slug}`;
+  const shareUrl =
+    absoluteUrl(seo.siteUrl, path) ??
+    (normalizeSiteUrl(seo.siteUrl) ? undefined : undefined);
 
   return (
     <div className="space-y-6">
+      <JsonLd
+        data={[
+          buildBreadcrumbJsonLd(seo, [
+            { name: "Главная", path: "/" },
+            { name: "Обменники", path: "/exchangers" },
+            { name: ex.name, path },
+          ]),
+          buildAggregateRatingJsonLd({
+            seo,
+            name: ex.name,
+            urlPath: path,
+            description: ex.description,
+            rating: ex.rating,
+            reviewCount: ex.reviews,
+          }),
+        ].filter(Boolean) as object[]}
+      />
       <ExchangerPageViewBeacon exchangerId={ex.id} />
-      <Link href="/exchangers" className="text-sm text-ink-muted hover:text-accent">
-        ← Все обменники
-      </Link>
+      <Breadcrumbs
+        items={[
+          { href: "/", label: "Главная" },
+          { href: "/exchangers", label: "Обменники" },
+          { label: ex.name },
+        ]}
+      />
 
       <div className="card p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -59,11 +114,16 @@ export default async function ExchangerPage({ params }: Props) {
                   {ex.name}
                 </h1>
                 <AchievementBadges achievements={badges} size={22} />
+                {ex.verified ? (
+                  <span className="rounded-lg bg-ok/15 px-2 py-0.5 text-[11px] font-semibold text-ok">
+                    Проверен
+                  </span>
+                ) : null}
               </div>
               <p className="mt-2 max-w-2xl text-ink-muted">{ex.description}</p>
-              <p className="mt-2 break-all text-xs text-ink-muted">
-                Фид: {ex.feedUrl}
-              </p>
+              <div className="mt-3">
+                <ShareButtons title={ex.name} url={shareUrl} />
+              </div>
             </div>
           </div>
           {ex.website ? (
@@ -114,6 +174,25 @@ export default async function ExchangerPage({ params }: Props) {
           ))}
         </dl>
       </div>
+
+      {pairLinks.length > 0 ? (
+        <section className="space-y-3">
+          <h2 className="font-display text-xl font-semibold text-ink">
+            Валютные пары обменника
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {pairLinks.map(([from, to]) => (
+              <Link
+                key={`${from}-${to}`}
+                href={pairPath(from, to)}
+                className="rounded-xl border border-line px-3 py-1.5 text-xs font-semibold text-ink-muted hover:border-accent/40 hover:text-ink"
+              >
+                {from} → {to}
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <ExchangerReviews
         exchangerId={ex.id}

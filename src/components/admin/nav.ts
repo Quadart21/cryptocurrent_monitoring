@@ -51,6 +51,12 @@ export const ADMIN_NAV: AdminNavItem[] = [
     description: "Мета, robots, sitemap",
   },
   {
+    id: "blog",
+    href: `${ADMIN_PATH}/blog`,
+    label: "Блог",
+    description: "Статьи и публикация",
+  },
+  {
     id: "email",
     href: `${ADMIN_PATH}/email`,
     label: "Email",

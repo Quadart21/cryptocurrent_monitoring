@@ -227,5 +227,30 @@ export type SeoSettings = {
   jsonLdEnabled: boolean;
   organizationName: string;
   organizationLogoUrl: string;
+  /** GA4 measurement id, e.g. G-XXXX */
+  googleAnalyticsId: string;
+  /** Yandex.Metrika counter id */
+  yandexMetricaId: string;
+  /** Google Tag Manager id, e.g. GTM-XXXX */
+  gtmId: string;
+};
+
+export type BlogPostStatus = "draft" | "published";
+
+export type BlogPost = {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  body: string;
+  coverImageUrl: string;
+  tags: string[];
+  status: BlogPostStatus;
+  seoTitle: string;
+  seoDescription: string;
+  authorName: string;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 

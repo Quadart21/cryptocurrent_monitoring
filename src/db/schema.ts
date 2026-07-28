@@ -217,7 +217,35 @@ export const seo = pgTable("seo", {
   jsonLdEnabled: boolean("json_ld_enabled").notNull().default(true),
   organizationName: text("organization_name").notNull(),
   organizationLogoUrl: text("organization_logo_url").notNull().default(""),
+  googleAnalyticsId: text("google_analytics_id").notNull().default(""),
+  yandexMetricaId: text("yandex_metrica_id").notNull().default(""),
+  gtmId: text("gtm_id").notNull().default(""),
 });
+
+/** Public blog / SEO content */
+export const blogPosts = pgTable(
+  "blog_posts",
+  {
+    id: text("id").primaryKey(),
+    slug: text("slug").notNull().unique(),
+    title: text("title").notNull(),
+    excerpt: text("excerpt").notNull().default(""),
+    body: text("body").notNull().default(""),
+    coverImageUrl: text("cover_image_url").notNull().default(""),
+    tags: text("tags").array().notNull().default([]),
+    status: text("status").notNull().default("draft"),
+    seoTitle: text("seo_title").notNull().default(""),
+    seoDescription: text("seo_description").notNull().default(""),
+    authorName: text("author_name").notNull().default(""),
+    publishedAt: text("published_at"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => [
+    index("blog_posts_status_idx").on(t.status),
+    index("blog_posts_published_at_idx").on(t.publishedAt),
+  ],
+);
 
 export const appMeta = pgTable("app_meta", {
   id: integer("id").primaryKey().default(1),

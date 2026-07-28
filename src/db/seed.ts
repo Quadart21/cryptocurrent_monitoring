@@ -137,6 +137,9 @@ export const seedSeo: SeoSettings = {
   jsonLdEnabled: true,
   organizationName: "GapSnap",
   organizationLogoUrl: "",
+  googleAnalyticsId: "",
+  yandexMetricaId: "",
+  gtmId: "",
 };
 
 export const seedAdTariffs: AdTariff[] = [
@@ -357,6 +360,9 @@ export async function ensureSeeded(db: Db): Promise<void> {
       jsonLdEnabled: seedSeo.jsonLdEnabled,
       organizationName: seedSeo.organizationName,
       organizationLogoUrl: seedSeo.organizationLogoUrl,
+      googleAnalyticsId: seedSeo.googleAnalyticsId,
+      yandexMetricaId: seedSeo.yandexMetricaId,
+      gtmId: seedSeo.gtmId,
     });
 
     await tx

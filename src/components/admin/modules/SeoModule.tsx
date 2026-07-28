@@ -33,6 +33,9 @@ const emptySeo: SeoSettings = {
   jsonLdEnabled: true,
   organizationName: "",
   organizationLogoUrl: "",
+  googleAnalyticsId: "",
+  yandexMetricaId: "",
+  gtmId: "",
 };
 
 function Field({
@@ -364,6 +367,32 @@ export function SeoModule() {
                 className={inputClass}
                 value={seo.organizationLogoUrl}
                 onChange={(e) => patch("organizationLogoUrl", e.target.value)}
+              />
+            </Field>
+          </div>
+        </AdminSection>
+
+        <AdminSection title="Аналитика">
+          <div className="grid gap-4 p-5 lg:grid-cols-3">
+            <Field label="Google Analytics 4" hint="G-XXXXXXXX">
+              <input
+                className={inputClass}
+                value={seo.googleAnalyticsId}
+                onChange={(e) => patch("googleAnalyticsId", e.target.value)}
+              />
+            </Field>
+            <Field label="Яндекс.Метрика" hint="числовой ID счётчика">
+              <input
+                className={inputClass}
+                value={seo.yandexMetricaId}
+                onChange={(e) => patch("yandexMetricaId", e.target.value)}
+              />
+            </Field>
+            <Field label="Google Tag Manager" hint="GTM-XXXX">
+              <input
+                className={inputClass}
+                value={seo.gtmId}
+                onChange={(e) => patch("gtmId", e.target.value)}
               />
             </Field>
           </div>

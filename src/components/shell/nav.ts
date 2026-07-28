@@ -2,7 +2,7 @@ export type NavItem = {
   href: string;
   label: string;
   hint: string;
-  icon: "exchange" | "list" | "ad" | "plus" | "cabinet" | "block";
+  icon: "exchange" | "list" | "ad" | "plus" | "cabinet" | "block" | "rates" | "blog";
 };
 
 export const SITE_NAV: NavItem[] = [
@@ -13,10 +13,22 @@ export const SITE_NAV: NavItem[] = [
     icon: "exchange",
   },
   {
+    href: "/rates",
+    label: "Курсы",
+    hint: "Страницы пар",
+    icon: "rates",
+  },
+  {
     href: "/exchangers",
     label: "Обменники",
     hint: "Каталог сервисов",
     icon: "list",
+  },
+  {
+    href: "/blog",
+    label: "Блог",
+    hint: "Статьи и гайды",
+    icon: "blog",
   },
   {
     href: "/advertise",

@@ -13,11 +13,20 @@ export function Footer() {
           </p>
         </div>
         <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-ink-muted">
+          <Link href="/rates" className="hover:text-accent-deep">
+            Курсы
+          </Link>
           <Link href="/exchangers" className="hover:text-accent-deep">
             Обменники
           </Link>
+          <Link href="/blog" className="hover:text-accent-deep">
+            Блог
+          </Link>
           <Link href="/advertise" className="hover:text-accent-deep">
             Реклама
+          </Link>
+          <Link href="/partners" className="hover:text-accent-deep">
+            Партнёрам
           </Link>
           <Link href="/apply" className="hover:text-accent-deep">
             Добавить
@@ -27,6 +36,12 @@ export function Footer() {
           </Link>
           <Link href="/blacklist" className="hover:text-accent-deep">
             Чёрный список
+          </Link>
+          <Link href="/privacy" className="hover:text-accent-deep">
+            Конфиденциальность
+          </Link>
+          <Link href="/offer" className="hover:text-accent-deep">
+            Оферта
           </Link>
         </div>
       </div>

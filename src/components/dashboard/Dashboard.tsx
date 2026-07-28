@@ -10,7 +10,10 @@ import type {
 import type { LiveOffer } from "@/components/RateTable";
 import { OverviewCards } from "@/components/dashboard/OverviewCards";
 import { StatsChart } from "@/components/dashboard/StatsChart";
-import { RatesBoard } from "@/components/dashboard/RatesBoard";
+import {
+  RatesBoard,
+  type RatesSortBy,
+} from "@/components/dashboard/RatesBoard";
 import {
   FastAction,
   type ExchangeMode,
@@ -50,6 +53,19 @@ export function Dashboard({
   const [exchangerCount] = useState(initialExchangerCount);
   const [pairCount, setPairCount] = useState(initialPairCount);
   const [loading, setLoading] = useState(false);
+  /** 0 = show rate per 1 unit */
+  const [amount, setAmount] = useState(0);
+  const [sortBy, setSortBy] = useState<RatesSortBy>("rate");
+  const [recentReviews, setRecentReviews] = useState<
+    Array<{
+      id: string;
+      exchangerName: string;
+      exchangerSlug: string;
+      sentiment: string;
+      text: string;
+      createdAt: string;
+    }>
+  >([]);
   const bootstrapped = useRef(true);
   const requestId = useRef(0);
   const skipFirstPoll = useRef(true);
@@ -207,6 +223,30 @@ export function Dashboard({
     };
   }, [from, to, mode, city, loadRates]);
 
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch("/api/reviews?status=approved&limit=3", {
+          cache: "no-store",
+        });
+        if (!res.ok) return;
+        const body = (await res.json()) as {
+          reviews?: Array<{
+            id: string;
+            exchangerName: string;
+            exchangerSlug: string;
+            sentiment: string;
+            text: string;
+            createdAt: string;
+          }>;
+        };
+        setRecentReviews((body.reviews ?? []).slice(0, 3));
+      } catch {
+        // ignore
+      }
+    })();
+  }, []);
+
   function onModeChange(next: ExchangeMode) {
     if (next === mode) return;
     const defaults = defaultsForMode(next);
@@ -289,6 +329,12 @@ export function Dashboard({
           to={to}
           loading={loading}
           cityLabel={mode === "cash" ? cityDisplayName : undefined}
+          amount={amount}
+          onAmountChange={setAmount}
+          lastSyncAt={lastSyncAt}
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+          recentReviews={recentReviews}
         />
       </div>
     </div>

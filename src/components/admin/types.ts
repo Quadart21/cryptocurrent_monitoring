@@ -47,6 +47,7 @@ export type AdminNavId =
   | "ad-tariffs"
   | "seo"
   | "email"
+  | "blog"
   | "blacklist"
   | "catalog"
   | "sync";

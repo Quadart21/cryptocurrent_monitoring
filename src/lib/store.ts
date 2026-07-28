@@ -9,6 +9,7 @@ import {
   adTariffs,
   appMeta,
   blacklist,
+  blogPosts,
   exchangers,
   qualityTags,
   rates,
@@ -32,6 +33,8 @@ import type {
   AdTariffPeriod,
   AdType,
   BlacklistItem,
+  BlogPost,
+  BlogPostStatus,
   ExchangerAchievement,
   ExchangerLogo,
   ExchangerReview,
@@ -250,6 +253,9 @@ function mapSeo(row: SeoRow | undefined): SeoSettings {
     jsonLdEnabled: row.jsonLdEnabled,
     organizationName: row.organizationName || seedSeo.organizationName,
     organizationLogoUrl: row.organizationLogoUrl,
+    googleAnalyticsId: row.googleAnalyticsId ?? "",
+    yandexMetricaId: row.yandexMetricaId ?? "",
+    gtmId: row.gtmId ?? "",
   };
 }
 
@@ -323,6 +329,15 @@ function normalizeSeoSettings(
       typeof raw?.organizationLogoUrl === "string"
         ? raw.organizationLogoUrl.trim()
         : "",
+    googleAnalyticsId:
+      typeof raw?.googleAnalyticsId === "string"
+        ? raw.googleAnalyticsId.trim()
+        : "",
+    yandexMetricaId:
+      typeof raw?.yandexMetricaId === "string"
+        ? raw.yandexMetricaId.trim()
+        : "",
+    gtmId: typeof raw?.gtmId === "string" ? raw.gtmId.trim() : "",
   };
 }
 
@@ -1585,6 +1600,9 @@ export async function updateSeoSettings(
       jsonLdEnabled: merged.jsonLdEnabled,
       organizationName: merged.organizationName,
       organizationLogoUrl: merged.organizationLogoUrl,
+      googleAnalyticsId: merged.googleAnalyticsId,
+      yandexMetricaId: merged.yandexMetricaId,
+      gtmId: merged.gtmId,
     })
     .onConflictDoUpdate({
       target: seo.id,
@@ -1612,6 +1630,9 @@ export async function updateSeoSettings(
         jsonLdEnabled: merged.jsonLdEnabled,
         organizationName: merged.organizationName,
         organizationLogoUrl: merged.organizationLogoUrl,
+        googleAnalyticsId: merged.googleAnalyticsId,
+        yandexMetricaId: merged.yandexMetricaId,
+        gtmId: merged.gtmId,
       },
     });
   return merged;
@@ -1824,4 +1845,225 @@ function slugify(value: string): string {
       .replace(/-+/g, "-")
       .replace(/^-+|-+$/g, "") || "exchanger"
   );
+}
+
+function mapBlogPost(row: typeof blogPosts.$inferSelect): BlogPost {
+  return {
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    excerpt: row.excerpt,
+    body: row.body,
+    coverImageUrl: row.coverImageUrl,
+    tags: row.tags ?? [],
+    status: row.status === "published" ? "published" : "draft",
+    seoTitle: row.seoTitle,
+    seoDescription: row.seoDescription,
+    authorName: row.authorName,
+    publishedAt: row.publishedAt,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+export async function listBlogPosts(options?: {
+  status?: BlogPostStatus | "all";
+}): Promise<BlogPost[]> {
+  const db = getDb();
+  const status = options?.status ?? "all";
+  const rows =
+    status === "all"
+      ? await db.select().from(blogPosts)
+      : await db
+          .select()
+          .from(blogPosts)
+          .where(eq(blogPosts.status, status));
+  return rows
+    .map(mapBlogPost)
+    .sort((a, b) =>
+      (b.publishedAt || b.createdAt).localeCompare(a.publishedAt || a.createdAt),
+    );
+}
+
+export async function getBlogPostBySlug(
+  slug: string,
+  options?: { publishedOnly?: boolean },
+): Promise<BlogPost | undefined> {
+  const db = getDb();
+  const [row] = await db
+    .select()
+    .from(blogPosts)
+    .where(eq(blogPosts.slug, slug))
+    .limit(1);
+  if (!row) return undefined;
+  const post = mapBlogPost(row);
+  if (options?.publishedOnly && post.status !== "published") return undefined;
+  return post;
+}
+
+export async function getBlogPostById(
+  id: string,
+): Promise<BlogPost | undefined> {
+  const db = getDb();
+  const [row] = await db
+    .select()
+    .from(blogPosts)
+    .where(eq(blogPosts.id, id))
+    .limit(1);
+  return row ? mapBlogPost(row) : undefined;
+}
+
+export async function createBlogPost(input: {
+  title: string;
+  slug?: string;
+  excerpt?: string;
+  body?: string;
+  coverImageUrl?: string;
+  tags?: string[];
+  status?: BlogPostStatus;
+  seoTitle?: string;
+  seoDescription?: string;
+  authorName?: string;
+}): Promise<BlogPost> {
+  const db = getDb();
+  const now = new Date().toISOString();
+  const baseSlug = slugify(input.slug?.trim() || input.title);
+  let slug = baseSlug;
+  let n = 2;
+  while (true) {
+    const [exists] = await db
+      .select({ id: blogPosts.id })
+      .from(blogPosts)
+      .where(eq(blogPosts.slug, slug))
+      .limit(1);
+    if (!exists) break;
+    slug = `${baseSlug}-${n++}`;
+  }
+  const status: BlogPostStatus =
+    input.status === "published" ? "published" : "draft";
+  const id = `bp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+  const [row] = await db
+    .insert(blogPosts)
+    .values({
+      id,
+      slug,
+      title: input.title.trim(),
+      excerpt: (input.excerpt ?? "").trim(),
+      body: input.body ?? "",
+      coverImageUrl: (input.coverImageUrl ?? "").trim(),
+      tags: input.tags ?? [],
+      status,
+      seoTitle: (input.seoTitle ?? "").trim(),
+      seoDescription: (input.seoDescription ?? "").trim(),
+      authorName: (input.authorName ?? "").trim() || "GapSnap",
+      publishedAt: status === "published" ? now : null,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning();
+  return mapBlogPost(row!);
+}
+
+export async function updateBlogPost(
+  id: string,
+  patch: Partial<
+    Pick<
+      BlogPost,
+      | "title"
+      | "slug"
+      | "excerpt"
+      | "body"
+      | "coverImageUrl"
+      | "tags"
+      | "status"
+      | "seoTitle"
+      | "seoDescription"
+      | "authorName"
+    >
+  >,
+): Promise<BlogPost | null> {
+  const current = await getBlogPostById(id);
+  if (!current) return null;
+  const now = new Date().toISOString();
+  let slug = current.slug;
+  if (typeof patch.slug === "string" && patch.slug.trim()) {
+    slug = slugify(patch.slug);
+    if (slug !== current.slug) {
+      const [exists] = await getDb()
+        .select({ id: blogPosts.id })
+        .from(blogPosts)
+        .where(and(eq(blogPosts.slug, slug), ne(blogPosts.id, id)))
+        .limit(1);
+      if (exists) slug = `${slug}-${Date.now().toString(36).slice(-3)}`;
+    }
+  }
+  const status =
+    patch.status === "published" || patch.status === "draft"
+      ? patch.status
+      : current.status;
+  const publishedAt =
+    status === "published"
+      ? current.publishedAt || now
+      : status === "draft"
+        ? null
+        : current.publishedAt;
+
+  const [row] = await getDb()
+    .update(blogPosts)
+    .set({
+      title: patch.title?.trim() ?? current.title,
+      slug,
+      excerpt:
+        patch.excerpt !== undefined ? patch.excerpt.trim() : current.excerpt,
+      body: patch.body !== undefined ? patch.body : current.body,
+      coverImageUrl:
+        patch.coverImageUrl !== undefined
+          ? patch.coverImageUrl.trim()
+          : current.coverImageUrl,
+      tags: patch.tags ?? current.tags,
+      status,
+      seoTitle:
+        patch.seoTitle !== undefined
+          ? patch.seoTitle.trim()
+          : current.seoTitle,
+      seoDescription:
+        patch.seoDescription !== undefined
+          ? patch.seoDescription.trim()
+          : current.seoDescription,
+      authorName:
+        patch.authorName !== undefined
+          ? patch.authorName.trim()
+          : current.authorName,
+      publishedAt,
+      updatedAt: now,
+    })
+    .where(eq(blogPosts.id, id))
+    .returning();
+  return row ? mapBlogPost(row) : null;
+}
+
+export async function deleteBlogPost(id: string): Promise<boolean> {
+  const result = await getDb()
+    .delete(blogPosts)
+    .where(eq(blogPosts.id, id))
+    .returning({ id: blogPosts.id });
+  return result.length > 0;
+}
+
+/** Distinct active (from,to) pairs for sitemap / hub pages. */
+export async function listActiveRatePairs(
+  limit = 400,
+): Promise<[string, string][]> {
+  const active = await getActiveRates();
+  const counts = new Map<string, { from: string; to: string; n: number }>();
+  for (const r of active) {
+    const key = `${r.from}:${r.to}`;
+    const cur = counts.get(key);
+    if (cur) cur.n += 1;
+    else counts.set(key, { from: r.from, to: r.to, n: 1 });
+  }
+  return [...counts.values()]
+    .sort((a, b) => b.n - a.n)
+    .slice(0, limit)
+    .map((x) => [x.from, x.to] as [string, string]);
 }

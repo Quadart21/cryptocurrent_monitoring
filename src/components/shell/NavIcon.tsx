@@ -41,6 +41,21 @@ const paths: Record<NavItem["icon"], ReactNode> = {
       <path d="M7 7l10 10" />
     </>
   ),
+  rates: (
+    <>
+      <path d="M4 18V6" />
+      <path d="M4 18h16" />
+      <path d="M8 14l3-4 3 2 4-6" />
+    </>
+  ),
+  blog: (
+    <>
+      <path d="M6 5h12v14H6z" />
+      <path d="M9 9h6" />
+      <path d="M9 13h6" />
+      <path d="M9 17h4" />
+    </>
+  ),
 };
 
 export function NavIcon({
