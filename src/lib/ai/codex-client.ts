@@ -1,8 +1,16 @@
 import "server-only";
 
+import { ProxyAgent, fetch as undiciFetch } from "undici";
+import {
+  nextProxyEndpoint,
+  proxyAuthConfigured,
+  rotateProxyEndpoint,
+  type ProxyEndpoint,
+} from "@/lib/ai/proxy-pool";
+
 const DEFAULT_BASE = "https://codex.sale/v1";
 const FETCH_TIMEOUT_MS = 120_000;
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 8;
 
 export type CodexModel = {
   id: string;
@@ -25,6 +33,18 @@ function apiKey(): string {
 function apiBase(): string {
   const raw = (process.env.CODEX_API_BASE ?? DEFAULT_BASE).trim();
   return raw.replace(/\/+$/, "") || DEFAULT_BASE;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function backoffMs(attempt: number, is429: boolean): number {
+  if (is429) {
+    // 8s, 16s, 32s... capped
+    return Math.min(90_000, 8_000 * 2 ** attempt);
+  }
+  return Math.min(20_000, 1_000 * 2 ** attempt);
 }
 
 async function readJsonOrThrow(res: Response, label: string): Promise<unknown> {
@@ -51,6 +71,13 @@ export function codexConfigured(): boolean {
   return Boolean(apiKey());
 }
 
+async function resolveProxy(
+  preferRotate: boolean,
+): Promise<ProxyEndpoint | null> {
+  if (!proxyAuthConfigured()) return null;
+  return preferRotate ? rotateProxyEndpoint() : nextProxyEndpoint();
+}
+
 async function codexFetch(
   path: string,
   init?: RequestInit & { timeoutMs?: number },
@@ -61,31 +88,60 @@ async function codexFetch(
   }
   const timeoutMs = init?.timeoutMs ?? FETCH_TIMEOUT_MS;
   let lastError: unknown;
+  let rotateNext = false;
+
   for (let attempt = 0; attempt < MAX_RETRIES; attempt += 1) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const proxy = await resolveProxy(rotateNext);
+    rotateNext = false;
+
     try {
-      const res = await fetch(`${apiBase()}${path}`, {
-        ...init,
-        signal: controller.signal,
-        headers: {
-          Authorization: `Bearer ${key}`,
-          Accept: "application/json",
-          ...(init?.body ? { "Content-Type": "application/json" } : {}),
-          ...(init?.headers ?? {}),
-        },
-        cache: "no-store",
-      });
+      const headers: Record<string, string> = {
+        Authorization: `Bearer ${key}`,
+        Accept: "application/json",
+        ...(init?.body ? { "Content-Type": "application/json" } : {}),
+        ...((init?.headers as Record<string, string> | undefined) ?? {}),
+      };
+
+      let res: Response;
+      if (proxy) {
+        const agent = new ProxyAgent(proxy.url);
+        try {
+          // undici fetch + ProxyAgent for HTTP CONNECT through residential/ISP pool
+          res = (await undiciFetch(`${apiBase()}${path}`, {
+            method: init?.method ?? "GET",
+            body: init?.body as string | undefined,
+            headers,
+            signal: controller.signal,
+            dispatcher: agent,
+          })) as unknown as Response;
+        } finally {
+          await agent.close().catch(() => undefined);
+        }
+      } else {
+        res = await fetch(`${apiBase()}${path}`, {
+          ...init,
+          signal: controller.signal,
+          headers,
+          cache: "no-store",
+        });
+      }
+
       if (res.status === 429 || res.status >= 500) {
         const body = await res.text().catch(() => "");
-        lastError = new Error(`Codex HTTP ${res.status}: ${body.slice(0, 200)}`);
-        await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+        lastError = new Error(
+          `Codex HTTP ${res.status}${proxy ? ` via ${proxy.host}` : ""}: ${body.slice(0, 200)}`,
+        );
+        if (res.status === 429) rotateNext = true;
+        await sleep(backoffMs(attempt, res.status === 429));
         continue;
       }
       return res;
     } catch (err) {
       lastError = err;
-      await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+      rotateNext = Boolean(proxy);
+      await sleep(backoffMs(attempt, false));
     } finally {
       clearTimeout(timer);
     }
@@ -99,7 +155,9 @@ export async function listCodexModels(): Promise<CodexModel[]> {
   const res = await codexFetch("/models", { method: "GET", timeoutMs: 30_000 });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`Не удалось получить модели: HTTP ${res.status} ${body.slice(0, 200)}`);
+    throw new Error(
+      `Не удалось получить модели: HTTP ${res.status} ${body.slice(0, 200)}`,
+    );
   }
   const json = (await readJsonOrThrow(res, "listModels")) as {
     data?: Array<{ id?: string; owned_by?: string }>;
@@ -131,7 +189,9 @@ export async function chatCompletion(input: {
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`Chat completion failed: HTTP ${res.status} ${body.slice(0, 300)}`);
+    throw new Error(
+      `Chat completion failed: HTTP ${res.status} ${body.slice(0, 300)}`,
+    );
   }
   const json = (await readJsonOrThrow(res, "chatCompletion")) as {
     choices?: Array<{ message?: { content?: string | null } }>;

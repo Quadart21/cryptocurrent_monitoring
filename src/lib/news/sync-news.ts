@@ -32,7 +32,8 @@ function intervalMs(): number {
 function concurrency(): number {
   const raw = Number(process.env.NEWS_SYNC_CONCURRENCY ?? "");
   if (Number.isFinite(raw) && raw >= 1 && raw <= 5) return Math.floor(raw);
-  return 2;
+  // Default 1: codex.sale aggressively rate-limits parallel upstreams
+  return 1;
 }
 
 async function mapPool<T, R>(
@@ -128,6 +129,12 @@ async function runNewsSyncJob(input: {
       const msg = err instanceof Error ? err.message : String(err);
       errors.push(`${item.id}: ${msg}`);
       console.error(`[gapsnap] news rewrite failed ${item.id}`, err);
+    } finally {
+      // Pace requests — helps with upstream_busy even behind proxy
+      const pause = Number(process.env.NEWS_SYNC_PAUSE_MS ?? "");
+      const ms =
+        Number.isFinite(pause) && pause >= 0 ? pause : 2_500;
+      if (ms > 0) await new Promise((r) => setTimeout(r, ms));
     }
   });
 
