@@ -16,10 +16,16 @@ import {
   reviews,
   seo,
   type AdStatsJson,
+  type BannerCheckJson,
   type ExchangerTrafficJson,
 } from "@/db/schema";
 import { seedAdPricing, seedSeo } from "@/db/seed";
 import { emptyAdStats, normalizeAdStats, utcDayKey } from "@/lib/ads";
+import {
+  emptyBannerCheck,
+  newBannerToken,
+  normalizeBannerCheck,
+} from "@/lib/banner";
 import {
   emptyExchangerTraffic,
   normalizeExchangerTraffic,
@@ -125,6 +131,8 @@ function mapExchanger(row: ExchangerRow): FeedExchanger {
     achievementIds: row.achievementIds ?? [],
     logo,
     traffic: normalizeExchangerTraffic(row.traffic),
+    bannerToken: row.bannerToken ?? null,
+    bannerCheck: normalizeBannerCheck(row.bannerCheck),
     ownerLogin: row.ownerLogin,
     ownerPasswordHash: row.ownerPasswordHash,
     ownerEmail: row.ownerEmail ?? null,
@@ -713,6 +721,8 @@ export async function addExchangerApplication(input: {
       logoUpdatedAt: hasLogoBytes ? logoMeta!.updatedAt : null,
       logoData: hasLogoBytes ? input.logoData! : null,
       traffic: emptyExchangerTraffic() as ExchangerTrafficJson,
+      bannerToken: null,
+      bannerCheck: emptyBannerCheck() as BannerCheckJson,
       ownerLogin,
       ownerPasswordHash: input.ownerPasswordHash,
       ownerEmail,
@@ -915,6 +925,44 @@ export async function updateExchanger(
     await db.delete(rates).where(eq(rates.exchangerId, id));
   }
 
+  return row ? mapExchanger(row) : null;
+}
+
+/** Ensure active exchanger has a banner token; create if missing. */
+export async function ensureBannerToken(
+  id: string,
+): Promise<FeedExchanger | null> {
+  const db = getDb();
+  const [current] = await db
+    .select()
+    .from(exchangers)
+    .where(eq(exchangers.id, id))
+    .limit(1);
+  if (!current) return null;
+  if (current.bannerToken) return mapExchanger(current);
+
+  const token = newBannerToken();
+  const [row] = await db
+    .update(exchangers)
+    .set({
+      bannerToken: token,
+      bannerCheck: emptyBannerCheck() as BannerCheckJson,
+    })
+    .where(eq(exchangers.id, id))
+    .returning();
+  return row ? mapExchanger(row) : null;
+}
+
+export async function updateBannerCheck(
+  id: string,
+  bannerCheck: BannerCheckJson,
+): Promise<FeedExchanger | null> {
+  const db = getDb();
+  const [row] = await db
+    .update(exchangers)
+    .set({ bannerCheck })
+    .where(eq(exchangers.id, id))
+    .returning();
   return row ? mapExchanger(row) : null;
 }
 

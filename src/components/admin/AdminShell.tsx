@@ -12,7 +12,7 @@ function badgeFor(id: string, counts: ReturnType<typeof useAdmin>["counts"]) {
   if (!counts) return 0;
   if (id === "exchangers") return counts.pending;
   if (id === "reviews") return counts.pendingReviews;
-  if (id === "sync") return counts.pendingCatalog;
+  if (id === "sync") return counts.pendingCatalog + (counts.bannerMissing ?? 0);
   return 0;
 }
 
@@ -24,7 +24,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const pendingTotal =
     (counts?.pending ?? 0) +
     (counts?.pendingReviews ?? 0) +
-    (counts?.pendingCatalog ?? 0);
+    (counts?.pendingCatalog ?? 0) +
+    (counts?.bannerMissing ?? 0);
 
   return (
     <div className="relative z-10 min-h-screen bg-bg text-ink">

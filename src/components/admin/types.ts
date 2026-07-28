@@ -20,6 +20,7 @@ export type AdminCounts = {
   pendingCatalog: number;
   achievements: number;
   ads: number;
+  bannerMissing: number;
 };
 
 export type AdminExchanger = Omit<FeedExchanger, "ownerPasswordHash"> & {

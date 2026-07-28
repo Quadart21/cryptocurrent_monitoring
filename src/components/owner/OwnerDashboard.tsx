@@ -258,6 +258,40 @@ export function OwnerDashboard() {
           ) : null}
         </section>
 
+        {exchanger.bannerHtml ? (
+          <section className="card space-y-4 p-5">
+            <div>
+              <h2 className="font-display text-xl font-semibold text-ink">
+                Баннер GapSnap
+              </h2>
+              <p className="mt-1 text-sm text-ink-muted">
+                Разместите этот HTML на сайте (например в футере). Раз в сутки
+                мы проверяем наличие кнопки. Статус:{" "}
+                <strong className="text-ink">{exchanger.bannerStatus}</strong>
+              </p>
+            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`/badge/${exchanger.bannerToken}`}
+              alt="GapSnap"
+              width={88}
+              height={31}
+            />
+            <pre className="overflow-x-auto rounded-2xl border border-line bg-bg-soft p-3 text-[11px] text-ink">
+              {exchanger.bannerHtml}
+            </pre>
+            <button
+              type="button"
+              className="rounded-xl border border-line px-3 py-2 text-xs font-semibold text-ink-muted"
+              onClick={() => {
+                void navigator.clipboard.writeText(exchanger.bannerHtml ?? "");
+              }}
+            >
+              Скопировать код
+            </button>
+          </section>
+        ) : null}
+
         <section className="card p-5">
           <h2 className="font-display text-xl font-semibold text-ink">
             Статистика

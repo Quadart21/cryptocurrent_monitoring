@@ -31,6 +31,8 @@ export async function sendOwnerApprovedEmail(input: {
       totpSecret: input.totpSecret,
       totpUri: input.totpUri,
       cabinetUrl: `${base}/cabinet`,
+      bannerHint:
+        "После входа в кабинет скопируйте HTML-код маленького баннера GapSnap и разместите его на сайте обменника (в футере). Раз в сутки мы проверяем наличие кнопки.",
     },
   });
 }

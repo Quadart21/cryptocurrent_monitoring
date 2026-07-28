@@ -1,3 +1,5 @@
+import type { BannerCheckJson } from "@/db/schema";
+
 export type FeedExchangerStatus = "pending" | "active" | "rejected" | "error";
 
 export type ExchangerLogo = {
@@ -20,6 +22,8 @@ export type ExchangerTraffic = {
   lastClickAt: string | null;
   daily: ExchangerDailyTraffic[];
 };
+
+export type BannerCheck = BannerCheckJson;
 
 export type FeedExchanger = {
   id: string;
@@ -51,6 +55,9 @@ export type FeedExchanger = {
   /** Optional logo from application (SVG or transparent PNG). */
   logo: ExchangerLogo | null;
   traffic: ExchangerTraffic;
+  /** Opaque token for partner-site badge detection. */
+  bannerToken: string | null;
+  bannerCheck: BannerCheck;
   /** Логин кабинета владельца (задаётся при заявке) */
   ownerLogin: string | null;
   /** SHA-256 / scrypt хеш пароля владельца */

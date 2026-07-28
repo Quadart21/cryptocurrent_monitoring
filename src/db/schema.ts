@@ -24,6 +24,17 @@ export type ExchangerTrafficJson = {
   daily: Array<{ date: string; pageViews: number; siteClicks: number }>;
 };
 
+/** Result of daily GapSnap badge placement check on exchanger website. */
+export type BannerCheckJson = {
+  status: "pending" | "ok" | "missing" | "error";
+  lastCheckAt: string | null;
+  lastSeenAt: string | null;
+  missingSince: string | null;
+  consecutiveMisses: number;
+  lastError: string | null;
+  lastNotifiedAt: string | null;
+};
+
 export type AdStatsJson = {
   impressions: number;
   clicks: number;
@@ -61,6 +72,9 @@ export const exchangers = pgTable(
     logoUpdatedAt: text("logo_updated_at"),
     logoData: bytea("logo_data"),
     traffic: jsonb("traffic").$type<ExchangerTrafficJson>().notNull(),
+    /** Opaque token for GapSnap badge detection on partner sites. */
+    bannerToken: text("banner_token"),
+    bannerCheck: jsonb("banner_check").$type<BannerCheckJson>(),
     ownerLogin: text("owner_login"),
     ownerPasswordHash: text("owner_password_hash"),
     ownerEmail: text("owner_email"),

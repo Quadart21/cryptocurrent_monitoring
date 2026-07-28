@@ -31,8 +31,12 @@ export type OwnerExchanger = Pick<
   | "lastSyncAt"
   | "lastError"
   | "logo"
+  | "bannerToken"
+  | "bannerCheck"
 > & {
   workingSince: string;
+  bannerStatus: string;
+  bannerHtml: string | null;
   traffic: {
     pageViews: number;
     siteClicks: number;

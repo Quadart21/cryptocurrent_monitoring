@@ -8,6 +8,7 @@ import {
 } from "@/lib/owner-mail";
 import {
   deleteExchanger,
+  ensureBannerToken,
   getExchangerById,
   getSeoSettings,
   listExchangers,
@@ -152,6 +153,13 @@ export async function PATCH(request: Request) {
     body.status === "active" && before.status !== "active";
 
   if (becomingActive) {
+    try {
+      const withToken = await ensureBannerToken(updated.id);
+      if (withToken) updated = withToken;
+    } catch (error) {
+      console.error("[gapsnap] ensure banner token failed", error);
+    }
+
     const to =
       updated.ownerEmail?.trim().toLowerCase() ||
       extractEmail(updated.contact);

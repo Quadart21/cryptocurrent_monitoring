@@ -1,8 +1,10 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
+import { bannerEmbedHtml, bannerStatusLabel } from "@/lib/banner";
+import { siteBaseUrl } from "@/lib/email/service";
 import { formatOutboundCtr } from "@/lib/exchanger-traffic";
 import { formatWorkingSince } from "@/lib/format";
 import { assertOwner } from "@/lib/owner-guard";
-import { listReviews } from "@/lib/store";
+import { getSeoSettings, listReviews } from "@/lib/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,6 +22,16 @@ export async function GET() {
     lastClickAt: null,
     daily: [],
   };
+  const seo = await getSeoSettings();
+  const base = siteBaseUrl(seo.siteUrl);
+  const bannerHtml =
+    ex.bannerToken && ex.status === "active"
+      ? bannerEmbedHtml({
+          siteUrl: base,
+          token: ex.bannerToken,
+          slug: ex.slug,
+        })
+      : null;
 
   return NextResponse.json({
     exchanger: {
@@ -42,6 +54,10 @@ export async function GET() {
       lastError: ex.lastError,
       workingSince: formatWorkingSince(ex.approvedAt),
       logo: ex.logo,
+      bannerToken: ex.bannerToken,
+      bannerStatus: bannerStatusLabel(ex.bannerCheck?.status ?? "pending"),
+      bannerCheck: ex.bannerCheck,
+      bannerHtml,
       traffic: {
         ...traffic,
         ctr: formatOutboundCtr(traffic),
@@ -61,7 +77,6 @@ export async function GET() {
       ownerReply: r.ownerReply,
       ownerRepliedAt: r.ownerRepliedAt,
     })),
-    /** После апрува кабинет только на чтение + ответы */
     readOnlyProfile: true,
   });
 }

@@ -16,5 +16,7 @@ export async function register() {
       "@/lib/bestchange/sync-catalogs"
     );
     startCatalogPoller();
+    const { startBannerCheckPoller } = await import("@/lib/banner-check");
+    startBannerCheckPoller();
   }
 }

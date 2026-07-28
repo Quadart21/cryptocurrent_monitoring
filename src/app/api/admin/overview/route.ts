@@ -69,6 +69,12 @@ export async function GET() {
       pendingCatalog,
       achievements: achievements.length,
       ads: ads.length,
+      bannerMissing: exchangers.filter(
+        (e) =>
+          e.status === "active" &&
+          (e.bannerCheck?.status === "missing" ||
+            e.bannerCheck?.status === "error"),
+      ).length,
     },
     exchangers: exchangers.map(
       ({

@@ -6,6 +6,10 @@ import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import type { FeedExchanger } from "@/lib/store-types";
 import type { AdminExchanger } from "@/components/admin/types";
+import {
+  bannerEmbedHtml,
+  bannerStatusLabel,
+} from "@/lib/banner";
 import { formatOutboundCtr } from "@/lib/exchanger-traffic";
 import { logoPublicUrl } from "@/lib/logo-url";
 import { ADMIN_PATH } from "@/lib/admin-auth";
@@ -60,6 +64,7 @@ export function ExchangerDetailModule() {
   const [ownerPassword, setOwnerPassword] = useState("");
   const [ownerError, setOwnerError] = useState<string | null>(null);
   const [ownerOk, setOwnerOk] = useState(false);
+  const [bannerMsg, setBannerMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (ex) {
@@ -70,8 +75,40 @@ export function ExchangerDetailModule() {
       setOwnerPassword("");
       setOwnerError(null);
       setOwnerOk(false);
+      setBannerMsg(null);
     }
   }, [ex]);
+
+  async function checkBannerNow() {
+    setBusy(true);
+    setBannerMsg(null);
+    try {
+      const res = await fetch("/api/admin/banner-check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ exchangerId: id }),
+      });
+      const body = (await res.json()) as {
+        error?: string;
+        ok?: number;
+        missing?: number;
+        errors?: number;
+      };
+      if (!res.ok) throw new Error(body.error ?? "Ошибка проверки");
+      setBannerMsg(
+        body.ok
+          ? "Баннер найден на сайте"
+          : body.missing
+            ? "Баннер не найден"
+            : "Ошибка загрузки сайта",
+      );
+      await refresh();
+    } catch (err) {
+      setBannerMsg(err instanceof Error ? err.message : "Ошибка");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function patch(body: Record<string, unknown>) {
     setBusy(true);
@@ -286,6 +323,65 @@ export function ExchangerDetailModule() {
         title={ex.name}
         description={`Карточка обменника · ${ex.slug}`}
       />
+
+      <AdminSection
+        title="Баннер GapSnap"
+        description="Маленькая кнопка 88×31 на сайте обменника. Проверка раз в сутки."
+      >
+        <div className="space-y-3 p-5">
+          <p className="text-sm text-ink">
+            Статус:{" "}
+            <strong>
+              {bannerStatusLabel(ex.bannerCheck?.status ?? "pending")}
+            </strong>
+            {ex.bannerCheck?.lastCheckAt
+              ? ` · проверка ${new Date(ex.bannerCheck.lastCheckAt).toLocaleString("ru-RU")}`
+              : ""}
+          </p>
+          {ex.bannerCheck?.lastError ? (
+            <p className="text-sm text-danger">{ex.bannerCheck.lastError}</p>
+          ) : null}
+          {ex.bannerToken ? (
+            <>
+              <p className="text-xs text-ink-muted">
+                Токен: <code>{ex.bannerToken}</code>
+              </p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`/badge/${ex.bannerToken}`}
+                alt="GapSnap badge"
+                width={88}
+                height={31}
+              />
+              <pre className="overflow-x-auto rounded-2xl border border-line bg-bg-soft p-3 text-[11px] text-ink">
+                {bannerEmbedHtml({
+                  siteUrl:
+                    typeof window !== "undefined"
+                      ? window.location.origin
+                      : "https://gapsnap.org",
+                  token: ex.bannerToken,
+                  slug: ex.slug,
+                })}
+              </pre>
+            </>
+          ) : (
+            <p className="text-sm text-ink-muted">
+              Токен появится после одобрения обменника.
+            </p>
+          )}
+          <button
+            type="button"
+            disabled={busy || ex.status !== "active"}
+            onClick={() => void checkBannerNow()}
+            className="rounded-xl border border-line px-3 py-2 text-xs font-semibold text-ink-muted disabled:opacity-60"
+          >
+            Проверить сайт сейчас
+          </button>
+          {bannerMsg ? (
+            <p className="text-sm text-ink-muted">{bannerMsg}</p>
+          ) : null}
+        </div>
+      </AdminSection>
 
       <div className="card p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

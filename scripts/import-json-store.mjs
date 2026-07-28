@@ -74,12 +74,13 @@ async function main() {
           id, slug, name, website, exchange_url_template, feed_url, contact, description, status, verified,
           rating, reviews, reviews_positive, reviews_negative, age_years, created_at,
           approved_at, last_sync_at, last_error, pair_count, achievement_ids,
-          logo_format, logo_updated_at, logo_data, traffic, owner_login, owner_password_hash
+          logo_format, logo_updated_at, logo_data, traffic, banner_token, banner_check,
+          owner_login, owner_password_hash
         ) VALUES (
           $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
           $11,$12,$13,$14,$15,$16,
           $17,$18,$19,$20,$21,
-          $22,$23,$24,$25::jsonb,$26,$27
+          $22,$23,$24,$25::jsonb,$26,$27::jsonb,$28,$29
         )`,
         [
           ex.id,
@@ -107,6 +108,8 @@ async function main() {
           logoData && logo?.updatedAt ? logo.updatedAt : null,
           logoData,
           JSON.stringify(traffic),
+          ex.bannerToken ?? null,
+          ex.bannerCheck ? JSON.stringify(ex.bannerCheck) : null,
           ex.ownerLogin ?? null,
           ex.ownerPasswordHash ?? null,
         ],

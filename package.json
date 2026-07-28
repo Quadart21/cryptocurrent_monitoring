@@ -1,6 +1,6 @@
 {
   "name": "gapsnap",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "sync:catalogs": "node --env-file=.env scripts/sync-bestchange-catalogs.mjs",
+    "news:rbc-crypto": "node scripts/fetch-rbc-crypto.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",

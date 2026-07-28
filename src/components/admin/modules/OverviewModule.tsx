@@ -23,6 +23,11 @@ export function OverviewModule() {
 
   const pendingEx = overview.exchangers.filter((e) => e.status === "pending");
   const pendingRv = overview.reviews.filter((r) => r.status === "pending");
+  const bannerMissing = overview.exchangers.filter(
+    (e) =>
+      e.status === "active" &&
+      (e.bannerCheck?.status === "missing" || e.bannerCheck?.status === "error"),
+  );
 
   return (
     <div className="space-y-6">
@@ -54,6 +59,11 @@ export function OverviewModule() {
             label: "Отзывы ждут",
             value: counts.pendingReviews,
             tone: counts.pendingReviews ? "warn" : undefined,
+          },
+          {
+            label: "Без баннера",
+            value: counts.bannerMissing ?? 0,
+            tone: counts.bannerMissing ? "warn" : undefined,
           },
           { label: "Курсов", value: counts.rates },
           { label: "Ошибки", value: counts.error },
@@ -133,6 +143,48 @@ export function OverviewModule() {
           </div>
         </AdminSection>
       </div>
+
+      <AdminSection
+        title="Баннер GapSnap не найден"
+        description="Активные обменники без нашей кнопки на сайте (суточная проверка)"
+      >
+        <div className="divide-y divide-line">
+          {bannerMissing.length === 0 ? (
+            <p className="px-5 py-6 text-sm text-ink-muted">Все на месте</p>
+          ) : (
+            bannerMissing.slice(0, 8).map((ex) => (
+              <div
+                key={ex.id}
+                className="flex flex-wrap items-center justify-between gap-3 px-5 py-4"
+              >
+                <div>
+                  <p className="font-semibold">{ex.name}</p>
+                  <p className="mt-1 truncate text-xs text-ink-muted">
+                    {ex.website}
+                    {ex.bannerCheck?.lastError
+                      ? ` · ${ex.bannerCheck.lastError}`
+                      : ""}
+                  </p>
+                </div>
+                <Link
+                  href={`${ADMIN_PATH}/exchangers/${encodeURIComponent(ex.id)}`}
+                  className="text-sm font-semibold text-accent hover:underline"
+                >
+                  Карточка →
+                </Link>
+              </div>
+            ))
+          )}
+        </div>
+        <div className="border-t border-line px-5 py-3">
+          <Link
+            href={`${ADMIN_PATH}/sync`}
+            className="text-sm font-semibold text-accent hover:underline"
+          >
+            Проверить баннеры сейчас →
+          </Link>
+        </div>
+      </AdminSection>
 
       <AdminSection title="Быстрые разделы">
         <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-3">

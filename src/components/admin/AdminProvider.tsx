@@ -37,6 +37,7 @@ const emptyCounts: AdminCounts = {
   pendingCatalog: 0,
   achievements: 0,
   ads: 0,
+  bannerMissing: 0,
 };
 
 export function AdminProvider({ children }: { children: ReactNode }) {

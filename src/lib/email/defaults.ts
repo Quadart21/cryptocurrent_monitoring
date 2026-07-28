@@ -48,7 +48,9 @@ export const DEFAULT_EMAIL_TEMPLATES: EmailTemplate[] = [
 2FA секрет: {{totpSecret}}
 otpauth: {{totpUri}}
 
-При входе: пароль + код из Authenticator.`,
+При входе: пароль + код из Authenticator.
+
+{{bannerHint}}`,
     html: `<div style="font-family:system-ui,sans-serif;line-height:1.5;color:#111;max-width:560px">
   <p>Ваш обменник <strong>{{exchangerName}}</strong> одобрен на {{siteName}}.</p>
   <p><a href="{{cabinetUrl}}" style="display:inline-block;padding:12px 18px;background:#0f766e;color:#fff;border-radius:10px;text-decoration:none;font-weight:600">Открыть кабинет</a></p>
@@ -61,6 +63,8 @@ otpauth: {{totpUri}}
   <h3 style="margin:24px 0 8px;font-size:16px">2FA</h3>
   <p>Секрет: <code>{{totpSecret}}</code></p>
   <p style="font-size:13px;color:#555;word-break:break-all">{{totpUri}}</p>
+  <h3 style="margin:24px 0 8px;font-size:16px">Баннер GapSnap</h3>
+  <p>{{bannerHint}}</p>
 </div>`,
     enabled: true,
     updatedAt: NOW,

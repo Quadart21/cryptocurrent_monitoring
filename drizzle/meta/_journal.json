@@ -64,6 +64,13 @@
       "when": 1785201000000,
       "tag": "0008_exchange_url_template",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1785202000000,
+      "tag": "0009_banner_check",
+      "breakpoints": true
     }
   ]
 }
