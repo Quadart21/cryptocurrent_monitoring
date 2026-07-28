@@ -9,8 +9,8 @@ import {
 } from "@/lib/ai/proxy-pool";
 
 const DEFAULT_BASE = "https://codex.sale/v1";
-const FETCH_TIMEOUT_MS = 120_000;
-const MAX_RETRIES = 8;
+const FETCH_TIMEOUT_MS = 90_000;
+const MAX_RETRIES = 5;
 
 export type CodexModel = {
   id: string;
@@ -41,10 +41,10 @@ function sleep(ms: number): Promise<void> {
 
 function backoffMs(attempt: number, is429: boolean): number {
   if (is429) {
-    // 8s, 16s, 32s... capped
-    return Math.min(90_000, 8_000 * 2 ** attempt);
+    // 3s, 6s, 12s, 20s max — was up to 90s and felt "stuck"
+    return Math.min(20_000, 3_000 * 2 ** attempt);
   }
-  return Math.min(20_000, 1_000 * 2 ** attempt);
+  return Math.min(8_000, 800 * 2 ** attempt);
 }
 
 async function readJsonOrThrow(res: Response, label: string): Promise<unknown> {
@@ -132,6 +132,9 @@ async function codexFetch(
         const body = await res.text().catch(() => "");
         lastError = new Error(
           `Codex HTTP ${res.status}${proxy ? ` via ${proxy.host}` : ""}: ${body.slice(0, 200)}`,
+        );
+        console.warn(
+          `[gapsnap] codex ${res.status} attempt ${attempt + 1}/${MAX_RETRIES}${proxy ? ` via ${proxy.host}` : ""} — retry`,
         );
         if (res.status === 429) rotateNext = true;
         await sleep(backoffMs(attempt, res.status === 429));

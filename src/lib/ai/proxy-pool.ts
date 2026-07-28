@@ -125,8 +125,8 @@ export async function nextProxyEndpoint(): Promise<ProxyEndpoint | null> {
   return { host, port, user, pass, url };
 }
 
-/** Force rotate to next IP (e.g. after 429). */
+/** Force rotate to next IP (e.g. after 429). Does not re-download the list. */
 export async function rotateProxyEndpoint(): Promise<ProxyEndpoint | null> {
-  await refreshHosts(true);
+  await refreshHosts(false);
   return nextProxyEndpoint();
 }

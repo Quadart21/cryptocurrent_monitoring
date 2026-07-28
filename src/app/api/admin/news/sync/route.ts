@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { assertAdmin } from "@/lib/admin-guard";
 import {
+  getNewsSyncProgress,
   isNewsSyncInFlight,
   startNewsSync,
 } from "@/lib/news/sync-news";
@@ -13,8 +14,11 @@ export async function GET() {
   const denied = await assertAdmin();
   if (denied) return denied;
   const settings = await getNewsSettings();
+  const progress = getNewsSyncProgress();
   return NextResponse.json({
     inFlight: isNewsSyncInFlight(),
+    progress: progress.progress,
+    elapsedMs: progress.elapsedMs,
     lastSyncAt: settings.lastSyncAt,
     lastSyncResult: settings.lastSyncResult,
   });

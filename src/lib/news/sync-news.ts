@@ -21,6 +21,15 @@ declare global {
   var __gapsnapNewsPollerStarted: boolean | undefined;
   // eslint-disable-next-line no-var
   var __gapsnapNewsSyncInFlight: Promise<NewsSyncResultSummary> | null | undefined;
+  // eslint-disable-next-line no-var
+  var __gapsnapNewsSyncProgress: string | undefined;
+  // eslint-disable-next-line no-var
+  var __gapsnapNewsSyncStartedAt: number | undefined;
+}
+
+function setProgress(msg: string) {
+  globalThis.__gapsnapNewsSyncProgress = msg;
+  console.info(`[gapsnap] news: ${msg}`);
 }
 
 function intervalMs(): number {
@@ -42,11 +51,26 @@ function batchSize(override?: number): number {
 function pauseMs(): number {
   const pause = Number(process.env.NEWS_SYNC_PAUSE_MS ?? "");
   if (Number.isFinite(pause) && pause >= 0) return pause;
-  return 3_000;
+  return 1_000;
 }
 
 export function isNewsSyncInFlight(): boolean {
   return Boolean(globalThis.__gapsnapNewsSyncInFlight);
+}
+
+export function getNewsSyncProgress(): {
+  inFlight: boolean;
+  progress: string;
+  startedAt: number | null;
+  elapsedMs: number | null;
+} {
+  const startedAt = globalThis.__gapsnapNewsSyncStartedAt ?? null;
+  return {
+    inFlight: isNewsSyncInFlight(),
+    progress: globalThis.__gapsnapNewsSyncProgress ?? "",
+    startedAt,
+    elapsedMs: startedAt ? Date.now() - startedAt : null,
+  };
 }
 
 async function assertNewsSyncReady(options?: { force?: boolean }): Promise<{
@@ -95,8 +119,11 @@ async function runNewsSyncJob(input: {
   rewritePrompt: string;
   maxCreate: number;
 }): Promise<NewsSyncResultSummary> {
+  const t0 = Date.now();
+  setProgress("Загрузка RSS РБК…");
   const seo = await getSeoSettings();
   const feed = await fetchRbcCryptoNews();
+  setProgress(`RSS: ${feed.items.length} шт., ищем новые…`);
   const { toCreate, skipped: alreadyKnown } = await pickNewItems(
     feed.items,
     input.maxCreate,
@@ -107,15 +134,22 @@ async function runNewsSyncJob(input: {
   let skipped = alreadyKnown;
   const errors: string[] = [];
 
+  if (!toCreate.length) {
+    setProgress("Новых статей нет");
+  }
+
   // One-by-one, never parallel
-  for (const item of toCreate) {
+  for (let i = 0; i < toCreate.length; i += 1) {
+    const item = toCreate[i]!;
     try {
-      // Re-check in case another run created it
       const existing = await getBlogPostBySourceId(item.id);
       if (existing) {
         skipped += 1;
         continue;
       }
+      setProgress(
+        `Рерайт через codex.sale (${i + 1}/${toCreate.length}): ${item.title.slice(0, 60)}…`,
+      );
       const rewritten = await rewriteNewsArticle({
         model: input.model,
         promptTemplate: input.rewritePrompt,
@@ -123,6 +157,7 @@ async function runNewsSyncJob(input: {
         siteName: seo.siteName || "GapSnap",
         siteUrl: seo.siteUrl || process.env.SITE_URL || "https://gapsnap.org",
       });
+      setProgress(`Сохранение в БД: ${rewritten.title.slice(0, 60)}…`);
       await createBlogPost({
         title: rewritten.title,
         slug: rewritten.slug || undefined,
@@ -177,8 +212,11 @@ async function runNewsSyncJob(input: {
     },
   });
 
+  setProgress(
+    `Готово за ${Math.round((Date.now() - t0) / 1000)}с: +${created}, skip ${skipped}, fail ${failed}`,
+  );
   console.info(
-    `[gapsnap] news sync: fetched=${result.fetched} created=${result.created} skipped=${result.skipped} failed=${result.failed} batch=${input.maxCreate}`,
+    `[gapsnap] news sync: fetched=${result.fetched} created=${result.created} skipped=${result.skipped} failed=${result.failed} batch=${input.maxCreate} ms=${Date.now() - t0}`,
   );
   return {
     ...result,
@@ -202,11 +240,14 @@ export async function syncCryptoNews(options?: {
   }
 
   const ready = await assertNewsSyncReady(options);
+  globalThis.__gapsnapNewsSyncStartedAt = Date.now();
+  setProgress("Старт…");
   const run = runNewsSyncJob({
     ...ready,
     maxCreate: batchSize(options?.maxCreate),
   }).finally(() => {
     globalThis.__gapsnapNewsSyncInFlight = null;
+    globalThis.__gapsnapNewsSyncStartedAt = undefined;
   });
   globalThis.__gapsnapNewsSyncInFlight = run;
   return run;
@@ -225,6 +266,8 @@ export async function startNewsSync(options?: {
   }
 
   const ready = await assertNewsSyncReady(options);
+  globalThis.__gapsnapNewsSyncStartedAt = Date.now();
+  setProgress("Старт…");
   const run = runNewsSyncJob({
     ...ready,
     maxCreate: batchSize(options?.maxCreate ?? 1),
@@ -232,6 +275,7 @@ export async function startNewsSync(options?: {
     .catch(async (err) => {
       const message = err instanceof Error ? err.message : String(err);
       console.error("[gapsnap] news sync failed", err);
+      setProgress(`Ошибка: ${message}`);
       const failedResult: NewsSyncResultSummary = {
         fetched: 0,
         created: 0,
@@ -252,6 +296,7 @@ export async function startNewsSync(options?: {
     })
     .finally(() => {
       globalThis.__gapsnapNewsSyncInFlight = null;
+      globalThis.__gapsnapNewsSyncStartedAt = undefined;
     });
 
   globalThis.__gapsnapNewsSyncInFlight = run;

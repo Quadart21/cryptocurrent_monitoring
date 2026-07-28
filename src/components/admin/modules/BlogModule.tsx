@@ -166,6 +166,8 @@ export function BlogModule() {
         const statusRaw = await statusRes.text();
         let statusBody: {
           inFlight?: boolean;
+          progress?: string;
+          elapsedMs?: number | null;
           lastSyncResult?: NewsSyncResultSummary | null;
           error?: string;
         } = {};
@@ -192,12 +194,17 @@ export function BlogModule() {
           await loadSettings();
           break;
         }
-        if (Date.now() - startedAt > 45 * 60 * 1000) {
+        const elapsed = statusBody.elapsedMs
+          ? Math.round(statusBody.elapsedMs / 1000)
+          : Math.round((Date.now() - startedAt) / 1000);
+        setSettingsMsg(
+          `${statusBody.progress || "Синхронизация в фоне…"} (${elapsed}с)`,
+        );
+        if (Date.now() - startedAt > 10 * 60 * 1000) {
           throw new Error(
-            "Синк всё ещё выполняется дольше 45 минут — обновите страницу позже",
+            "Синк дольше 10 минут — смотрите pm2 logs; возможно upstream_busy у codex.sale",
           );
         }
-        setSettingsMsg("Синхронизация в фоне… (можно подождать)");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ошибка синка");

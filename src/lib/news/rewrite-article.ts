@@ -73,16 +73,24 @@ export async function rewriteNewsArticle(input: {
   siteName: string;
   siteUrl: string;
 }): Promise<RewrittenArticle> {
+  const rawBody = input.item.bodyText || input.item.fullText;
+  // Cap source body — long RBC full-text slows the model a lot
+  const body =
+    rawBody.length > 4500
+      ? `${rawBody.slice(0, 4500)}\n\n[…текст обрезан для рерайта]`
+      : rawBody;
+
   const prompt = applyPlaceholders(input.promptTemplate, {
     title: input.item.title,
     anons: input.item.anons,
-    body: input.item.bodyText || input.item.fullText,
+    body,
     tags: input.item.tags.join(", "),
     sourceUrl: input.item.link,
     siteName: input.siteName,
     siteUrl: input.siteUrl.replace(/\/+$/, ""),
   });
 
+  const t0 = Date.now();
   const raw = await chatCompletion({
     model: input.model,
     messages: [
@@ -95,6 +103,9 @@ export async function rewriteNewsArticle(input: {
     ],
     temperature: 0.75,
   });
+  console.info(
+    `[gapsnap] rewrite ok in ${Date.now() - t0}ms model=${input.model} inChars=${prompt.length}`,
+  );
 
   return parseRewrittenArticle(raw);
 }
