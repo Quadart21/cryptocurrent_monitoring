@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AchievementBadges } from "@/components/AchievementBadges";
+import { buildExchangeUrl } from "@/lib/exchange-link";
 import {
   formatCurrencyAmount,
   formatRate,
@@ -23,6 +24,7 @@ export type LiveOffer = {
     slug: string;
     name: string;
     website: string;
+    exchangeUrlTemplate?: string;
     rating: number;
     reviews: number;
     verified: boolean;
@@ -160,7 +162,12 @@ export function RateTable({
                   </td>
                   <td className="px-4 py-4 sm:px-5">
                     <a
-                      href={offer.exchanger.website}
+                      href={buildExchangeUrl(
+                        offer.exchanger.exchangeUrlTemplate,
+                        offer.exchanger.website,
+                        offer.from,
+                        offer.to,
+                      )}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-white transition hover:bg-accent-deep"

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { validateExchangeUrlTemplate } from "@/lib/exchange-link";
 import { hashOwnerPassword } from "@/lib/owner-auth";
 import { addExchangerApplication } from "@/lib/store";
 import { validateAndPrepareLogo } from "@/lib/logo";
@@ -26,6 +27,9 @@ export async function POST(request: Request) {
 
   const name = String(form.get("name") ?? "").trim();
   const website = String(form.get("website") ?? "").trim();
+  const exchangeUrlTemplate = String(
+    form.get("exchangeUrlTemplate") ?? "",
+  ).trim();
   const feedUrl = String(form.get("feedUrl") ?? "").trim();
   const contact = String(form.get("contact") ?? "").trim();
   const ownerEmail = String(form.get("ownerEmail") ?? "").trim().toLowerCase();
@@ -43,6 +47,30 @@ export async function POST(request: Request) {
     await assertSafeOutboundUrl(website, { allowHttp: true });
   } catch {
     return NextResponse.json({ error: "Укажите корректный URL сайта" }, { status: 400 });
+  }
+  const templateError = validateExchangeUrlTemplate(exchangeUrlTemplate);
+  if (templateError) {
+    return NextResponse.json({ error: templateError }, { status: 400 });
+  }
+  if (!exchangeUrlTemplate) {
+    return NextResponse.json(
+      {
+        error:
+          "Укажите шаблон ссылки на обмен, например https://site.com/exchange/{0}/{1}",
+      },
+      { status: 400 },
+    );
+  }
+  try {
+    const sample = exchangeUrlTemplate
+      .replaceAll("{0}", "BTC")
+      .replaceAll("{1}", "USDTTRC20");
+    await assertSafeOutboundUrl(sample, { allowHttp: true });
+  } catch {
+    return NextResponse.json(
+      { error: "Некорректный шаблон ссылки на обмен" },
+      { status: 400 },
+    );
   }
   try {
     await assertSafeOutboundUrl(feedUrl, { allowHttp: true });
@@ -110,6 +138,7 @@ export async function POST(request: Request) {
       id,
       name,
       website,
+      exchangeUrlTemplate,
       feedUrl,
       contact,
       description:

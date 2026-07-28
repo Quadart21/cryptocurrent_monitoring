@@ -26,6 +26,8 @@ export type FeedExchanger = {
   slug: string;
   name: string;
   website: string;
+  /** Deep-link with `{0}`=from, `{1}`=to. Empty → use website. */
+  exchangeUrlTemplate: string;
   feedUrl: string;
   contact: string;
   description: string;

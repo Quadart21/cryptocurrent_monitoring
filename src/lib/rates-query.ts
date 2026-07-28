@@ -33,6 +33,7 @@ export type RatesOffer = {
     slug: string;
     name: string;
     website: string;
+    exchangeUrlTemplate: string;
     rating: number;
     reviews: number;
     verified: boolean;
@@ -129,6 +130,7 @@ export async function queryRates(
           slug: exchanger.slug,
           name: exchanger.name,
           website: exchanger.website,
+          exchangeUrlTemplate: exchanger.exchangeUrlTemplate,
           rating: exchanger.rating,
           reviews: exchanger.reviews,
           verified: exchanger.verified,

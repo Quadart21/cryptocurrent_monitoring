@@ -76,6 +76,7 @@ export const seedExchanger: FeedExchanger = {
   slug: "kubex",
   name: "Kubex",
   website: "https://kubex.me",
+  exchangeUrlTemplate: "https://kubex.me/ru/exchange/{0}/{1}",
   feedUrl: "https://kubex.me/exports/valuta.xml",
   contact: "seed@gapsnap.local",
   description:
@@ -275,6 +276,7 @@ export async function ensureSeeded(db: Db): Promise<void> {
       slug: seedExchanger.slug,
       name: seedExchanger.name,
       website: seedExchanger.website,
+      exchangeUrlTemplate: seedExchanger.exchangeUrlTemplate,
       feedUrl: seedExchanger.feedUrl,
       contact: seedExchanger.contact,
       description: seedExchanger.description,

@@ -49,6 +49,13 @@ export function ApplyForm() {
         <Field label="Название обменника" name="name" placeholder="Kubex" required />
         <Field label="Сайт" name="website" placeholder="https://example.com" required />
         <Field
+          label="Ссылка на обмен по паре"
+          name="exchangeUrlTemplate"
+          placeholder="https://kubex.me/ru/exchange/{0}/{1}"
+          hint="{0} — код валюты «отдаёте», {1} — «получаете» (как в XML-фиде: ACRUB, BTC, USDTTRC20). При клике «Обменять» откроется направление, выбранное на мониторинге."
+          required
+        />
+        <Field
           label="URL XML-фида (valuta.xml)"
           name="feedUrl"
           placeholder="https://example.com/exports/valuta.xml"

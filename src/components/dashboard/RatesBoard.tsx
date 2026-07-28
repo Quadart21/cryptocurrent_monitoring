@@ -9,6 +9,7 @@ import { RelativeSyncTimer } from "@/components/seo/RelativeSyncTimer";
 import type { LiveOffer } from "@/components/RateTable";
 import { pairPath } from "@/lib/bestchange/pair-slug";
 import { pickWeightedRandom } from "@/lib/ads";
+import { buildExchangeUrl } from "@/lib/exchange-link";
 import {
   formatCurrencyAmount,
   formatRate,
@@ -300,7 +301,12 @@ export function RatesBoard({
                       Подробнее
                     </Link>
                     <a
-                      href={offer.exchanger.website || "#"}
+                      href={buildExchangeUrl(
+                        offer.exchanger.exchangeUrlTemplate,
+                        offer.exchanger.website,
+                        offer.from,
+                        offer.to,
+                      )}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="btn-primary flex flex-1 items-center justify-center rounded-xl px-3 py-2.5 text-sm font-semibold"
@@ -427,7 +433,12 @@ export function RatesBoard({
                             Подробнее
                           </Link>
                           <a
-                            href={offer.exchanger.website || "#"}
+                            href={buildExchangeUrl(
+                              offer.exchanger.exchangeUrlTemplate,
+                              offer.exchanger.website,
+                              offer.from,
+                              offer.to,
+                            )}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="btn-primary inline-flex rounded-xl px-3 py-2 text-xs font-semibold"

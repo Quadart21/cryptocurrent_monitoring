@@ -57,6 +57,13 @@
       "when": 1785199000000,
       "tag": "0007_seo_analytics_blog",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1785201000000,
+      "tag": "0008_exchange_url_template",
+      "breakpoints": true
     }
   ]
 }

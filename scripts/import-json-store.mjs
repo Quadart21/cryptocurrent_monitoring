@@ -71,21 +71,22 @@ async function main() {
 
       await client.query(
         `INSERT INTO exchangers (
-          id, slug, name, website, feed_url, contact, description, status, verified,
+          id, slug, name, website, exchange_url_template, feed_url, contact, description, status, verified,
           rating, reviews, reviews_positive, reviews_negative, age_years, created_at,
           approved_at, last_sync_at, last_error, pair_count, achievement_ids,
           logo_format, logo_updated_at, logo_data, traffic, owner_login, owner_password_hash
         ) VALUES (
-          $1,$2,$3,$4,$5,$6,$7,$8,$9,
-          $10,$11,$12,$13,$14,$15,
-          $16,$17,$18,$19,$20,
-          $21,$22,$23,$24::jsonb,$25,$26
+          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
+          $11,$12,$13,$14,$15,$16,
+          $17,$18,$19,$20,$21,
+          $22,$23,$24,$25::jsonb,$26,$27
         )`,
         [
           ex.id,
           ex.slug ?? ex.id,
           ex.name ?? ex.id,
           ex.website ?? "",
+          ex.exchangeUrlTemplate ?? "",
           ex.feedUrl ?? "",
           ex.contact ?? "",
           ex.description ?? "",

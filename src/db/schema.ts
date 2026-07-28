@@ -39,6 +39,8 @@ export const exchangers = pgTable(
     slug: text("slug").notNull().unique(),
     name: text("name").notNull(),
     website: text("website").notNull().default(""),
+    /** Deep-link template: `{0}` = from code, `{1}` = to code (BestChange). */
+    exchangeUrlTemplate: text("exchange_url_template").notNull().default(""),
     feedUrl: text("feed_url").notNull().default(""),
     contact: text("contact").notNull().default(""),
     description: text("description").notNull().default(""),

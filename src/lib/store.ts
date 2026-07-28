@@ -106,6 +106,7 @@ function mapExchanger(row: ExchangerRow): FeedExchanger {
     slug: row.slug,
     name: row.name,
     website: row.website,
+    exchangeUrlTemplate: row.exchangeUrlTemplate ?? "",
     feedUrl: row.feedUrl,
     contact: row.contact,
     description: row.description,
@@ -650,6 +651,7 @@ export async function addExchangerApplication(input: {
   id?: string;
   name: string;
   website: string;
+  exchangeUrlTemplate?: string;
   feedUrl: string;
   contact: string;
   description: string;
@@ -690,6 +692,7 @@ export async function addExchangerApplication(input: {
       slug,
       name: input.name,
       website: input.website,
+      exchangeUrlTemplate: (input.exchangeUrlTemplate ?? "").trim(),
       feedUrl: input.feedUrl,
       contact: input.contact,
       description: input.description,
@@ -833,6 +836,7 @@ export async function updateExchanger(
       FeedExchanger,
       | "name"
       | "website"
+      | "exchangeUrlTemplate"
       | "feedUrl"
       | "contact"
       | "description"
@@ -890,6 +894,9 @@ export async function updateExchanger(
     .set({
       ...(patch.name !== undefined ? { name: patch.name } : {}),
       ...(patch.website !== undefined ? { website: patch.website } : {}),
+      ...(patch.exchangeUrlTemplate !== undefined
+        ? { exchangeUrlTemplate: patch.exchangeUrlTemplate }
+        : {}),
       ...(patch.feedUrl !== undefined ? { feedUrl: patch.feedUrl } : {}),
       ...(patch.contact !== undefined ? { contact: patch.contact } : {}),
       ...(patch.description !== undefined

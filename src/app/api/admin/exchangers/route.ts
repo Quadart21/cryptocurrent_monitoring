@@ -1,5 +1,6 @@
 ﻿import { NextResponse } from "next/server";
 import { assertAdmin } from "@/lib/admin-guard";
+import { validateExchangeUrlTemplate } from "@/lib/exchange-link";
 import { hashOwnerPassword } from "@/lib/owner-auth";
 import {
   extractEmail,
@@ -49,6 +50,7 @@ export async function PATCH(request: Request) {
     verified?: boolean;
     name?: string;
     website?: string;
+    exchangeUrlTemplate?: string;
     feedUrl?: string;
     contact?: string;
     description?: string;
@@ -124,6 +126,14 @@ export async function PATCH(request: Request) {
   if (body.verified !== undefined) patch.verified = body.verified;
   if (body.name !== undefined) patch.name = body.name.trim();
   if (body.website !== undefined) patch.website = body.website.trim();
+  if (body.exchangeUrlTemplate !== undefined) {
+    const tpl = body.exchangeUrlTemplate.trim();
+    const templateError = validateExchangeUrlTemplate(tpl);
+    if (templateError) {
+      return NextResponse.json({ error: templateError }, { status: 400 });
+    }
+    patch.exchangeUrlTemplate = tpl;
+  }
   if (body.feedUrl !== undefined) patch.feedUrl = body.feedUrl.trim();
   if (body.contact !== undefined) patch.contact = body.contact.trim();
   if (body.description !== undefined) patch.description = body.description.trim();
