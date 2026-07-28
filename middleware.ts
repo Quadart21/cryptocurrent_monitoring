@@ -1,7 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import {
   ADMIN_COOKIE,
+  ADMIN_INTERNAL_PATH,
   ADMIN_PATH,
+  isAdminInternalPath,
+  isAdminPublicPath,
   isValidAdminSession,
 } from "@/lib/admin-auth";
 import {
@@ -28,8 +31,38 @@ function rateLimited(retryAfterSec: number) {
   );
 }
 
+function withNoIndex(res: NextResponse): NextResponse {
+  res.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+  res.headers.set("Cache-Control", "no-store");
+  return res;
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Custom public admin URL → rewrite to internal /trulala app routes
+  if (ADMIN_PATH !== ADMIN_INTERNAL_PATH && isAdminPublicPath(pathname)) {
+    const url = request.nextUrl.clone();
+    const rest =
+      pathname === ADMIN_PATH ? "" : pathname.slice(ADMIN_PATH.length);
+    url.pathname = `${ADMIN_INTERNAL_PATH}${rest}`;
+    return withNoIndex(NextResponse.rewrite(url));
+  }
+
+  // Hide canonical filesystem path when a custom ADMIN_PATH is configured
+  if (ADMIN_PATH !== ADMIN_INTERNAL_PATH && isAdminInternalPath(pathname)) {
+    return withNoIndex(
+      new NextResponse("Not Found", {
+        status: 404,
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+      }),
+    );
+  }
+
+  if (isAdminPublicPath(pathname) || isAdminInternalPath(pathname)) {
+    const res = NextResponse.next();
+    return withNoIndex(res);
+  }
 
   // Application-layer DoS shield for all APIs
   if (pathname.startsWith("/api/")) {
@@ -65,24 +98,16 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (
-    pathname === ADMIN_PATH ||
-    pathname.startsWith(`${ADMIN_PATH}/`) ||
-    pathname === "/cabinet" ||
-    pathname.startsWith("/cabinet/")
-  ) {
-    return NextResponse.next();
-  }
-
   return NextResponse.next();
 }
 
 export const config = {
   matcher: [
-    "/trulala",
-    "/trulala/:path*",
-    "/cabinet",
-    "/cabinet/:path*",
+    /*
+     * Run on app routes (needed for custom ADMIN_PATH rewrite) + APIs.
+     * Skip Next static assets and files with extensions.
+     */
+    "/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)",
     "/api/:path*",
   ],
 };

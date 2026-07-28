@@ -293,7 +293,7 @@ export function SeoModule() {
             <div className="lg:col-span-2">
               <Field
                 label="Disallow в robots.txt"
-                hint="По одному пути на строку. /trulala, /cabinet и /api/ добавляются всегда."
+                hint="По одному пути на строку. Путь админки сюда не пишите — он светится в robots.txt. /api/ добавляется автоматически."
               >
                 <textarea
                   className={areaClass}

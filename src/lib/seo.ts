@@ -1,6 +1,10 @@
 import "server-only";
 
 import type { Metadata } from "next";
+import {
+  ADMIN_INTERNAL_PATH,
+  ADMIN_PATH,
+} from "@/lib/admin-auth";
 import { getSeoSettings } from "@/lib/store";
 import type { SeoSettings } from "@/lib/store-types";
 
@@ -150,18 +154,35 @@ export function buildRobotsTxt(seo: SeoSettings): string {
   const siteUrl = normalizeSiteUrl(seo.siteUrl);
   const lines: string[] = ["User-agent: *"];
 
+  // Never advertise the admin URL in robots.txt — Disallow reveals the path.
+  // Admin pages already send robots:noindex / X-Robots-Tag.
+  const secretPrefixes = [ADMIN_PATH, ADMIN_INTERNAL_PATH]
+    .map((p) => p.toLowerCase())
+    .filter(Boolean);
+
+  function isSecretPath(path: string): boolean {
+    const p = path.toLowerCase();
+    return secretPrefixes.some(
+      (secret) => p === secret || p.startsWith(`${secret}/`),
+    );
+  }
+
   if (!seo.robotsIndex) {
     lines.push("Disallow: /");
   } else {
     lines.push("Allow: /");
     for (const path of parseNoindexPaths(seo.noindexPaths)) {
-      lines.push(`Disallow: ${path.startsWith("/") ? path : `/${path}`}`);
+      const normalized = path.startsWith("/") ? path : `/${path}`;
+      if (isSecretPath(normalized)) continue;
+      lines.push(`Disallow: ${normalized}`);
     }
-    // Always hide admin/cabinet APIs from crawlers
-    for (const path of ["/trulala", "/cabinet", "/api/"]) {
-      if (!parseNoindexPaths(seo.noindexPaths).includes(path)) {
-        lines.push(`Disallow: ${path}`);
-      }
+    // Technical API only — do not list admin panels here
+    if (
+      !parseNoindexPaths(seo.noindexPaths).some(
+        (p) => (p.startsWith("/") ? p : `/${p}`) === "/api/",
+      )
+    ) {
+      lines.push("Disallow: /api/");
     }
   }
 
@@ -171,7 +192,11 @@ export function buildRobotsTxt(seo: SeoSettings): string {
     .filter((l) => l.trim());
   if (extra.length) {
     lines.push("");
-    lines.push(...extra);
+    for (const line of extra) {
+      const disallowMatch = line.match(/^Disallow:\s*(\S+)/i);
+      if (disallowMatch && isSecretPath(disallowMatch[1])) continue;
+      lines.push(line);
+    }
   }
 
   if (seo.sitemapEnabled && siteUrl) {

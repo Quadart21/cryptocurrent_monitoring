@@ -130,7 +130,7 @@ export const seedSeo: SeoSettings = {
   robotsExtra: "",
   robotsTxtExtra: "",
   sitemapEnabled: true,
-  noindexPaths: "/trulala\n/cabinet\n/api/",
+  noindexPaths: "/api/",
   googleVerification: "",
   yandexVerification: "",
   bingVerification: "",
