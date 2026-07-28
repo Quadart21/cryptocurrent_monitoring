@@ -2,6 +2,7 @@ import "server-only";
 
 import { desc, eq } from "drizzle-orm";
 import { getDb } from "@/db/index";
+import { runMigrations } from "@/db/migrate";
 import { emailLog, emailSettings, emailTemplates } from "@/db/schema";
 import {
   DEFAULT_EMAIL_SETTINGS,
@@ -34,6 +35,7 @@ export function siteBaseUrl(seoSiteUrl?: string): string {
 }
 
 async function ensureEmailDefaults(): Promise<void> {
+  await runMigrations();
   const db = getDb();
   const [settings] = await db
     .select()

@@ -98,20 +98,38 @@ export function EmailModule() {
 
   const load = useCallback(async () => {
     setError(null);
-    const res = await fetch("/api/admin/email?view=snapshot", {
-      cache: "no-store",
-    });
-    if (!res.ok) {
-      setError("Не удалось загрузить модуль email");
-      return;
-    }
-    const json = (await res.json()) as Snapshot;
-    setData(json);
-    setSettings(json.settings);
-    const first = json.templates[0];
-    if (first) {
-      setTplId(first.id);
-      setTplDraft(first);
+    try {
+      const res = await fetch("/api/admin/email?view=snapshot", {
+        cache: "no-store",
+      });
+      const json = (await res.json().catch(() => null)) as
+        | (Snapshot & { error?: string })
+        | null;
+      if (!res.ok) {
+        setError(
+          json?.error
+            ? `Не удалось загрузить модуль email: ${json.error}`
+            : `Не удалось загрузить модуль email (HTTP ${res.status})`,
+        );
+        return;
+      }
+      if (!json?.settings) {
+        setError("Не удалось загрузить модуль email: пустой ответ");
+        return;
+      }
+      setData(json);
+      setSettings(json.settings);
+      const first = json.templates?.[0];
+      if (first) {
+        setTplId(first.id);
+        setTplDraft(first);
+      }
+    } catch (e) {
+      setError(
+        e instanceof Error
+          ? `Не удалось загрузить модуль email: ${e.message}`
+          : "Не удалось загрузить модуль email",
+      );
     }
   }, []);
 
