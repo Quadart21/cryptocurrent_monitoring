@@ -52,7 +52,7 @@ export async function POST(request: Request) {
 
   if (!prepared) {
     return NextResponse.json(
-      { error: "Выберите JPG, PNG или WebP" },
+      { error: "Выберите JPG, PNG, WebP, AVIF, GIF или MP4/WebM" },
       { status: 400 },
     );
   }

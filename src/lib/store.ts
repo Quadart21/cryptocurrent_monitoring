@@ -29,6 +29,8 @@ import {
   parseProxyHosts,
 } from "@/lib/ai/default-proxies";
 import { emptyAdStats, normalizeAdStats, utcDayKey } from "@/lib/ads";
+import { isAdImageFormat } from "@/lib/ad-image-url";
+import type { AdImageFormat } from "@/lib/ad-image-url";
 import {
   emptyBannerCheck,
   newBannerToken,
@@ -207,12 +209,9 @@ function mapAchievement(row: AchievementRow): ExchangerAchievement {
 }
 
 function mapAd(row: AdRow): AdCreative {
-  const imageFormat =
-    row.imageFormat === "jpeg" ||
-    row.imageFormat === "png" ||
-    row.imageFormat === "webp"
-      ? (row.imageFormat as "jpeg" | "png" | "webp")
-      : null;
+  const imageFormat = isAdImageFormat(row.imageFormat)
+    ? row.imageFormat
+    : null;
   const image: AdCreative["image"] =
     imageFormat && row.imageUpdatedAt
       ? { format: imageFormat, updatedAt: row.imageUpdatedAt }
@@ -652,7 +651,7 @@ export async function getAdById(id: string): Promise<AdCreative | undefined> {
 
 export async function getAdImageBytes(
   id: string,
-): Promise<{ format: "jpeg" | "png" | "webp"; bytes: Buffer } | null> {
+): Promise<{ format: AdImageFormat; bytes: Buffer } | null> {
   const db = getDb();
   const [row] = await db
     .select({
@@ -662,10 +661,7 @@ export async function getAdImageBytes(
     .from(ads)
     .where(eq(ads.id, id))
     .limit(1);
-  if (
-    !row?.data ||
-    (row.format !== "jpeg" && row.format !== "png" && row.format !== "webp")
-  ) {
+  if (!row?.data || !isAdImageFormat(row.format)) {
     return null;
   }
   return { format: row.format, bytes: row.data };
@@ -673,8 +669,8 @@ export async function getAdImageBytes(
 
 export async function setAdImageData(
   id: string,
-  prepared: { format: "jpeg" | "png" | "webp"; bytes: Buffer },
-): Promise<{ format: "jpeg" | "png" | "webp"; updatedAt: string }> {
+  prepared: { format: AdImageFormat; bytes: Buffer },
+): Promise<{ format: AdImageFormat; updatedAt: string }> {
   const db = getDb();
   const updatedAt = new Date().toISOString();
   const imageUrl = `/api/ad-images/${encodeURIComponent(id)}?v=${encodeURIComponent(updatedAt)}`;

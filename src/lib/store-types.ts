@@ -175,8 +175,11 @@ export type AdCreative = {
   href: string;
   /** Картинка баннера: внешний URL или `/api/ad-images/:id` после загрузки */
   imageUrl: string;
-  /** Метаданные загруженного файла (если картинка лежит в БД) */
-  image: { format: "jpeg" | "png" | "webp"; updatedAt: string } | null;
+  /** Метаданные загруженного файла (если медиа лежит в БД) */
+  image: {
+    format: "jpeg" | "png" | "webp" | "gif" | "avif" | "mp4" | "webm";
+    updatedAt: string;
+  } | null;
   /** Для highlight / rates_pin */
   exchangerId: string | null;
   /**

@@ -23,6 +23,7 @@ export async function GET(request: Request) {
       body: ad.body,
       href: ad.href,
       imageUrl: ad.imageUrl,
+      image: ad.image,
       exchangerId: ad.exchangerId,
       pairs: ad.pairs ?? [],
       priority: ad.priority,

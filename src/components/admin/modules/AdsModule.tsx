@@ -12,6 +12,7 @@ import {
   formatCtr,
 } from "@/lib/ads";
 import type { AdCreative, AdPlacement, AdType } from "@/lib/store-types";
+import { adMediaIsVideo } from "@/lib/ad-image-url";
 import { ADMIN_PATH } from "@/lib/admin-auth";
 import { useAdmin } from "@/components/admin/AdminProvider";
 import {
@@ -43,6 +44,7 @@ type FormState = {
   body: string;
   href: string;
   imageUrl: string;
+  imageFormat: string | null;
   exchangerId: string;
   /** empty = everywhere; otherwise selected FROM:TO keys */
   pairs: string[];
@@ -63,6 +65,7 @@ const emptyForm = (): FormState => ({
   body: "",
   href: "",
   imageUrl: "",
+  imageFormat: null,
   exchangerId: "",
   pairs: [],
   pairScope: "everywhere",
@@ -82,6 +85,7 @@ function formFromAd(ad: AdCreative): FormState {
     body: ad.body,
     href: ad.href,
     imageUrl: ad.imageUrl,
+    imageFormat: ad.image?.format ?? null,
     exchangerId: ad.exchangerId ?? "",
     pairs,
     pairScope: pairs.length ? "pairs" : "everywhere",
@@ -216,7 +220,7 @@ export function AdsModule() {
         setError(body.error ?? "Не удалось удалить картинку");
         return;
       }
-      setForm((f) => ({ ...f, imageUrl: "" }));
+      setForm((f) => ({ ...f, imageUrl: "", imageFormat: null }));
       setImageFile(null);
       await refresh();
     } finally {
@@ -474,7 +478,8 @@ export function AdsModule() {
                 ))}
               </ul>
               <p className="mt-2 text-xs text-ink-muted">
-                JPG / PNG / WebP, до 2 МБ. Берите точный размер выбранного слота.
+                JPG / PNG / WebP / AVIF / GIF до 3 МБ; короткое MP4 / WebM до 8
+                МБ (muted loop). Берите точный размер выбранного слота.
               </p>
             </div>
           ) : null}
@@ -524,14 +529,14 @@ export function AdsModule() {
             <div className="space-y-3">
               <div className="space-y-2">
                 <span className="text-xs text-ink-muted">
-                  Картинка с ПК
+                  Файл с ПК
                   {BANNER_SPECS[form.placement]
                     ? ` · нужно ${BANNER_SPECS[form.placement]!.sizeLabel} px`
                     : ""}
                 </span>
                 <input
                   type="file"
-                  accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                  accept=".jpg,.jpeg,.png,.webp,.gif,.avif,.mp4,.webm,m4v,image/jpeg,image/png,image/webp,image/gif,image/avif,video/mp4,video/webm"
                   onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
                   className="block w-full text-sm text-ink file:mr-3 file:rounded-xl file:border-0 file:bg-accent/15 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-accent"
                 />
@@ -542,12 +547,26 @@ export function AdsModule() {
                 ) : null}
                 {form.imageUrl ? (
                   <div className="flex flex-wrap items-center gap-3">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={form.imageUrl}
-                      alt=""
-                      className="h-12 max-w-[240px] rounded-lg border border-line object-cover"
-                    />
+                    {adMediaIsVideo({
+                      format: form.imageFormat,
+                      url: form.imageUrl,
+                    }) ? (
+                      <video
+                        src={form.imageUrl}
+                        className="h-12 max-w-[240px] rounded-lg border border-line object-cover"
+                        muted
+                        autoPlay
+                        loop
+                        playsInline
+                      />
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={form.imageUrl}
+                        alt=""
+                        className="h-12 max-w-[240px] rounded-lg border border-line object-cover"
+                      />
+                    )}
                     {editingId ? (
                       <button
                         type="button"
@@ -555,7 +574,7 @@ export function AdsModule() {
                         onClick={() => void removeAdImage(editingId)}
                         className="rounded-xl bg-danger/15 px-3 py-2 text-xs font-semibold text-danger"
                       >
-                        Удалить картинку
+                        Удалить файл
                       </button>
                     ) : null}
                   </div>
@@ -563,21 +582,25 @@ export function AdsModule() {
               </div>
               <label className="block space-y-1">
                 <span className="text-xs text-ink-muted">
-                  Или URL картинки (если уже хостится)
+                  Или URL файла (если уже хостится)
                 </span>
                 <input
                   value={form.imageUrl.startsWith("/api/ad-images/") ? "" : form.imageUrl}
                   onChange={(e) =>
-                    setForm({ ...form, imageUrl: e.target.value })
+                    setForm({
+                      ...form,
+                      imageUrl: e.target.value,
+                      imageFormat: null,
+                    })
                   }
-                  placeholder="https://…/banner.png"
+                  placeholder="https://…/banner.webp или .mp4"
                   disabled={Boolean(imageFile)}
                   className="w-full rounded-2xl border border-line bg-input px-3 py-2.5 text-sm outline-none focus:border-accent disabled:opacity-60"
                 />
               </label>
               <p className="text-xs text-ink-muted">
                 Баннер тянется на ширину контента. Без файла или URL — текстовая
-                карточка.
+                карточка. Для анимации лучше WebP или короткий MP4/WebM, не GIF.
               </p>
             </div>
           ) : null}

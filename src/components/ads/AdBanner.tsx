@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { BANNER_SPECS, pickWeightedRandom } from "@/lib/ads";
+import { adMediaIsVideo } from "@/lib/ad-image-url";
 import type { PublicAd } from "@/components/ads/useAds";
 import { trackAdClick, trackAdImpression } from "@/components/ads/track";
 
@@ -10,6 +11,37 @@ function AdLabel() {
     <span className="pointer-events-none absolute left-2 top-2 z-10 rounded bg-black/55 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-white">
       Реклама
     </span>
+  );
+}
+
+function AdMedia({ ad }: { ad: PublicAd }) {
+  const isVideo = adMediaIsVideo({
+    format: ad.image?.format,
+    url: ad.imageUrl,
+  });
+
+  if (isVideo) {
+    return (
+      <video
+        src={ad.imageUrl}
+        className="pointer-events-none h-full w-full object-cover object-center"
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="metadata"
+        aria-label={ad.title}
+      />
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={ad.imageUrl}
+      alt={ad.title}
+      className="h-full w-full object-cover object-center"
+    />
   );
 }
 
@@ -45,12 +77,7 @@ export function AdBanner({ ad }: { ad: PublicAd }) {
         className={`relative w-full overflow-hidden rounded-2xl border border-line bg-bg-soft ${spec?.aspectClass ?? "aspect-[6/1]"}`}
       >
         <AdLabel />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={ad.imageUrl}
-          alt={ad.title}
-          className="h-full w-full object-cover object-center"
-        />
+        <AdMedia ad={ad} />
       </div>
     );
 

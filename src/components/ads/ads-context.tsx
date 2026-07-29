@@ -12,6 +12,7 @@ export type PublicAd = Pick<
   | "body"
   | "href"
   | "imageUrl"
+  | "image"
   | "exchangerId"
   | "pairs"
   | "priority"

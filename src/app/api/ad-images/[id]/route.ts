@@ -1,16 +1,11 @@
 import { NextResponse } from "next/server";
+import { AD_MEDIA_CONTENT_TYPES } from "@/lib/ad-image-url";
 import { getAdById, getAdImageBytes } from "@/lib/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ id: string }> };
-
-const CONTENT_TYPES = {
-  jpeg: "image/jpeg",
-  png: "image/png",
-  webp: "image/webp",
-} as const;
 
 export async function GET(_request: Request, { params }: Params) {
   const { id } = await params;
@@ -26,10 +21,10 @@ export async function GET(_request: Request, { params }: Params) {
 
   return new NextResponse(new Uint8Array(image.bytes), {
     headers: {
-      "Content-Type": CONTENT_TYPES[image.format],
+      "Content-Type": AD_MEDIA_CONTENT_TYPES[image.format],
       "Content-Disposition": "inline",
       "X-Content-Type-Options": "nosniff",
-      "Content-Security-Policy": "default-src 'none'; sandbox",
+      "Content-Security-Policy": "default-src 'none'; media-src 'self'; sandbox",
       "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
     },
   });
