@@ -92,4 +92,59 @@ otpauth: {{totpUri}}
     enabled: true,
     updatedAt: NOW,
   },
+  {
+    id: "owner_banner_missing",
+    name: "Баннер не найден — предупреждение",
+    description: "Владельцу: разместите кнопку GapSnap на сайте",
+    subject: "{{siteName}}: разместите баннер на сайте «{{exchangerName}}»",
+    text: `Здравствуйте.
+
+На сайте обменника «{{exchangerName}}» ({{website}}) мы не нашли кнопку GapSnap.
+
+По правилам мониторинга баннер обязателен. Код и инструкции — в кабинете: {{cabinetUrl}}
+
+HTML для вставки:
+{{bannerHtml}}
+
+Пропусков подряд: {{misses}}. Если баннер не появится, обменник могут снять с публикации.
+
+— {{siteName}}`,
+    html: `<div style="font-family:system-ui,sans-serif;line-height:1.5;color:#111;max-width:560px">
+  <p>На сайте обменника <strong>{{exchangerName}}</strong> (<a href="{{website}}">{{website}}</a>) мы не нашли кнопку GapSnap.</p>
+  <p>По правилам мониторинга баннер обязателен. Скопируйте код в кабинете и разместите на сайте (обычно в футере).</p>
+  <p><a href="{{cabinetUrl}}" style="display:inline-block;padding:12px 18px;background:#0f766e;color:#fff;border-radius:10px;text-decoration:none;font-weight:600">Открыть кабинет</a></p>
+  <h3 style="margin:24px 0 8px;font-size:16px">HTML для вставки</h3>
+  <pre style="padding:12px;background:#f8fafc;border-radius:10px;overflow:auto;font-size:12px;white-space:pre-wrap">{{bannerHtml}}</pre>
+  <p style="font-size:13px;color:#555">Пропусков подряд: <strong>{{misses}}</strong>. Если баннер не появится, обменник могут снять с публикации на {{siteName}}.</p>
+</div>`,
+    enabled: true,
+    updatedAt: NOW,
+  },
+  {
+    id: "owner_banner_unpublished",
+    name: "Снятие с публикации — нет баннера",
+    description: "Владельцу: обменник снят за отсутствие кнопки GapSnap",
+    subject: "{{siteName}}: «{{exchangerName}}» снят с публикации",
+    text: `Здравствуйте.
+
+Обменник «{{exchangerName}}» снят с публикации на {{siteName}}: на сайте {{website}} не найдена кнопка GapSnap.
+
+Вернуть листинг можно после размещения баннера — код в кабинете: {{cabinetUrl}}
+
+{{bannerHtml}}
+
+Напишите в поддержку после размещения — мы проверим и восстановим карточку.
+
+— {{siteName}}`,
+    html: `<div style="font-family:system-ui,sans-serif;line-height:1.5;color:#111;max-width:560px">
+  <p>Обменник <strong>{{exchangerName}}</strong> снят с публикации на {{siteName}}.</p>
+  <p>Причина: на сайте <a href="{{website}}">{{website}}</a> не найдена кнопка GapSnap.</p>
+  <p>Разместите баннер и напишите в поддержку — мы проверим и восстановим карточку.</p>
+  <p><a href="{{cabinetUrl}}" style="display:inline-block;padding:12px 18px;background:#0f766e;color:#fff;border-radius:10px;text-decoration:none;font-weight:600">Открыть кабинет</a></p>
+  <h3 style="margin:24px 0 8px;font-size:16px">HTML для вставки</h3>
+  <pre style="padding:12px;background:#f8fafc;border-radius:10px;overflow:auto;font-size:12px;white-space:pre-wrap">{{bannerHtml}}</pre>
+</div>`,
+    enabled: true,
+    updatedAt: NOW,
+  },
 ];

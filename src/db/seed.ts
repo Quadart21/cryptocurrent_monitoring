@@ -107,6 +107,8 @@ export const seedExchanger: FeedExchanger = {
     consecutiveMisses: 0,
     lastError: null,
     lastNotifiedAt: null,
+    lastOwnerWarnedAt: null,
+    ownerWarnCount: 0,
   },
   ownerLogin: "kubex",
   ownerPasswordHash:

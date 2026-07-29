@@ -1,7 +1,9 @@
 export type EmailTemplateId =
   | "review_confirm"
   | "owner_approved"
-  | "owner_new_review";
+  | "owner_new_review"
+  | "owner_banner_missing"
+  | "owner_banner_unpublished";
 
 export type EmailContactSource = "exchanger" | "review" | "manual";
 
@@ -75,5 +77,20 @@ export const EMAIL_TEMPLATE_VARS: Record<string, string[]> = {
     "reviewText",
     "cabinetUrl",
     "publicUrl",
+  ],
+  owner_banner_missing: [
+    "siteName",
+    "exchangerName",
+    "website",
+    "cabinetUrl",
+    "bannerHtml",
+    "misses",
+  ],
+  owner_banner_unpublished: [
+    "siteName",
+    "exchangerName",
+    "website",
+    "cabinetUrl",
+    "bannerHtml",
   ],
 };

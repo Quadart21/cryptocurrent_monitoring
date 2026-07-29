@@ -47,6 +47,14 @@ export const ADMIN_NAV: AdminNavItem[] = [
     group: "moderation",
   },
   {
+    id: "banners",
+    href: `${ADMIN_PATH}/banners`,
+    label: "Баннеры",
+    description: "Кнопка GapSnap на сайтах",
+    group: "moderation",
+    badge: "bannerMissing",
+  },
+  {
     id: "blog",
     href: `${ADMIN_PATH}/blog`,
     label: "Новости",
@@ -129,7 +137,7 @@ export function adminNavBadgeCount(
   if (badge === "pendingCatalog") return counts.pendingCatalog;
   if (badge === "bannerMissing") return counts.bannerMissing;
   if (badge === "syncQueue") {
-    return counts.pendingCatalog + (counts.bannerMissing ?? 0);
+    return counts.pendingCatalog;
   }
   return 0;
 }

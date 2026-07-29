@@ -67,6 +67,50 @@ export async function sendOwnerNewReviewEmail(input: {
   });
 }
 
+export async function sendOwnerBannerMissingEmail(input: {
+  to: string;
+  exchangerName: string;
+  website: string;
+  bannerHtml: string;
+  misses: number;
+}): Promise<void> {
+  const seo = await getSeoSettings();
+  const base = siteBaseUrl(seo.siteUrl);
+  await sendTemplatedEmail({
+    templateId: "owner_banner_missing",
+    to: input.to,
+    tag: "banner-owner-warn",
+    vars: {
+      exchangerName: input.exchangerName,
+      website: input.website,
+      cabinetUrl: `${base}/cabinet`,
+      bannerHtml: input.bannerHtml,
+      misses: String(input.misses),
+    },
+  });
+}
+
+export async function sendOwnerBannerUnpublishedEmail(input: {
+  to: string;
+  exchangerName: string;
+  website: string;
+  bannerHtml: string;
+}): Promise<void> {
+  const seo = await getSeoSettings();
+  const base = siteBaseUrl(seo.siteUrl);
+  await sendTemplatedEmail({
+    templateId: "owner_banner_unpublished",
+    to: input.to,
+    tag: "banner-owner-unpublish",
+    vars: {
+      exchangerName: input.exchangerName,
+      website: input.website,
+      cabinetUrl: `${base}/cabinet`,
+      bannerHtml: input.bannerHtml,
+    },
+  });
+}
+
 export async function sendReviewConfirmEmail(input: {
   to: string;
   exchangerName: string;

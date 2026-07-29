@@ -52,7 +52,8 @@ export type AdminNavId =
   | "blog"
   | "blacklist"
   | "catalog"
-  | "sync";
+  | "sync"
+  | "banners";
 
 export type AdminNavGroupId =
   | "main"

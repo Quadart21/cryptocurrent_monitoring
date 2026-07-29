@@ -11,6 +11,8 @@ export function emptyBannerCheck(): BannerCheckJson {
     consecutiveMisses: 0,
     lastError: null,
     lastNotifiedAt: null,
+    lastOwnerWarnedAt: null,
+    ownerWarnCount: 0,
   };
 }
 
@@ -32,6 +34,8 @@ export function normalizeBannerCheck(
     consecutiveMisses: Number(value.consecutiveMisses ?? 0) || 0,
     lastError: value.lastError ?? null,
     lastNotifiedAt: value.lastNotifiedAt ?? null,
+    lastOwnerWarnedAt: value.lastOwnerWarnedAt ?? null,
+    ownerWarnCount: Number(value.ownerWarnCount ?? 0) || 0,
   };
 }
 

@@ -178,10 +178,10 @@ export function OverviewModule() {
         </div>
         <div className="border-t border-line px-5 py-3">
           <Link
-            href={`${ADMIN_PATH}/sync`}
+            href={`${ADMIN_PATH}/banners`}
             className="text-sm font-semibold text-accent hover:underline"
           >
-            Проверить баннеры сейчас →
+            Раздел «Баннеры»: проверить, предупредить, снять →
           </Link>
         </div>
       </AdminSection>
@@ -195,6 +195,7 @@ export function OverviewModule() {
                 ["Обменники", `${ADMIN_PATH}/exchangers`],
                 ["Отзывы", `${ADMIN_PATH}/reviews`],
                 ["Чёрный список", `${ADMIN_PATH}/blacklist`],
+                ["Баннеры", `${ADMIN_PATH}/banners`],
               ],
             },
             {

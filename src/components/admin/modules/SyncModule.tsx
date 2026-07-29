@@ -48,14 +48,6 @@ export function SyncModule() {
   const [feedResult, setFeedResult] = useState<FeedSyncResult | null>(null);
   const [discovery, setDiscovery] = useState<DiscoveryResult | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>([]);
-  const [bannerResult, setBannerResult] = useState<{
-    checked: number;
-    ok: number;
-    missing: number;
-    errors: number;
-    notified: boolean;
-    checkedAt: string;
-  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
 
@@ -127,45 +119,6 @@ export function SyncModule() {
       await refresh();
     } catch {
       setError("Сеть недоступна");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function runBannerCheck() {
-    setBusy(true);
-    setError(null);
-    setOk(null);
-    try {
-      const res = await fetch("/api/admin/banner-check", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-      const body = (await res.json()) as {
-        error?: string;
-        checked?: number;
-        ok?: number;
-        missing?: number;
-        errors?: number;
-        notified?: boolean;
-        checkedAt?: string;
-      };
-      if (!res.ok) throw new Error(body.error ?? "Ошибка");
-      setBannerResult({
-        checked: Number(body.checked ?? 0),
-        ok: Number(body.ok ?? 0),
-        missing: Number(body.missing ?? 0),
-        errors: Number(body.errors ?? 0),
-        notified: Boolean(body.notified),
-        checkedAt: String(body.checkedAt ?? new Date().toISOString()),
-      });
-      setOk(
-        `Баннеры: найдено ${body.ok}/${body.checked}, нет ${body.missing}, ошибок ${body.errors ?? 0}`,
-      );
-      await refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Ошибка");
     } finally {
       setBusy(false);
     }
@@ -245,44 +198,6 @@ export function SyncModule() {
               {new Date(feedResult.syncedAt).toLocaleString("ru-RU")}
             </p>
           )}
-        </div>
-      </AdminSection>
-
-      <AdminSection
-        title="Баннер GapSnap на сайтах"
-        description="Раз в сутки проверяем HTML сайта обменника на наличие нашей кнопки. Алерт на ADMIN_ALERT_EMAIL."
-      >
-        <div className="space-y-4 p-5">
-          <AdminStatGrid
-            items={[
-              {
-                label: "Без баннера",
-                value: counts?.bannerMissing ?? 0,
-                tone: counts?.bannerMissing ? "warn" : undefined,
-              },
-              {
-                label: "Последняя ручная проверка",
-                value: bannerResult
-                  ? new Date(bannerResult.checkedAt).toLocaleString("ru-RU")
-                  : "—",
-              },
-            ]}
-          />
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void runBannerCheck()}
-            className="rounded-xl border border-line px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-accent/40 disabled:opacity-60"
-          >
-            Проверить баннеры сейчас
-          </button>
-          {bannerResult ? (
-            <p className="text-sm text-ink-muted">
-              Результат: найдено {bannerResult.ok}/{bannerResult.checked}, нет{" "}
-              {bannerResult.missing}, ошибок {bannerResult.errors}
-              {bannerResult.notified ? " · письмо админу отправлено" : ""}
-            </p>
-          ) : null}
         </div>
       </AdminSection>
 

@@ -3,17 +3,25 @@
 import type { BannerCheckJson } from "@/db/schema";
 import {
   emptyBannerCheck,
+  bannerEmbedHtml,
   htmlHasGapSnapBanner,
   normalizeBannerCheck,
 } from "@/lib/banner";
 import { sendRawAdminEmail, siteBaseUrl } from "@/lib/email/service";
+import {
+  extractEmail,
+  sendOwnerBannerMissingEmail,
+  sendOwnerBannerUnpublishedEmail,
+} from "@/lib/owner-mail";
 import { assertSafeOutboundUrl } from "@/lib/security/ssrf";
 import { smtpBzConfigured } from "@/lib/smtp-bz";
 import {
   ensureBannerToken,
+  getExchangerById,
   getSeoSettings,
   listExchangers,
   updateBannerCheck,
+  updateExchanger,
   type FeedExchanger,
 } from "@/lib/store";
 
@@ -133,6 +141,8 @@ export async function checkExchangerBanner(
       lastSeenAt: prev.lastSeenAt,
       missingSince: prev.missingSince,
       lastNotifiedAt: prev.lastNotifiedAt,
+      lastOwnerWarnedAt: prev.lastOwnerWarnedAt,
+      ownerWarnCount: prev.ownerWarnCount,
     };
     await updateBannerCheck(ensured.id, next);
     return next;
@@ -162,6 +172,8 @@ export async function checkExchangerBanner(
         consecutiveMisses: 0,
         lastError: null,
         lastNotifiedAt: prev.lastNotifiedAt,
+        lastOwnerWarnedAt: prev.lastOwnerWarnedAt,
+        ownerWarnCount: prev.ownerWarnCount,
       };
       await updateBannerCheck(ensured.id, next);
       return next;
@@ -175,6 +187,8 @@ export async function checkExchangerBanner(
       consecutiveMisses: prev.consecutiveMisses + 1,
       lastError: null,
       lastNotifiedAt: prev.lastNotifiedAt,
+      lastOwnerWarnedAt: prev.lastOwnerWarnedAt,
+      ownerWarnCount: prev.ownerWarnCount,
     };
     await updateBannerCheck(ensured.id, next);
     return next;
@@ -189,6 +203,8 @@ export async function checkExchangerBanner(
       consecutiveMisses: prev.consecutiveMisses + 1,
       lastError: message,
       lastNotifiedAt: prev.lastNotifiedAt,
+      lastOwnerWarnedAt: prev.lastOwnerWarnedAt,
+      ownerWarnCount: prev.ownerWarnCount,
     };
     await updateBannerCheck(ensured.id, next);
     return next;
@@ -340,4 +356,141 @@ export function startBannerCheckPoller(): void {
   console.info(
     `[gapsnap] banner check poller started (every ${Math.round(ms / 3_600_000)}h)`,
   );
+}
+
+async function ownerBannerHtml(ex: FeedExchanger): Promise<string> {
+  const ensured = (await ensureBannerToken(ex.id)) ?? ex;
+  const seo = await getSeoSettings();
+  const token = ensured.bannerToken;
+  if (!token) {
+    return "Код появится в кабинете после генерации токена.";
+  }
+  return bannerEmbedHtml({
+    siteUrl: siteBaseUrl(seo.siteUrl),
+    token,
+    slug: ensured.slug,
+  });
+}
+
+function resolveOwnerEmail(ex: FeedExchanger): string | null {
+  return ex.ownerEmail?.trim().toLowerCase() || extractEmail(ex.contact);
+}
+
+export type BannerOwnerActionResult = {
+  ok: boolean;
+  exchangerId: string;
+  error?: string;
+  mailed?: boolean;
+  mailTo?: string | null;
+};
+
+/** Send warning email to exchanger owner about missing GapSnap badge. */
+export async function warnOwnerBannerMissing(
+  exchangerId: string,
+): Promise<BannerOwnerActionResult> {
+  const ex = await getExchangerById(exchangerId);
+  if (!ex) {
+    return { ok: false, exchangerId, error: "Обменник не найден" };
+  }
+
+  const to = resolveOwnerEmail(ex);
+  if (!to) {
+    return {
+      ok: false,
+      exchangerId,
+      error: "Нет email владельца (ownerEmail / contact)",
+    };
+  }
+  if (!smtpBzConfigured()) {
+    return { ok: false, exchangerId, error: "SMTP не настроен" };
+  }
+
+  const check = normalizeBannerCheck(ex.bannerCheck);
+  const bannerHtml = await ownerBannerHtml(ex);
+
+  try {
+    await sendOwnerBannerMissingEmail({
+      to,
+      exchangerName: ex.name,
+      website: ex.website || "—",
+      bannerHtml,
+      misses: check.consecutiveMisses,
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      exchangerId,
+      error: error instanceof Error ? error.message : "Ошибка отправки",
+    };
+  }
+
+  const now = new Date().toISOString();
+  await updateBannerCheck(ex.id, {
+    ...check,
+    lastOwnerWarnedAt: now,
+    ownerWarnCount: check.ownerWarnCount + 1,
+  });
+
+  return { ok: true, exchangerId, mailed: true, mailTo: to };
+}
+
+/** Unpublish exchanger (rejected) for missing banner; optionally email owner. */
+export async function unpublishForMissingBanner(
+  exchangerId: string,
+  options?: { notifyOwner?: boolean },
+): Promise<BannerOwnerActionResult & { warning?: string }> {
+  const ex = await getExchangerById(exchangerId);
+  if (!ex) {
+    return { ok: false, exchangerId, error: "Обменник не найден" };
+  }
+  if (ex.status !== "active" && ex.status !== "error") {
+    return {
+      ok: false,
+      exchangerId,
+      error: `Статус уже «${ex.status}» — снятие не нужно`,
+    };
+  }
+
+  const notifyOwner = options?.notifyOwner !== false;
+  const to = resolveOwnerEmail(ex);
+  let mailed = false;
+  let warning: string | undefined;
+
+  if (notifyOwner) {
+    if (!to) {
+      warning = "Снято без письма: нет email владельца";
+    } else if (!smtpBzConfigured()) {
+      warning = "Снято без письма: SMTP не настроен";
+    } else {
+      try {
+        await sendOwnerBannerUnpublishedEmail({
+          to,
+          exchangerName: ex.name,
+          website: ex.website || "—",
+          bannerHtml: await ownerBannerHtml(ex),
+        });
+        mailed = true;
+      } catch (error) {
+        warning = `Снято, но письмо не ушло: ${
+          error instanceof Error ? error.message : "ошибка"
+        }`;
+      }
+    }
+  }
+
+  const updated = await updateExchanger(ex.id, { status: "rejected" });
+  if (!updated) {
+    return { ok: false, exchangerId, error: "Не удалось обновить статус" };
+  }
+
+  if (mailed) {
+    const check = normalizeBannerCheck(updated.bannerCheck);
+    await updateBannerCheck(ex.id, {
+      ...check,
+      lastOwnerWarnedAt: new Date().toISOString(),
+      ownerWarnCount: check.ownerWarnCount + 1,
+    });
+  }
+
+  return { ok: true, exchangerId, mailed, mailTo: to, warning };
 }

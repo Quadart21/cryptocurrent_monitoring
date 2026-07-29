@@ -86,7 +86,7 @@ export function ExchangerDetailModule() {
       const res = await fetch("/api/admin/banner-check", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ exchangerId: id }),
+        body: JSON.stringify({ action: "check", exchangerId: id }),
       });
       const body = (await res.json()) as {
         error?: string;
@@ -101,6 +101,47 @@ export function ExchangerDetailModule() {
           : body.missing
             ? "Баннер не найден"
             : "Ошибка загрузки сайта",
+      );
+      await refresh();
+    } catch (err) {
+      setBannerMsg(err instanceof Error ? err.message : "Ошибка");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function bannerModeration(
+    action: "warn" | "unpublish",
+    notifyOwner = true,
+  ) {
+    setBusy(true);
+    setBannerMsg(null);
+    try {
+      const res = await fetch("/api/admin/banner-check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, exchangerId: id, notifyOwner }),
+      });
+      const body = (await res.json()) as {
+        error?: string;
+        results?: Array<{
+          ok: boolean;
+          error?: string;
+          mailed?: boolean;
+          warning?: string;
+        }>;
+      };
+      if (!res.ok) throw new Error(body.error ?? "Ошибка");
+      const first = body.results?.[0];
+      if (first && !first.ok) throw new Error(first.error ?? "Ошибка");
+      setBannerMsg(
+        action === "warn"
+          ? first?.mailed
+            ? "Предупреждение отправлено владельцу"
+            : "Готово"
+          : first?.warning
+            ? `Снято с публикации. ${first.warning}`
+            : "Снято с публикации",
       );
       await refresh();
     } catch (err) {
@@ -369,14 +410,56 @@ export function ExchangerDetailModule() {
               Токен появится после одобрения обменника.
             </p>
           )}
-          <button
-            type="button"
-            disabled={busy || ex.status !== "active"}
-            onClick={() => void checkBannerNow()}
-            className="rounded-xl border border-line px-3 py-2 text-xs font-semibold text-ink-muted disabled:opacity-60"
-          >
-            Проверить сайт сейчас
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={busy || (ex.status !== "active" && ex.status !== "error")}
+              onClick={() => void checkBannerNow()}
+              className="rounded-xl border border-line px-3 py-2 text-xs font-semibold text-ink-muted disabled:opacity-60"
+            >
+              Проверить сайт
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void bannerModeration("warn")}
+              className="rounded-xl border border-line px-3 py-2 text-xs font-semibold text-ink disabled:opacity-60"
+            >
+              Предупредить владельца
+            </button>
+            <button
+              type="button"
+              disabled={busy || (ex.status !== "active" && ex.status !== "error")}
+              onClick={() => {
+                if (
+                  !confirm(
+                    "Снять обменник с публикации и отправить письмо владельцу?",
+                  )
+                ) {
+                  return;
+                }
+                void bannerModeration("unpublish", true);
+              }}
+              className="rounded-xl bg-danger/15 px-3 py-2 text-xs font-semibold text-danger disabled:opacity-60"
+            >
+              Снять + письмо
+            </button>
+            <Link
+              href={`${ADMIN_PATH}/banners`}
+              className="rounded-xl border border-line px-3 py-2 text-xs font-semibold text-accent"
+            >
+              К списку баннеров →
+            </Link>
+          </div>
+          {ex.bannerCheck?.lastOwnerWarnedAt ? (
+            <p className="text-xs text-ink-muted">
+              Последнее предупреждение владельцу:{" "}
+              {new Date(ex.bannerCheck.lastOwnerWarnedAt).toLocaleString("ru-RU")}
+              {ex.bannerCheck.ownerWarnCount
+                ? ` (${ex.bannerCheck.ownerWarnCount}×)`
+                : ""}
+            </p>
+          ) : null}
           {bannerMsg ? (
             <p className="text-sm text-ink-muted">{bannerMsg}</p>
           ) : null}

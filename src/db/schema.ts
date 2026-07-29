@@ -33,7 +33,11 @@ export type BannerCheckJson = {
   missingSince: string | null;
   consecutiveMisses: number;
   lastError: string | null;
+  /** Last admin alert email about missing banner. */
   lastNotifiedAt: string | null;
+  /** Last warning email sent to exchanger owner. */
+  lastOwnerWarnedAt: string | null;
+  ownerWarnCount: number;
 };
 
 export type AdStatsJson = {
