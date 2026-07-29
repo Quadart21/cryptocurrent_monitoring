@@ -271,47 +271,43 @@ export function Dashboard({
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-5 xl:grid-cols-[340px_minmax(0,1fr)]">
-        <div className="order-1 xl:order-1">
-          <FastAction
-            mode={mode}
-            city={city}
-            from={from}
-            to={to}
-            currencies={currencies}
-            cities={cities}
-            popularPairs={
-              mode === "cash"
-                ? catalog.popularCashPairs
-                : catalog.popularOnlinePairs
-            }
-            bestRate={offers[0]?.rate}
-            offerCount={offers.length}
-            onModeChange={onModeChange}
-            onCityChange={onCityChange}
-            onFromChange={onFromChange}
-            onToChange={onToChange}
-            onPairChange={onPairChange}
-            onSwap={onSwap}
-          />
-        </div>
+      <FastAction
+        mode={mode}
+        city={city}
+        from={from}
+        to={to}
+        currencies={currencies}
+        cities={cities}
+        popularPairs={
+          mode === "cash"
+            ? catalog.popularCashPairs
+            : catalog.popularOnlinePairs
+        }
+        bestRate={offers[0]?.rate}
+        offerCount={offers.length}
+        onModeChange={onModeChange}
+        onCityChange={onCityChange}
+        onFromChange={onFromChange}
+        onToChange={onToChange}
+        onPairChange={onPairChange}
+        onSwap={onSwap}
+      />
 
-        <div id="rates-board" className="order-2 space-y-4">
-          <DashboardAdSlot />
-          <RatesBoard
-            offers={offers}
-            from={from}
-            to={to}
-            currencies={currencies}
-            loading={loading}
-            cityLabel={mode === "cash" ? cityDisplayName : undefined}
-            amount={amount}
-            onAmountChange={setAmount}
-            sortBy={sortBy}
-            onSortChange={setSortBy}
-            recentReviews={recentReviews}
-          />
-        </div>
+      <div id="rates-board" className="animate-rise-delay-1 space-y-4">
+        <DashboardAdSlot />
+        <RatesBoard
+          offers={offers}
+          from={from}
+          to={to}
+          currencies={currencies}
+          loading={loading}
+          cityLabel={mode === "cash" ? cityDisplayName : undefined}
+          amount={amount}
+          onAmountChange={setAmount}
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+          recentReviews={recentReviews}
+        />
       </div>
     </div>
   );

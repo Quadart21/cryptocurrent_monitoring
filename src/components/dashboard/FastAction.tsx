@@ -58,8 +58,8 @@ function CurrencySelect({
     : (filtered[0]?.code ?? "");
 
   return (
-    <label className="block space-y-2">
-      <span className="text-xs font-medium uppercase tracking-[0.14em] text-ink-muted">
+    <label className="block min-w-0 space-y-1.5">
+      <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-muted">
         {label}
       </span>
       <select
@@ -109,110 +109,124 @@ export function FastAction({
           { code: to, name: to, groupId: -1, groupName: "Другое" },
         ];
 
-  const popular = popularPairs.slice(0, 4);
-
+  const popular = popularPairs.slice(0, 5);
   const cityName = cities.find((c) => c.code === city)?.name ?? city;
   const fromName = currencyOptionLabel(from, options);
   const toName = currencyOptionLabel(to, options);
 
   return (
-    <div className="card animate-rise flex h-full flex-col p-5">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="font-display text-lg font-semibold text-ink">
-          Быстрый обмен
-        </h2>
-        <span className="rounded-full bg-accent-soft px-2.5 py-1 text-[11px] font-semibold text-accent">
-          {options.length}
-        </span>
-      </div>
-
-      <div className="mt-4 grid grid-cols-2 gap-1 rounded-2xl border border-line bg-bg-soft p-1">
-        {(
-          [
-            ["online", "Онлайн"],
-            ["cash", "Наличные"],
-          ] as const
-        ).map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => onModeChange(value)}
-            className={`rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
-              mode === value
-                ? "bg-accent text-white shadow-[var(--glow)]"
-                : "text-ink-muted hover:text-ink"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      <p className="mt-3 text-sm text-ink-muted">
-        {mode === "cash"
-          ? "Город и наличный фиат — без банковских карт и счетов"
-          : "Онлайн-обмен без наличных — обменники ниже"}
-      </p>
-
-      <div className="mt-5 space-y-3">
-        {mode === "cash" && (
-          <div className="space-y-2">
-            <span className="text-xs font-medium uppercase tracking-[0.14em] text-ink-muted">
-              Город
-            </span>
-            <CityAutocomplete
-              cities={cities}
-              value={city}
-              onChange={onCityChange}
-            />
+    <section className="animate-rise overflow-hidden rounded-[1.75rem] border border-line bg-bg-elevated shadow-[var(--card-shadow)]">
+      <div className="relative border-b border-line/70 px-4 py-4 sm:px-6 sm:py-5">
+        <div
+          className="pointer-events-none absolute -right-10 -top-16 size-48 rounded-full bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] opacity-20 blur-3xl"
+          aria-hidden
+        />
+        <div className="relative flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-deep">
+              GapSnap · мониторинг
+            </p>
+            <h1 className="mt-1.5 font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
+              Сравните курсы и выберите обменник
+            </h1>
+            <p className="mt-1.5 max-w-2xl text-sm text-ink-muted">
+              Выберите пару — ниже актуальные предложения с курсом, резервом и
+              рейтингом.
+            </p>
           </div>
-        )}
 
-        <CurrencySelect
-          label="Отдаёте"
-          value={from}
-          exclude={to}
-          options={options}
-          onChange={onFromChange}
-        />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="grid grid-cols-2 gap-1 rounded-2xl border border-line bg-bg-soft p-1">
+              {(
+                [
+                  ["online", "Онлайн"],
+                  ["cash", "Наличные"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => onModeChange(value)}
+                  className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                    mode === value
+                      ? "bg-accent text-white shadow-[var(--glow)]"
+                      : "text-ink-muted hover:text-ink"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="rounded-2xl border border-line bg-bg-soft px-3 py-2 text-sm">
+              <p className="text-[11px] text-ink-muted">
+                Лучший курс
+                {mode === "cash" && city ? ` · ${cityName}` : ""}
+              </p>
+              <p className="font-semibold tabular-nums text-accent-deep">
+                {bestRate != null
+                  ? `${formatRate(bestRate)} ${toName}`
+                  : "—"}
+              </p>
+              <p className="text-[11px] text-ink-muted">
+                за 1 {fromName}
+                {offerCount > 0 ? ` · ${offerCount} оф.` : ""}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
 
-        <div className="flex justify-center">
-          <button
-            type="button"
-            onClick={onSwap}
-            className="flex size-10 items-center justify-center rounded-full border border-line bg-bg-soft text-accent transition hover:border-accent hover:shadow-[var(--glow)]"
-            aria-label="Поменять"
-          >
-            ⇅
-          </button>
+      <div className="space-y-4 px-4 py-4 sm:px-6 sm:py-5">
+        <div
+          className={`grid gap-3 ${
+            mode === "cash"
+              ? "lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)_auto_minmax(0,1.1fr)]"
+              : "lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]"
+          } lg:items-end`}
+        >
+          {mode === "cash" ? (
+            <div className="space-y-1.5">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-muted">
+                Город
+              </span>
+              <CityAutocomplete
+                cities={cities}
+                value={city}
+                onChange={onCityChange}
+              />
+            </div>
+          ) : null}
+
+          <CurrencySelect
+            label="Отдаёте"
+            value={from}
+            exclude={to}
+            options={options}
+            onChange={onFromChange}
+          />
+
+          <div className="flex justify-center lg:pb-1">
+            <button
+              type="button"
+              onClick={onSwap}
+              className="flex size-11 items-center justify-center rounded-full border border-line bg-bg-soft text-accent transition hover:border-accent hover:shadow-[var(--glow)]"
+              aria-label="Поменять"
+            >
+              ⇅
+            </button>
+          </div>
+
+          <CurrencySelect
+            label="Получаете"
+            value={to}
+            exclude={from}
+            options={options}
+            onChange={onToChange}
+          />
         </div>
 
-        <CurrencySelect
-          label="Получаете"
-          value={to}
-          exclude={from}
-          options={options}
-          onChange={onToChange}
-        />
-
-        <div className="rounded-2xl border border-line bg-bg-soft px-4 py-3">
-          <p className="text-xs text-ink-muted">
-            Лучший курс (за 1 {fromName})
-            {mode === "cash" && city ? ` · ${cityName}` : ""}
-          </p>
-          <p className="mt-1 text-lg font-semibold tabular-nums text-accent-deep">
-            {bestRate != null
-              ? `${formatRate(bestRate)} ${toName}`
-              : "нет предложений"}
-          </p>
-          <p className="mt-1 text-xs text-ink-muted">
-            {offerCount > 0
-              ? `${offerCount} обменник(ов) ниже`
-              : "Ни один обменник не отдаёт это направление"}
-          </p>
-        </div>
-
-        <div className="flex flex-wrap gap-1.5 pt-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-ink-muted">Популярное:</span>
           {popular.map(([a, b]) => {
             const inList =
               options.some((c) => c.code === a) &&
@@ -224,10 +238,10 @@ export function FastAction({
                 type="button"
                 onClick={() => onPairChange(a, b)}
                 title={`${a} → ${b}`}
-                className={`max-w-full truncate rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                className={`max-w-full truncate rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${
                   from === a && to === b
                     ? "bg-accent text-white"
-                    : "bg-accent-soft text-accent"
+                    : "bg-accent-soft text-accent hover:brightness-110"
                 }`}
               >
                 {currencyOptionLabel(a, options)} →{" "}
@@ -235,23 +249,14 @@ export function FastAction({
               </button>
             );
           })}
+          <Link
+            href="/apply"
+            className="ml-auto text-xs font-semibold text-ink-muted hover:text-accent-deep"
+          >
+            Владельцам обменников →
+          </Link>
         </div>
       </div>
-
-      <div className="mt-4 overflow-hidden rounded-2xl bg-gradient-to-br from-[var(--promo-from)] to-[var(--promo-to)] p-4 text-white shadow-[var(--glow)]">
-        <p className="font-display text-base font-semibold">
-          Владелец обменника?
-        </p>
-        <p className="mt-1 text-sm text-white/85">
-          Подключите valuta.xml и попадите в мониторинг.
-        </p>
-        <Link
-          href="/apply"
-          className="mt-3 inline-flex rounded-xl bg-white px-3 py-2 text-xs font-bold text-[var(--accent-deep)]"
-        >
-          Подать заявку
-        </Link>
-      </div>
-    </div>
+    </section>
   );
 }
