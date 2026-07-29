@@ -2,13 +2,20 @@ import "server-only";
 
 import { codexConfigured } from "@/lib/ai/codex-client";
 import { fetchRbcCryptoNews, type RbcCryptoNewsItem } from "@/lib/news/rbc-crypto";
+import {
+  isExternalHttpUrl,
+  isLocalNewsCoverUrl,
+  mirrorNewsCover,
+} from "@/lib/news/mirror-cover";
 import { rewriteNewsArticle } from "@/lib/news/rewrite-article";
 import {
   createBlogPost,
   getBlogPostBySourceId,
   getNewsSettings,
   getSeoSettings,
+  listBlogPosts,
   setNewsSyncLiveStatus,
+  updateBlogPost,
   updateNewsSettings,
   type NewsSyncResultSummary,
 } from "@/lib/store";
@@ -170,12 +177,49 @@ async function pickNewItems(
   return { toCreate, skipped };
 }
 
+/** Re-host remote covers already in DB so visitors never hit rbc.ru. */
+async function remirrorExternalCovers(): Promise<number> {
+  const posts = await listBlogPosts({ status: "all" });
+  let mirrored = 0;
+  for (const post of posts) {
+    const url = post.coverImageUrl.trim();
+    if (!url || isLocalNewsCoverUrl(url) || !isExternalHttpUrl(url)) continue;
+    setProgress(`Зеркалирую обложку: ${post.title.slice(0, 50)}…`);
+    const local = await mirrorNewsCover({
+      sourceUrl: url,
+      key: post.sourceId || post.id,
+    });
+    await updateBlogPost(post.id, {
+      coverImageUrl: local ?? "",
+    });
+    if (local) mirrored += 1;
+  }
+  return mirrored;
+}
+
+async function resolveCoverUrl(
+  item: RbcCryptoNewsItem,
+): Promise<string> {
+  if (!item.imageUrl?.trim()) return "";
+  const local = await mirrorNewsCover({
+    sourceUrl: item.imageUrl,
+    key: item.id,
+  });
+  return local ?? "";
+}
+
 async function runNewsSyncJob(input: {
   model: string;
   rewritePrompt: string;
   maxCreate: number;
 }): Promise<NewsSyncResultSummary> {
   const t0 = Date.now();
+  setProgress("Зеркалирование старых обложек…");
+  const remirrored = await remirrorExternalCovers();
+  if (remirrored > 0) {
+    console.info(`[gapsnap] news covers remirrored: ${remirrored}`);
+  }
+
   setProgress("Загрузка RSS РБК…");
   const seo = await getSeoSettings();
   const feed = await fetchRbcCryptoNews();
@@ -191,7 +235,11 @@ async function runNewsSyncJob(input: {
   const errors: string[] = [];
 
   if (!toCreate.length) {
-    setProgress("Новых статей нет");
+    setProgress(
+      remirrored > 0
+        ? `Новых статей нет, обложек перезалито: ${remirrored}`
+        : "Новых статей нет",
+    );
   }
 
   // One-by-one, never parallel
@@ -213,13 +261,15 @@ async function runNewsSyncJob(input: {
         siteName: seo.siteName || "GapSnap",
         siteUrl: seo.siteUrl || process.env.SITE_URL || "https://gapsnap.org",
       });
+      setProgress(`Скачиваю обложку: ${item.title.slice(0, 50)}…`);
+      const coverImageUrl = await resolveCoverUrl(item);
       setProgress(`Сохранение в БД: ${rewritten.title.slice(0, 60)}…`);
       await createBlogPost({
         title: rewritten.title,
         slug: rewritten.slug || undefined,
         excerpt: rewritten.excerpt,
         body: rewritten.bodyMarkdown,
-        coverImageUrl: item.imageUrl ?? "",
+        coverImageUrl,
         tags: rewritten.tags.length ? rewritten.tags : item.tags,
         status: "published",
         seoTitle: rewritten.seoTitle,
