@@ -134,11 +134,11 @@ export function SeoModule() {
             </Field>
             <Field
               label="URL сайта"
-              hint="Полный адрес без слэша в конце, например https://gapsnap.ru"
+              hint="Обязательно для sitemap.xml (или SITE_URL в .env). Пример: https://gapsnap.org"
             >
               <input
                 className={inputClass}
-                placeholder="https://gapsnap.ru"
+                placeholder="https://gapsnap.org"
                 value={seo.siteUrl}
                 onChange={(e) => patch("siteUrl", e.target.value)}
               />

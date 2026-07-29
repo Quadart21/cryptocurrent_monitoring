@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { pairPath } from "@/lib/bestchange/pair-slug";
-import { normalizeSiteUrl } from "@/lib/seo";
+import { resolveSiteUrl } from "@/lib/seo";
 import {
   listActiveRatePairs,
   listBlogPosts,
@@ -14,8 +14,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const seo = await getSeoSettings();
   if (!seo.sitemapEnabled) return [];
 
-  const siteUrl = normalizeSiteUrl(seo.siteUrl);
-  if (!siteUrl) return [];
+  const siteUrl = await resolveSiteUrl(seo.siteUrl);
+  if (!siteUrl) {
+    console.error(
+      "[gapsnap] sitemap: siteUrl пуст — задайте SEO → URL сайта или SITE_URL в .env",
+    );
+    return [];
+  }
 
   const now = new Date();
   const staticRoutes: MetadataRoute.Sitemap = [
@@ -76,34 +81,40 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  const [exchangers, pairs, posts] = await Promise.all([
-    listExchangers({ publicOnly: true }),
-    listActiveRatePairs(500),
-    listBlogPosts({ status: "published" }),
-  ]);
+  try {
+    const [exchangers, pairs, posts] = await Promise.all([
+      listExchangers({ publicOnly: true }),
+      listActiveRatePairs(500),
+      listBlogPosts({ status: "published" }),
+    ]);
 
-  const exchangerRoutes: MetadataRoute.Sitemap = exchangers
-    .filter((ex) => ex.status === "active" && ex.slug)
-    .map((ex) => ({
-      url: `${siteUrl}/exchangers/${ex.slug}`,
-      lastModified: ex.lastSyncAt ? new Date(ex.lastSyncAt) : now,
+    const exchangerRoutes: MetadataRoute.Sitemap = exchangers
+      .filter((ex) => ex.status === "active" && ex.slug)
+      .map((ex) => ({
+        url: `${siteUrl}/exchangers/${ex.slug}`,
+        lastModified: ex.lastSyncAt ? new Date(ex.lastSyncAt) : now,
+        changeFrequency: "hourly" as const,
+        priority: 0.8,
+      }));
+
+    const pairRoutes: MetadataRoute.Sitemap = pairs.map(([from, to]) => ({
+      url: `${siteUrl}${pairPath(from, to)}`,
+      lastModified: now,
       changeFrequency: "hourly" as const,
-      priority: 0.8,
+      priority: 0.85,
     }));
 
-  const pairRoutes: MetadataRoute.Sitemap = pairs.map(([from, to]) => ({
-    url: `${siteUrl}${pairPath(from, to)}`,
-    lastModified: now,
-    changeFrequency: "hourly" as const,
-    priority: 0.85,
-  }));
+    const blogRoutes: MetadataRoute.Sitemap = posts.map((p) => ({
+      url: `${siteUrl}/blog/${p.slug}`,
+      lastModified: p.updatedAt ? new Date(p.updatedAt) : now,
+      changeFrequency: "weekly" as const,
+      priority: 0.65,
+    }));
 
-  const blogRoutes: MetadataRoute.Sitemap = posts.map((p) => ({
-    url: `${siteUrl}/blog/${p.slug}`,
-    lastModified: p.updatedAt ? new Date(p.updatedAt) : now,
-    changeFrequency: "weekly" as const,
-    priority: 0.65,
-  }));
-
-  return [...staticRoutes, ...pairRoutes, ...exchangerRoutes, ...blogRoutes];
+    return [...staticRoutes, ...pairRoutes, ...exchangerRoutes, ...blogRoutes];
+  } catch (err) {
+    console.error("[gapsnap] sitemap: failed to load dynamic URLs", err);
+    // Still return static routes so crawlers get something useful
+    return staticRoutes;
+  }
 }

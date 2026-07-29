@@ -20,6 +20,36 @@ export function normalizeSiteUrl(url: string): string {
   }
 }
 
+/**
+ * Canonical site origin: SEO settings → SITE_URL env → request Host.
+ * Empty siteUrl in admin was producing a blank /sitemap.xml.
+ */
+export async function resolveSiteUrl(seoSiteUrl?: string): Promise<string> {
+  const fromSeo = normalizeSiteUrl(seoSiteUrl ?? "");
+  if (fromSeo) return fromSeo;
+
+  const fromEnv = normalizeSiteUrl(process.env.SITE_URL ?? "");
+  if (fromEnv) return fromEnv;
+
+  try {
+    const { headers } = await import("next/headers");
+    const h = await headers();
+    const host = (h.get("x-forwarded-host") || h.get("host") || "")
+      .split(",")[0]
+      ?.trim();
+    if (!host) return "";
+    const proto = (
+      h.get("x-forwarded-proto") ||
+      (host.includes("localhost") ? "http" : "https")
+    )
+      .split(",")[0]
+      ?.trim();
+    return normalizeSiteUrl(`${proto}://${host}`);
+  } catch {
+    return "";
+  }
+}
+
 export function absoluteUrl(siteUrl: string, pathOrUrl: string): string | null {
   const raw = pathOrUrl.trim();
   if (!raw) return null;
@@ -45,8 +75,10 @@ export function parseNoindexPaths(raw: string): string[] {
 }
 
 export function buildRootMetadata(seo: SeoSettings): Metadata {
-  const siteUrl = normalizeSiteUrl(seo.siteUrl);
-  const ogImage = absoluteUrl(seo.siteUrl, seo.ogImageUrl);
+  const siteUrl =
+    normalizeSiteUrl(seo.siteUrl) ||
+    normalizeSiteUrl(process.env.SITE_URL ?? "");
+  const ogImage = absoluteUrl(seo.siteUrl || process.env.SITE_URL || "", seo.ogImageUrl);
   const keywords = parseKeywords(seo.keywords);
   const robotsExtra = seo.robotsExtra
     .split(",")
@@ -131,11 +163,16 @@ export async function getRootMetadata(): Promise<Metadata> {
 
 export function buildOrganizationJsonLd(seo: SeoSettings): object | null {
   if (!seo.jsonLdEnabled) return null;
-  const siteUrl = normalizeSiteUrl(seo.siteUrl);
+  const siteUrl =
+    normalizeSiteUrl(seo.siteUrl) ||
+    normalizeSiteUrl(process.env.SITE_URL ?? "");
   const name = seo.organizationName.trim() || seo.siteName.trim();
   if (!name && !siteUrl) return null;
 
-  const logo = absoluteUrl(seo.siteUrl, seo.organizationLogoUrl);
+  const logo = absoluteUrl(
+    seo.siteUrl || process.env.SITE_URL || "",
+    seo.organizationLogoUrl,
+  );
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
@@ -151,7 +188,9 @@ export async function getOrganizationJsonLd(): Promise<object | null> {
 }
 
 export function buildRobotsTxt(seo: SeoSettings): string {
-  const siteUrl = normalizeSiteUrl(seo.siteUrl);
+  const siteUrl =
+    normalizeSiteUrl(seo.siteUrl) ||
+    normalizeSiteUrl(process.env.SITE_URL ?? "");
   const lines: string[] = ["User-agent: *"];
 
   // Never advertise the admin URL in robots.txt — Disallow reveals the path.

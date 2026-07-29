@@ -123,7 +123,7 @@ export const seedAdPricing: AdPricingSettings = {
 
 export const seedSeo: SeoSettings = {
   siteName: "GapSnap",
-  siteUrl: "",
+  siteUrl: process.env.SITE_URL?.trim() || "https://gapsnap.org",
   titleDefault: "GapSnap — мониторинг обменников",
   titleTemplate: "%s · GapSnap",
   description:
