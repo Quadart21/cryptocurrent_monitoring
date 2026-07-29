@@ -180,7 +180,6 @@ export default async function RatePairPage({ params }: Props) {
         to={parsed.to}
         currencies={rates.currencies}
         initialOffers={rates.offers}
-        initialLastSyncAt={rates.lastGlobalSyncAt}
         recentReviews={recentReviews}
       />
 

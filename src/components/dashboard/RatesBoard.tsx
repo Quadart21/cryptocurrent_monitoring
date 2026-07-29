@@ -5,7 +5,6 @@ import Link from "next/link";
 import { AchievementBadges } from "@/components/AchievementBadges";
 import { useAds } from "@/components/ads/useAds";
 import { trackAdClick, trackAdImpression } from "@/components/ads/track";
-import { RelativeSyncTimer } from "@/components/seo/RelativeSyncTimer";
 import type { LiveOffer } from "@/components/RateTable";
 import { pairPath } from "@/lib/bestchange/pair-slug";
 import { pickWeightedRandom } from "@/lib/ads";
@@ -38,7 +37,6 @@ export function RatesBoard({
   cityLabel,
   amount = 0,
   onAmountChange,
-  lastSyncAt = null,
   sortBy = "rate",
   onSortChange,
   recentReviews = [],
@@ -52,7 +50,6 @@ export function RatesBoard({
   cityLabel?: string;
   amount?: number;
   onAmountChange?: (n: number) => void;
-  lastSyncAt?: string | null;
   sortBy?: RatesSortBy;
   onSortChange?: (s: RatesSortBy) => void;
   recentReviews?: RatesBoardReview[];
@@ -155,7 +152,6 @@ export function RatesBoard({
             >
               Страница пары →
             </Link>
-            <RelativeSyncTimer syncedAt={lastSyncAt} />
           </div>
         </div>
 

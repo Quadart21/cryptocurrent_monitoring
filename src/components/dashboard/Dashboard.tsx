@@ -8,8 +8,6 @@ import type {
   DashboardCurrencyOption,
 } from "@/lib/bestchange/dashboard-catalog-types";
 import type { LiveOffer } from "@/components/RateTable";
-import { OverviewCards } from "@/components/dashboard/OverviewCards";
-import { StatsChart } from "@/components/dashboard/StatsChart";
 import {
   RatesBoard,
   type RatesSortBy,
@@ -27,9 +25,6 @@ type Props = {
   initialMode: ExchangeMode;
   initialCity: string;
   initialOffers: LiveOffer[];
-  initialLastSyncAt: string | null;
-  initialPairCount: number;
-  initialExchangerCount: number;
 };
 
 export function Dashboard({
@@ -39,9 +34,6 @@ export function Dashboard({
   initialMode,
   initialCity,
   initialOffers,
-  initialLastSyncAt,
-  initialPairCount,
-  initialExchangerCount,
 }: Props) {
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<ExchangeMode>(initialMode);
@@ -49,9 +41,6 @@ export function Dashboard({
   const [from, setFrom] = useState(initialFrom);
   const [to, setTo] = useState(initialTo);
   const [offers, setOffers] = useState<LiveOffer[]>(initialOffers);
-  const [lastSyncAt, setLastSyncAt] = useState<string | null>(initialLastSyncAt);
-  const [exchangerCount] = useState(initialExchangerCount);
-  const [pairCount, setPairCount] = useState(initialPairCount);
   const [loading, setLoading] = useState(false);
   /** 0 = show rate per 1 unit */
   const [amount, setAmount] = useState(0);
@@ -133,8 +122,6 @@ export function Dashboard({
         if (ratesRes.ok) {
           const data = (await ratesRes.json()) as {
             offers: LiveOffer[];
-            lastGlobalSyncAt: string | null;
-            activePairCount?: number;
           };
           const sorted = [...(data.offers ?? [])].sort((a, b) => {
             if (b.rate !== a.rate) return b.rate - a.rate;
@@ -149,8 +136,6 @@ export function Dashboard({
           setOffers(
             sorted.map((offer, index) => ({ ...offer, rank: index + 1 })),
           );
-          setLastSyncAt(data.lastGlobalSyncAt);
-          setPairCount(data.activePairCount ?? 0);
 
           if (opts?.scroll && bootstrapped.current) {
             requestAnimationFrame(() => {
@@ -286,17 +271,8 @@ export function Dashboard({
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="order-2 grid gap-5 sm:grid-cols-2 xl:order-1">
-          <OverviewCards
-            exchangers={exchangerCount}
-            pairs={pairCount}
-            lastSyncAt={lastSyncAt}
-          />
-          <StatsChart />
-        </div>
-
-        <div className="order-1 xl:order-2">
+      <div className="grid gap-5 xl:grid-cols-[340px_minmax(0,1fr)]">
+        <div className="order-1 xl:order-1">
           <FastAction
             mode={mode}
             city={city}
@@ -319,24 +295,23 @@ export function Dashboard({
             onSwap={onSwap}
           />
         </div>
-      </div>
 
-      <div id="rates-board" className="space-y-4">
-        <DashboardAdSlot />
-        <RatesBoard
-          offers={offers}
-          from={from}
-          to={to}
-          currencies={currencies}
-          loading={loading}
-          cityLabel={mode === "cash" ? cityDisplayName : undefined}
-          amount={amount}
-          onAmountChange={setAmount}
-          lastSyncAt={lastSyncAt}
-          sortBy={sortBy}
-          onSortChange={setSortBy}
-          recentReviews={recentReviews}
-        />
+        <div id="rates-board" className="order-2 space-y-4">
+          <DashboardAdSlot />
+          <RatesBoard
+            offers={offers}
+            from={from}
+            to={to}
+            currencies={currencies}
+            loading={loading}
+            cityLabel={mode === "cash" ? cityDisplayName : undefined}
+            amount={amount}
+            onAmountChange={setAmount}
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+            recentReviews={recentReviews}
+          />
+        </div>
       </div>
     </div>
   );

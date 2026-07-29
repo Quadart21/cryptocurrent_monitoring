@@ -3,7 +3,6 @@ import { Dashboard } from "@/components/dashboard/Dashboard";
 import { PageSkeleton } from "@/components/shell/PageSkeleton";
 import { getDashboardCatalog } from "@/lib/bestchange/dashboard-catalog";
 import { queryRates } from "@/lib/rates-query";
-import { listExchangers } from "@/lib/store";
 
 export const revalidate = 60;
 
@@ -32,10 +31,12 @@ export default async function HomePage({ searchParams }: Props) {
       ? sp.city?.trim().toUpperCase() || catalog.defaultCity
       : "";
 
-  const [rates, exchangers] = await Promise.all([
-    queryRates({ from, to, mode, city: city || undefined }),
-    listExchangers({ publicOnly: true }),
-  ]);
+  const rates = await queryRates({
+    from,
+    to,
+    mode,
+    city: city || undefined,
+  });
 
   return (
     <Suspense fallback={<PageSkeleton />}>
@@ -46,9 +47,6 @@ export default async function HomePage({ searchParams }: Props) {
         initialMode={mode}
         initialCity={city}
         initialOffers={rates.offers}
-        initialLastSyncAt={rates.lastGlobalSyncAt}
-        initialPairCount={rates.activePairCount}
-        initialExchangerCount={exchangers.length}
       />
     </Suspense>
   );
