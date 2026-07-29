@@ -26,8 +26,8 @@ export const SITE_NAV: NavItem[] = [
   },
   {
     href: "/blog",
-    label: "Блог",
-    hint: "Статьи и гайды",
+    label: "Новости",
+    hint: "События крипторынка",
     icon: "blog",
   },
   {

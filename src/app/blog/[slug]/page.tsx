@@ -23,6 +23,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title, description };
 }
 
+function formatRuDate(iso: string | null): string {
+  if (!iso) return "";
+  return new Date(iso).toLocaleDateString("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params;
   const [post, seo] = await Promise.all([
@@ -35,7 +44,7 @@ export default async function BlogPostPage({ params }: Props) {
   const description = post.seoDescription || post.excerpt || post.title;
 
   return (
-    <article className="mx-auto max-w-3xl space-y-6">
+    <article className="mx-auto max-w-3xl space-y-8">
       <JsonLd
         data={[
           buildBreadcrumbJsonLd(seo, [
@@ -62,26 +71,30 @@ export default async function BlogPostPage({ params }: Props) {
           { label: post.title },
         ]}
       />
-      <header className="space-y-3">
-        <h1 className="font-display text-3xl font-semibold text-ink">
-          {post.title}
-        </h1>
-        <p className="text-sm text-ink-muted">
-          {post.authorName || "GapSnap"}
-          {post.publishedAt
-            ? ` · ${new Date(post.publishedAt).toLocaleDateString("ru-RU")}`
-            : ""}
-        </p>
+
+      <header className="animate-rise space-y-4">
         {post.tags.length ? (
-          <p className="flex flex-wrap gap-2 text-xs text-ink-muted">
-            {post.tags.map((tag) => (
+          <p className="flex flex-wrap gap-2">
+            {post.tags.slice(0, 6).map((tag) => (
               <span
                 key={tag}
-                className="rounded-full border border-line px-2 py-0.5"
+                className="rounded-full bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent-deep"
               >
                 {tag}
               </span>
             ))}
+          </p>
+        ) : null}
+        <h1 className="font-display text-3xl font-semibold leading-tight tracking-tight text-ink sm:text-4xl">
+          {post.title}
+        </h1>
+        <p className="text-sm text-ink-muted">
+          {post.authorName || "GapSnap"}
+          {post.publishedAt ? ` · ${formatRuDate(post.publishedAt)}` : ""}
+        </p>
+        {post.excerpt ? (
+          <p className="text-base leading-relaxed text-ink-muted sm:text-lg">
+            {post.excerpt}
           </p>
         ) : null}
         <ShareButtons
@@ -89,8 +102,9 @@ export default async function BlogPostPage({ params }: Props) {
           url={absoluteUrl(seo.siteUrl, path) ?? undefined}
         />
       </header>
+
       {post.coverImageUrl ? (
-        <div className="relative aspect-[16/9] overflow-hidden rounded-2xl border border-line bg-bg-elevated">
+        <div className="animate-rise-delay-1 relative aspect-[16/9] overflow-hidden rounded-[1.5rem] border border-line bg-bg-elevated shadow-[var(--card-shadow)]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={post.coverImageUrl}
@@ -99,7 +113,10 @@ export default async function BlogPostPage({ params }: Props) {
           />
         </div>
       ) : null}
-      {renderBlogMarkdown(post.body)}
+
+      <div className="animate-rise-delay-2 prose-blog space-y-4 text-[15px] leading-7 text-ink sm:text-base sm:leading-8">
+        {renderBlogMarkdown(post.body)}
+      </div>
     </article>
   );
 }
