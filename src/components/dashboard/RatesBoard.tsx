@@ -13,6 +13,7 @@ import {
   formatCurrencyAmount,
   formatRate,
   formatRating,
+  formatReserve,
   formatVolumeLimits,
 } from "@/lib/format";
 import { currencyOptionLabel } from "@/lib/currency-display";
@@ -121,13 +122,36 @@ export function RatesBoard({
     return amount > 0 ? amount * rate : rate;
   }
 
-  /** Unit rate when amount is empty; otherwise currency amount. */
-  function formatReceiveValue(value: number) {
-    return amount > 0 ? formatCurrencyAmount(value, to) : formatRate(value);
-  }
-
   function volumeFor(offer: LiveOffer) {
     return formatVolumeLimits(offer.minAmount, offer.maxAmount, from);
+  }
+
+  function giveLabel(offer: LiveOffer) {
+    if (amount > 0) {
+      return `${formatCurrencyAmount(amount, from)} ${fromName}`;
+    }
+    return `1 ${fromName}`;
+  }
+
+  function receiveLabel(offer: LiveOffer) {
+    const receive = receiveFor(offer.rate);
+    if (amount > 0) {
+      return `${formatCurrencyAmount(receive, to)} ${toName}`;
+    }
+    return `${formatRate(offer.rate)} ${toName}`;
+  }
+
+  function reserveLabel(offer: LiveOffer) {
+    if (!Number.isFinite(offer.reserve) || offer.reserve <= 0) return "—";
+    return formatReserve(offer.reserve, toName);
+  }
+
+  function isOutOfRange(offer: LiveOffer) {
+    return (
+      amount > 0 &&
+      (amount < offer.minAmount ||
+        (Number.isFinite(offer.maxAmount) && amount > offer.maxAmount))
+    );
   }
 
   function isWarned(offer: LiveOffer) {
@@ -217,7 +241,6 @@ export function RatesBoard({
               const name = offer.exchanger?.name?.trim() || "Обменник";
               const slug = offer.exchanger?.slug || offer.exchanger?.id || "";
               const sponsored = offer.exchanger?.id === pinnedId;
-              const receive = receiveFor(offer.rate);
               const volume = volumeFor(offer);
               return (
                 <div
@@ -261,14 +284,6 @@ export function RatesBoard({
                           </span>
                         ) : null}
                       </div>
-                      <p className="mt-0.5 text-xs text-ink-muted">
-                        ★{" "}
-                        {formatRating(
-                          offer.exchanger.rating,
-                          offer.exchanger.reviews,
-                        )}{" "}
-                        · {offer.exchanger.reviews} отз.
-                      </p>
                       {isWarned(offer) ? (
                         <p className="mt-1 text-xs font-semibold text-danger">
                           Много жалоб — будьте осторожны
@@ -279,24 +294,49 @@ export function RatesBoard({
 
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div className="rounded-xl bg-bg-soft/60 px-3 py-2">
-                      <p className="text-[11px] text-ink-muted">Получите</p>
+                      <p className="text-[11px] text-ink-muted">Отдаете</p>
+                      <p className="font-medium tabular-nums text-ink">
+                        {giveLabel(offer)}
+                      </p>
+                      {isOutOfRange(offer) && volume ? (
+                        <p className="mt-1 text-[10px] text-[var(--warn)]">
+                          лимит {volume.from}–{volume.to}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="rounded-xl bg-bg-soft/60 px-3 py-2">
+                      <p className="text-[11px] text-ink-muted">Получаете</p>
                       <p className="font-semibold tabular-nums text-accent-deep">
-                        {formatReceiveValue(receive)} {toName}
+                        {receiveLabel(offer)}
+                      </p>
+                      {amount > 0 ? (
+                        <p className="mt-1 text-[10px] text-ink-muted">
+                          курс {formatRate(offer.rate)}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="rounded-xl bg-bg-soft/60 px-3 py-2">
+                      <p className="text-[11px] text-ink-muted">Резерв</p>
+                      <p className="font-medium tabular-nums text-ink">
+                        {reserveLabel(offer)}
                       </p>
                     </div>
                     <div className="rounded-xl bg-bg-soft/60 px-3 py-2">
-                      <p className="text-[11px] text-ink-muted">
-                        Объём ({fromName})
-                      </p>
-                      {volume ? (
-                        <p className="font-medium tabular-nums text-ink">
-                          от {volume.from}
-                          <br />
-                          до {volume.to}
-                        </p>
-                      ) : (
-                        <p className="font-medium text-ink-muted">—</p>
-                      )}
+                      <p className="text-[11px] text-ink-muted">Отзывы</p>
+                      <Link
+                        href={`/exchangers/${slug}`}
+                        className="font-medium text-ink hover:text-accent"
+                        onClick={() => onExchangeClick(sponsored)}
+                      >
+                        ★{" "}
+                        {formatRating(
+                          offer.exchanger.rating,
+                          offer.exchanger.reviews,
+                        )}{" "}
+                        <span className="text-ink-muted">
+                          · {offer.exchanger.reviews}
+                        </span>
+                      </Link>
                     </div>
                   </div>
 
@@ -332,13 +372,10 @@ export function RatesBoard({
               <thead className="text-xs uppercase tracking-[0.12em] text-ink-muted">
                 <tr>
                   <th className="px-5 py-3 font-medium">Обменник</th>
-                  <th className="px-5 py-3 font-medium">
-                    {amount > 0 ? "Получите" : "Курс"}
-                  </th>
-                  <th className="px-5 py-3 font-medium">
-                    Объём ({fromName})
-                  </th>
-                  <th className="px-5 py-3 font-medium">Действие</th>
+                  <th className="px-5 py-3 font-medium">Отдаете</th>
+                  <th className="px-5 py-3 font-medium">Получаете</th>
+                  <th className="px-5 py-3 font-medium">Резерв</th>
+                  <th className="px-5 py-3 font-medium">Отзывы</th>
                 </tr>
               </thead>
               <tbody>
@@ -346,7 +383,6 @@ export function RatesBoard({
                   const name = offer.exchanger?.name?.trim() || "Обменник";
                   const slug = offer.exchanger?.slug || offer.exchanger?.id || "";
                   const sponsored = offer.exchanger?.id === pinnedId;
-                  const receive = receiveFor(offer.rate);
                   const volume = volumeFor(offer);
                   return (
                     <tr
@@ -372,7 +408,7 @@ export function RatesBoard({
                               {name.slice(0, 1)}
                             </div>
                           )}
-                          <div>
+                          <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-1.5">
                               <Link
                                 href={`/exchangers/${slug}`}
@@ -393,25 +429,41 @@ export function RatesBoard({
                                 </span>
                               ) : null}
                             </div>
-                            <p className="text-xs text-ink-muted">
-                              ★{" "}
-                              {formatRating(
-                                offer.exchanger.rating,
-                                offer.exchanger.reviews,
-                              )}{" "}
-                              · {offer.exchanger.reviews} отз.
-                            </p>
                             {isWarned(offer) ? (
-                              <p className="text-xs font-semibold text-danger">
+                              <p className="mt-1 text-xs font-semibold text-danger">
                                 Много жалоб
                               </p>
                             ) : null}
+                            <a
+                              href={buildExchangeUrl(
+                                offer.exchanger.exchangeUrlTemplate,
+                                offer.exchanger.website,
+                                offer.from,
+                                offer.to,
+                              )}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn-primary mt-2 inline-flex rounded-xl px-3 py-1.5 text-xs font-semibold"
+                              onClick={() => onExchangeClick(sponsored)}
+                            >
+                              Обменять
+                            </a>
                           </div>
                         </div>
                       </td>
+                      <td className="px-5 py-4 tabular-nums text-ink">
+                        {giveLabel(offer)}
+                        {isOutOfRange(offer) && volume ? (
+                          <p className="mt-1 text-[11px] text-[var(--warn)]">
+                            вне лимита {volume.from}–{volume.to}
+                          </p>
+                        ) : null}
+                      </td>
                       <td className="px-5 py-4">
                         <span className="font-semibold tabular-nums text-accent-deep">
-                          {formatReceiveValue(receive)}
+                          {amount > 0
+                            ? formatCurrencyAmount(receiveFor(offer.rate), to)
+                            : formatRate(offer.rate)}
                         </span>{" "}
                         <span className="text-ink-muted">{toName}</span>
                         {amount > 0 ? (
@@ -421,39 +473,23 @@ export function RatesBoard({
                         ) : null}
                       </td>
                       <td className="px-5 py-4 tabular-nums text-ink-muted">
-                        {volume ? (
-                          <span>
-                            от {volume.from}
-                            <br />
-                            до {volume.to}
-                          </span>
-                        ) : (
-                          "—"
-                        )}
+                        {reserveLabel(offer)}
                       </td>
                       <td className="px-5 py-4">
-                        <div className="flex flex-wrap gap-2">
-                          <Link
-                            href={`/exchangers/${slug}`}
-                            className="rounded-xl border border-line px-3 py-2 text-xs font-semibold text-ink-muted"
-                          >
-                            Подробнее
-                          </Link>
-                          <a
-                            href={buildExchangeUrl(
-                              offer.exchanger.exchangeUrlTemplate,
-                              offer.exchanger.website,
-                              offer.from,
-                              offer.to,
-                            )}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="btn-primary inline-flex rounded-xl px-3 py-2 text-xs font-semibold"
-                            onClick={() => onExchangeClick(sponsored)}
-                          >
-                            Обменять
-                          </a>
-                        </div>
+                        <Link
+                          href={`/exchangers/${slug}`}
+                          className="font-medium tabular-nums text-ink hover:text-accent"
+                          onClick={() => onExchangeClick(sponsored)}
+                        >
+                          ★{" "}
+                          {formatRating(
+                            offer.exchanger.rating,
+                            offer.exchanger.reviews,
+                          )}
+                        </Link>
+                        <p className="text-xs text-ink-muted">
+                          {offer.exchanger.reviews} отзывов
+                        </p>
                       </td>
                     </tr>
                   );
