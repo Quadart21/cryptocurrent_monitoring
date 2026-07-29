@@ -51,10 +51,18 @@ function parseAdBody(body: Record<string, unknown>) {
   }
 
   const imageUrl = String(body.imageUrl ?? "").trim();
-  if (type === "banner" && !imageUrl) {
-    return {
-      error: "Для баннера укажите URL картинки нужного размера",
-    } as const;
+  if (imageUrl) {
+    // Allow local uploaded paths and absolute http(s) URLs.
+    if (!imageUrl.startsWith("/api/ad-images/")) {
+      try {
+        const u = new URL(imageUrl);
+        if (u.protocol !== "https:" && u.protocol !== "http:") {
+          return { error: "URL картинки: только http(s)" } as const;
+        }
+      } catch {
+        return { error: "Некорректный URL картинки" } as const;
+      }
+    }
   }
 
   let pairs: string[] = [];

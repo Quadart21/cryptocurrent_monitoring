@@ -20,6 +20,21 @@ import {
   StatusPill,
 } from "@/components/admin/ui";
 
+const BANNER_SIZE_ROWS = (
+  Object.keys(BANNER_SPECS) as AdPlacement[]
+).flatMap((placement) => {
+  const spec = BANNER_SPECS[placement];
+  if (!spec) return [];
+  return [
+    {
+      placement,
+      label: AD_PLACEMENT_LABELS[placement],
+      sizeLabel: spec.sizeLabel,
+      hint: AD_PLACEMENT_HINTS[placement],
+    },
+  ];
+});
+
 type FormState = {
   name: string;
   type: AdType;
@@ -82,6 +97,7 @@ export function AdsModule() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [exchangerPairs, setExchangerPairs] = useState<ExchangerPairOption[]>(
     [],
   );
@@ -170,6 +186,44 @@ export function AdsModule() {
     });
   }
 
+  async function uploadAdImage(adId: string, file: File) {
+    const fd = new FormData();
+    fd.set("id", adId);
+    fd.set("image", file);
+    const res = await fetch("/api/admin/ads/image", {
+      method: "POST",
+      body: fd,
+    });
+    const body = (await res.json()) as { error?: string };
+    if (!res.ok) {
+      throw new Error(body.error ?? "Не удалось загрузить картинку");
+    }
+  }
+
+  async function removeAdImage(adId: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      const fd = new FormData();
+      fd.set("id", adId);
+      fd.set("remove", "1");
+      const res = await fetch("/api/admin/ads/image", {
+        method: "POST",
+        body: fd,
+      });
+      const body = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        setError(body.error ?? "Не удалось удалить картинку");
+        return;
+      }
+      setForm((f) => ({ ...f, imageUrl: "" }));
+      setImageFile(null);
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (
@@ -178,6 +232,10 @@ export function AdsModule() {
       form.pairs.length === 0
     ) {
       setError("Выберите хотя бы одну пару или режим «везде»");
+      return;
+    }
+    if (form.type === "banner" && !imageFile && !form.imageUrl.trim()) {
+      setError("Загрузите картинку с ПК или укажите URL");
       return;
     }
     setBusy(true);
@@ -190,13 +248,33 @@ export function AdsModule() {
           editingId ? { id: editingId, ...payload } : payload,
         ),
       });
-      const body = (await res.json()) as { error?: string };
+      const body = (await res.json()) as { error?: string; ad?: AdCreative };
       if (!res.ok) {
         setError(body.error ?? "Не удалось сохранить");
         return;
       }
+
+      const adId = editingId ?? body.ad?.id;
+      if (form.type === "banner" && imageFile && adId) {
+        try {
+          await uploadAdImage(adId, imageFile);
+        } catch (err) {
+          setError(
+            err instanceof Error
+              ? `Креатив сохранён, но картинка не принята: ${err.message}`
+              : "Креатив сохранён, но картинка не принята",
+          );
+          setEditingId(adId);
+          setForm(body.ad ? formFromAd(body.ad) : form);
+          setImageFile(null);
+          await refresh();
+          return;
+        }
+      }
+
       setForm(emptyForm());
       setEditingId(null);
+      setImageFile(null);
       await refresh();
     } finally {
       setBusy(false);
@@ -227,6 +305,7 @@ export function AdsModule() {
       if (editingId === id) {
         setEditingId(null);
         setForm(emptyForm());
+        setImageFile(null);
       }
       await refresh();
     } finally {
@@ -358,14 +437,47 @@ export function AdsModule() {
                 {placements.map((p) => (
                   <option key={p} value={p}>
                     {AD_PLACEMENT_LABELS[p]}
+                    {form.type === "banner" && BANNER_SPECS[p]
+                      ? ` · ${BANNER_SPECS[p]!.sizeLabel} px`
+                      : ""}
                   </option>
                 ))}
               </select>
               <p className="text-xs text-ink-muted">
                 {AD_PLACEMENT_HINTS[form.placement]}
+                {form.type === "banner" && BANNER_SPECS[form.placement]
+                  ? ` · размер креатива ${BANNER_SPECS[form.placement]!.sizeLabel} px`
+                  : ""}
               </p>
             </label>
           </div>
+
+          {form.type === "banner" ? (
+            <div className="rounded-2xl border border-line bg-bg-soft/50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-ink-muted">
+                Размеры баннеров
+              </p>
+              <ul className="mt-2 space-y-1.5 text-sm text-ink">
+                {BANNER_SIZE_ROWS.map((row) => (
+                  <li
+                    key={row.placement}
+                    className={
+                      row.placement === form.placement
+                        ? "font-semibold text-accent"
+                        : "text-ink-muted"
+                    }
+                  >
+                    <span className="tabular-nums">{row.sizeLabel}</span>
+                    {" — "}
+                    {row.label}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-xs text-ink-muted">
+                JPG / PNG / WebP, до 2 МБ. Берите точный размер выбранного слота.
+              </p>
+            </div>
+          ) : null}
 
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block space-y-1">
@@ -409,28 +521,65 @@ export function AdsModule() {
           ) : null}
 
           {form.type === "banner" ? (
-            <label className="block space-y-1">
-              <span className="text-xs text-ink-muted">
-                Картинка (URL)
-                {BANNER_SPECS[form.placement]
-                  ? ` · оптимально ${BANNER_SPECS[form.placement]!.sizeLabel} px, JPG/PNG/WebP`
-                  : ""}
-              </span>
-              <input
-                value={form.imageUrl}
-                onChange={(e) =>
-                  setForm({ ...form, imageUrl: e.target.value })
-                }
-                required
-                placeholder="https://…/banner.png"
-                className="w-full rounded-2xl border border-line bg-input px-3 py-2.5 text-sm outline-none focus:border-accent"
-              />
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <span className="text-xs text-ink-muted">
+                  Картинка с ПК
+                  {BANNER_SPECS[form.placement]
+                    ? ` · нужно ${BANNER_SPECS[form.placement]!.sizeLabel} px`
+                    : ""}
+                </span>
+                <input
+                  type="file"
+                  accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                  onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
+                  className="block w-full text-sm text-ink file:mr-3 file:rounded-xl file:border-0 file:bg-accent/15 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-accent"
+                />
+                {imageFile ? (
+                  <p className="text-xs text-ink-muted">
+                    Новый файл: {imageFile.name}
+                  </p>
+                ) : null}
+                {form.imageUrl ? (
+                  <div className="flex flex-wrap items-center gap-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={form.imageUrl}
+                      alt=""
+                      className="h-12 max-w-[240px] rounded-lg border border-line object-cover"
+                    />
+                    {editingId ? (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void removeAdImage(editingId)}
+                        className="rounded-xl bg-danger/15 px-3 py-2 text-xs font-semibold text-danger"
+                      >
+                        Удалить картинку
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+              <label className="block space-y-1">
+                <span className="text-xs text-ink-muted">
+                  Или URL картинки (если уже хостится)
+                </span>
+                <input
+                  value={form.imageUrl.startsWith("/api/ad-images/") ? "" : form.imageUrl}
+                  onChange={(e) =>
+                    setForm({ ...form, imageUrl: e.target.value })
+                  }
+                  placeholder="https://…/banner.png"
+                  disabled={Boolean(imageFile)}
+                  className="w-full rounded-2xl border border-line bg-input px-3 py-2.5 text-sm outline-none focus:border-accent disabled:opacity-60"
+                />
+              </label>
               <p className="text-xs text-ink-muted">
-                Баннер показывается как изображение на всю ширину контента.
-                Без картинки — текстовая карточка (лучше всегда грузить
-                креатив нужного размера).
+                Баннер тянется на ширину контента. Без файла или URL — текстовая
+                карточка.
               </p>
-            </label>
+            </div>
           ) : null}
 
           {needsExchanger ? (
@@ -588,6 +737,7 @@ export function AdsModule() {
                 onClick={() => {
                   setEditingId(null);
                   setForm(emptyForm());
+                  setImageFile(null);
                   setError(null);
                 }}
                 className="rounded-2xl border border-line px-4 py-2.5 text-sm text-ink-muted"
@@ -661,6 +811,7 @@ export function AdsModule() {
                         onClick={() => {
                           setEditingId(ad.id);
                           setForm(formFromAd(ad));
+                          setImageFile(null);
                           setError(null);
                         }}
                         className="rounded-xl border border-line px-3 py-2 text-xs font-semibold text-ink-muted"

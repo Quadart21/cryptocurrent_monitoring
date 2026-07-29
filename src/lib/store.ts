@@ -207,6 +207,19 @@ function mapAchievement(row: AchievementRow): ExchangerAchievement {
 }
 
 function mapAd(row: AdRow): AdCreative {
+  const imageFormat =
+    row.imageFormat === "jpeg" ||
+    row.imageFormat === "png" ||
+    row.imageFormat === "webp"
+      ? (row.imageFormat as "jpeg" | "png" | "webp")
+      : null;
+  const image: AdCreative["image"] =
+    imageFormat && row.imageUpdatedAt
+      ? { format: imageFormat, updatedAt: row.imageUpdatedAt }
+      : null;
+  const storedUrl = image
+    ? `/api/ad-images/${encodeURIComponent(row.id)}?v=${encodeURIComponent(image.updatedAt)}`
+    : null;
   return {
     id: row.id,
     name: row.name,
@@ -215,7 +228,8 @@ function mapAd(row: AdRow): AdCreative {
     title: row.title,
     body: row.body,
     href: row.href,
-    imageUrl: row.imageUrl,
+    imageUrl: storedUrl || row.imageUrl,
+    image,
     exchangerId: row.exchangerId,
     pairs: Array.isArray(row.pairs) ? row.pairs : [],
     active: row.active,
@@ -628,6 +642,69 @@ export async function clearExchangerLogoData(id: string): Promise<void> {
       logoData: null,
     })
     .where(eq(exchangers.id, id));
+}
+
+export async function getAdById(id: string): Promise<AdCreative | undefined> {
+  const db = getDb();
+  const [row] = await db.select().from(ads).where(eq(ads.id, id)).limit(1);
+  return row ? mapAd(row) : undefined;
+}
+
+export async function getAdImageBytes(
+  id: string,
+): Promise<{ format: "jpeg" | "png" | "webp"; bytes: Buffer } | null> {
+  const db = getDb();
+  const [row] = await db
+    .select({
+      format: ads.imageFormat,
+      data: ads.imageData,
+    })
+    .from(ads)
+    .where(eq(ads.id, id))
+    .limit(1);
+  if (
+    !row?.data ||
+    (row.format !== "jpeg" && row.format !== "png" && row.format !== "webp")
+  ) {
+    return null;
+  }
+  return { format: row.format, bytes: row.data };
+}
+
+export async function setAdImageData(
+  id: string,
+  prepared: { format: "jpeg" | "png" | "webp"; bytes: Buffer },
+): Promise<{ format: "jpeg" | "png" | "webp"; updatedAt: string }> {
+  const db = getDb();
+  const updatedAt = new Date().toISOString();
+  const imageUrl = `/api/ad-images/${encodeURIComponent(id)}?v=${encodeURIComponent(updatedAt)}`;
+  const result = await db
+    .update(ads)
+    .set({
+      imageFormat: prepared.format,
+      imageUpdatedAt: updatedAt,
+      imageData: prepared.bytes,
+      imageUrl,
+    })
+    .where(eq(ads.id, id))
+    .returning({ id: ads.id });
+  if (!result.length) {
+    throw new Error("AD_NOT_FOUND");
+  }
+  return { format: prepared.format, updatedAt };
+}
+
+export async function clearAdImageData(id: string): Promise<void> {
+  const db = getDb();
+  await db
+    .update(ads)
+    .set({
+      imageFormat: null,
+      imageUpdatedAt: null,
+      imageData: null,
+      imageUrl: "",
+    })
+    .where(eq(ads.id, id));
 }
 
 export async function getActiveRates(): Promise<StoredRate[]> {
@@ -1469,14 +1546,16 @@ export async function listActiveAds(options?: {
 }
 
 export async function addAd(
-  input: Omit<AdCreative, "id" | "createdAt" | "stats"> & {
+  input: Omit<AdCreative, "id" | "createdAt" | "stats" | "image"> & {
     stats?: AdCreative["stats"];
+    image?: AdCreative["image"];
   },
 ): Promise<AdCreative> {
   const db = getDb();
   const item: AdCreative = {
     ...input,
     pairs: input.pairs ?? [],
+    image: input.image ?? null,
     id: `ad_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
     createdAt: new Date().toISOString(),
     stats: input.stats ? normalizeAdStats(input.stats) : emptyAdStats(),
@@ -1527,7 +1606,19 @@ export async function updateAd(
       ...(patch.title !== undefined ? { title: patch.title } : {}),
       ...(patch.body !== undefined ? { body: patch.body } : {}),
       ...(patch.href !== undefined ? { href: patch.href } : {}),
-      ...(patch.imageUrl !== undefined ? { imageUrl: patch.imageUrl } : {}),
+      ...(patch.imageUrl !== undefined
+        ? {
+            imageUrl: patch.imageUrl,
+            // External URL replaces a previously uploaded file.
+            ...(patch.imageUrl.startsWith("/api/ad-images/")
+              ? {}
+              : {
+                  imageFormat: null,
+                  imageUpdatedAt: null,
+                  imageData: null,
+                }),
+          }
+        : {}),
       ...(patch.exchangerId !== undefined
         ? { exchangerId: patch.exchangerId }
         : {}),
