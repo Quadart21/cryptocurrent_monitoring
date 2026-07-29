@@ -48,7 +48,7 @@ export default async function HomePage({ searchParams }: Props) {
   ]);
 
   return (
-    <div className="space-y-12 pb-4">
+    <div className="space-y-10 pb-4">
       <Suspense fallback={<PageSkeleton />}>
         <Dashboard
           catalog={catalog}
@@ -62,12 +62,12 @@ export default async function HomePage({ searchParams }: Props) {
 
       <HomeMidAdSlot />
 
-      <HomeNewsStrip posts={posts.slice(0, 4)} />
-
       <SeoContentBlocks
         className="border-t border-line/70 pt-10"
         sections={homeSeoSections(seo.siteName || "GapSnap")}
       />
+
+      <HomeNewsStrip posts={posts.slice(0, 3)} />
     </div>
   );
 }
