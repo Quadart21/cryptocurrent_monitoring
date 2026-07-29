@@ -63,20 +63,21 @@ function intervalMs(): number {
   return DEFAULT_INTERVAL_MS;
 }
 
-/** How many new articles to create per sync run (default 1). */
+/** How many new articles to create per sync run (default: whole RSS page, up to 50). */
 function batchSize(override?: number): number {
   if (typeof override === "number" && override >= 1) {
-    return Math.min(30, Math.floor(override));
+    return Math.min(50, Math.floor(override));
   }
   const raw = Number(process.env.NEWS_SYNC_BATCH_SIZE ?? "");
-  if (Number.isFinite(raw) && raw >= 1) return Math.min(30, Math.floor(raw));
-  return 1;
+  if (Number.isFinite(raw) && raw >= 1) return Math.min(50, Math.floor(raw));
+  return 50;
 }
 
 function pauseMs(): number {
   const pause = Number(process.env.NEWS_SYNC_PAUSE_MS ?? "");
   if (Number.isFinite(pause) && pause >= 0) return pause;
-  return 1_000;
+  // Small gap between articles; proxy rotates on 429 anyway
+  return 1_500;
 }
 
 export function isNewsSyncInFlight(): boolean {
@@ -325,7 +326,7 @@ export async function startNewsSync(options?: {
   setProgress("Старт…");
   const run = runNewsSyncJob({
     ...ready,
-    maxCreate: batchSize(options?.maxCreate ?? 1),
+    maxCreate: batchSize(options?.maxCreate),
   })
     .catch(async (err) => {
       const message = err instanceof Error ? err.message : String(err);
@@ -366,7 +367,7 @@ export function startNewsPoller(): void {
     void (async () => {
       const settings = await getNewsSettings();
       if (!settings.enabled) return;
-      // Auto: still one-by-one per tick (batch size from env, default 1)
+      // Auto: process up to batchSize() new items per daily tick
       await syncCryptoNews();
     })().catch((error) => {
       console.error("[gapsnap] news sync failed", error);
