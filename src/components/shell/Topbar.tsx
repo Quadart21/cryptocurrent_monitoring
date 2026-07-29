@@ -1,15 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { GlobalSearch } from "@/components/shell/GlobalSearch";
+import { IconSpreadNav } from "@/components/shell/IconSpreadNav";
 import { MobileNav } from "@/components/shell/MobileNav";
-import { SITE_NAV, isNavActive } from "@/components/shell/nav";
 
 export function Topbar() {
-  const pathname = usePathname();
-
   return (
     <header className="sticky top-0 z-40 border-b border-line/70 bg-[var(--topbar)] backdrop-blur-xl">
       <div className="mx-auto flex max-w-[1400px] flex-col">
@@ -28,28 +25,7 @@ export function Topbar() {
             </span>
           </Link>
 
-          <nav
-            className="ml-2 hidden min-w-0 items-center gap-0.5 lg:flex"
-            aria-label="Основное меню"
-          >
-            {SITE_NAV.map((item) => {
-              const active = isNavActive(pathname, item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  title={item.hint}
-                  className={`rounded-xl px-2.5 py-1.5 text-sm font-semibold transition xl:px-3 ${
-                    active
-                      ? "bg-accent text-white shadow-[var(--glow)]"
-                      : "text-ink-muted hover:bg-accent-soft hover:text-ink"
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
+          <IconSpreadNav />
 
           <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
             <GlobalSearch className="hidden min-w-0 max-w-xs flex-1 md:block lg:max-w-sm" />
