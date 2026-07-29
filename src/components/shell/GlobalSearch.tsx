@@ -164,7 +164,7 @@ export function GlobalSearch({ className = "" }: { className?: string }) {
             setOpen(true);
           }}
           onKeyDown={onKeyDown}
-          className="w-full rounded-2xl border border-line bg-input py-2.5 pl-9 pr-3 text-sm text-ink outline-none transition placeholder:text-ink-muted focus:border-accent focus:ring-2 focus:ring-accent/20"
+        className="w-full rounded-2xl border border-line bg-input py-2.5 pl-9 pr-3 text-base text-ink outline-none transition placeholder:text-ink-muted focus:border-accent focus:ring-2 focus:ring-accent/20 sm:text-sm"
         />
       </label>
 

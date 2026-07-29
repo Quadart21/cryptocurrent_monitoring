@@ -27,6 +27,7 @@
   --promo-from: #6d28d9;
   --promo-to: #a21caf;
   --grid-dot: transparent;
+  --mobile-nav-h: 3.75rem;
 }
 
 html.dark {
@@ -85,6 +86,8 @@ html.dark {
 html {
   scroll-behavior: smooth;
   overflow-x: clip;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -94,6 +97,7 @@ body {
   color: var(--ink);
   background: var(--bg);
   font-family: var(--font-manrope), system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
 }
 
 a {
@@ -101,9 +105,34 @@ a {
   text-decoration: none;
 }
 
+button,
+a,
+[role="button"] {
+  touch-action: manipulation;
+}
+
 ::selection {
   background: var(--accent-soft);
   color: var(--accent-deep);
+}
+
+/* iOS: inputs <16px trigger viewport zoom */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="hidden"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+.mobile-shell-pad {
+  padding-bottom: calc(var(--mobile-nav-h) + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 768px) {
+  .mobile-shell-pad {
+    padding-bottom: 0;
+  }
 }
 
 .card {
@@ -192,4 +221,19 @@ a {
 .prose-gap ul {
   list-style: disc;
   padding-left: 1.25rem;
+}
+
+.prose-blog,
+.prose-gap {
+  overflow-wrap: anywhere;
+}
+
+.prose-blog pre,
+.prose-blog table,
+.prose-gap pre,
+.prose-gap table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }

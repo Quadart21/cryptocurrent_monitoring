@@ -31,10 +31,10 @@ export default async function RatesHubPage() {
         items={[{ href: "/", label: "Главная" }, { label: "Курсы" }]}
       />
       <div>
-        <h1 className="font-display text-3xl font-semibold text-ink">
+        <h1 className="font-display text-2xl font-semibold text-ink sm:text-3xl">
           Курсы и направления
         </h1>
-        <p className="mt-2 max-w-2xl text-ink-muted">
+        <p className="mt-2 max-w-2xl text-sm text-ink-muted sm:text-base">
           Выберите валютную пару — откроется страница с таблицей обменников,
           калькулятором и FAQ.
         </p>
@@ -47,7 +47,7 @@ export default async function RatesHubPage() {
             <Link
               key={`${from}-${to}`}
               href={pairPath(from, to)}
-              className="rounded-2xl border border-line px-4 py-3 text-sm font-semibold hover:border-accent/40"
+              className="flex min-h-12 flex-col justify-center rounded-2xl border border-line px-4 py-3 text-sm font-semibold hover:border-accent/40"
             >
               {currencyLabel(from)} → {currencyLabel(to)}
               <span className="mt-1 block text-xs font-normal text-ink-muted">
@@ -67,7 +67,7 @@ export default async function RatesHubPage() {
             <Link
               key={`all-${from}-${to}`}
               href={pairPath(from, to)}
-              className="rounded-xl border border-line/70 px-3 py-2 text-xs font-medium text-ink-muted hover:border-accent/40 hover:text-ink"
+              className="flex min-h-11 items-center rounded-xl border border-line/70 px-3 py-2.5 text-xs font-medium text-ink-muted hover:border-accent/40 hover:text-ink"
             >
               {from} → {to}
             </Link>

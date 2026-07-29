@@ -84,7 +84,7 @@ export function OwnerLogin() {
 
           <form
             onSubmit={(e) => void onSubmit(e)}
-            className="card space-y-4 p-6 sm:p-7"
+            className="card space-y-4 p-4 sm:p-7"
           >
             <label className="block space-y-1.5">
               <span className="text-xs font-medium text-ink-muted">Логин</span>
@@ -94,7 +94,7 @@ export function OwnerLogin() {
                 autoComplete="username"
                 required
                 placeholder="your_login"
-                className="w-full rounded-xl border border-line bg-input px-3.5 py-2.5 text-sm outline-none focus:border-accent"
+                className="min-h-12 w-full rounded-xl border border-line bg-input px-3.5 py-2.5 text-base outline-none focus:border-accent sm:text-sm"
               />
             </label>
 
@@ -107,7 +107,7 @@ export function OwnerLogin() {
                 autoComplete="current-password"
                 required
                 placeholder="••••••••"
-                className="w-full rounded-xl border border-line bg-input px-3.5 py-2.5 text-sm outline-none focus:border-accent"
+                className="min-h-12 w-full rounded-xl border border-line bg-input px-3.5 py-2.5 text-base outline-none focus:border-accent sm:text-sm"
               />
             </label>
 
@@ -124,7 +124,7 @@ export function OwnerLogin() {
                   placeholder="6 цифр"
                   maxLength={6}
                   required={needsTotp}
-                  className="w-full rounded-xl border border-line bg-input px-3.5 py-2.5 text-sm tracking-[0.2em] outline-none focus:border-accent"
+                  className="min-h-12 w-full rounded-xl border border-line bg-input px-3.5 py-2.5 text-base tracking-[0.2em] outline-none focus:border-accent sm:text-sm"
                 />
               </label>
             ) : null}

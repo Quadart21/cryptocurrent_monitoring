@@ -54,12 +54,12 @@ export function HomeNewsStrip({ posts }: { posts: BlogPost[] }) {
         </Link>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="-mx-3 flex gap-3 overflow-x-auto px-3 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 xl:grid-cols-4 [&::-webkit-scrollbar]:hidden">
         {posts.slice(0, 4).map((post) => (
           <Link
             key={post.id}
             href={`/blog/${post.slug}`}
-            className="group flex flex-col overflow-hidden rounded-[1.35rem] border border-line bg-bg-elevated shadow-[var(--card-shadow)] transition hover:border-accent/40"
+            className="group flex w-[min(78vw,18rem)] shrink-0 flex-col overflow-hidden rounded-[1.35rem] border border-line bg-bg-elevated shadow-[var(--card-shadow)] transition hover:border-accent/40 sm:w-auto"
           >
             <div className="relative aspect-[16/10] overflow-hidden bg-bg-soft">
               <Cover src={post.coverImageUrl} title={post.title} />

@@ -3,7 +3,7 @@ import Link from "next/link";
 export function Footer() {
   return (
     <footer className="mt-auto border-t border-line bg-bg-elevated">
-      <div className="mx-auto flex max-w-[1400px] flex-col gap-8 px-3 py-10 sm:px-6 lg:flex-row lg:items-start lg:justify-between lg:px-8">
+      <div className="mx-auto flex max-w-[1400px] flex-col gap-8 px-3 py-8 sm:px-6 sm:py-10 lg:flex-row lg:items-start lg:justify-between lg:px-8">
         <div className="min-w-0 max-w-md">
           <p className="font-display text-lg font-semibold text-ink">GapSnap</p>
           <p className="mt-2 text-sm leading-relaxed text-ink-muted">
@@ -12,7 +12,7 @@ export function Footer() {
           </p>
         </div>
 
-        <div className="grid gap-6 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-6 sm:grid-cols-3">
           <FooterCol
             title="Сервис"
             links={[
@@ -57,10 +57,13 @@ function FooterCol({
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">
         {title}
       </p>
-      <ul className="mt-3 space-y-2 text-sm text-ink-muted">
+      <ul className="mt-3 space-y-1 text-sm text-ink-muted">
         {links.map((link) => (
           <li key={link.href}>
-            <Link href={link.href} className="transition hover:text-ink">
+            <Link
+              href={link.href}
+              className="inline-flex min-h-10 items-center transition hover:text-ink"
+            >
               {link.label}
             </Link>
           </li>

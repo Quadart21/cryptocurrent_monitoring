@@ -66,15 +66,15 @@ export default async function BlogIndexPage() {
         items={[{ href: "/", label: "Главная" }, { label: "Новости" }]}
       />
 
-      <section className="animate-rise rounded-2xl border border-line bg-bg-elevated px-5 py-8 sm:px-8 sm:py-10">
+      <section className="animate-rise rounded-2xl border border-line bg-bg-elevated px-4 py-6 sm:px-8 sm:py-10">
         <div className="max-w-2xl">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">
             Лента
           </p>
-          <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+          <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight text-ink sm:text-4xl">
             Новости
           </h1>
-          <p className="mt-3 text-base leading-relaxed text-ink-muted sm:text-lg">
+          <p className="mt-3 text-sm leading-relaxed text-ink-muted sm:text-lg">
             Коротко и по делу о крипторынке: что происходит с курсами, обменниками
             и безопасностью — чтобы проще выбирать, куда менять.
           </p>

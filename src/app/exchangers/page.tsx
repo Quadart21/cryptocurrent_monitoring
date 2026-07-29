@@ -41,16 +41,16 @@ export default async function ExchangersPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="font-display text-3xl font-semibold text-ink">
+          <h1 className="font-display text-2xl font-semibold text-ink sm:text-3xl">
             Обменники
           </h1>
-          <p className="mt-2 text-ink-muted">
+          <p className="mt-2 text-sm text-ink-muted sm:text-base">
             Курсы читаются из XML-фидов раз в минуту.
           </p>
         </div>
         <Link
           href="/apply"
-          className="btn-primary inline-flex w-fit rounded-2xl px-4 py-2.5 text-sm font-semibold"
+          className="btn-primary inline-flex min-h-11 w-full items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-semibold sm:w-fit"
         >
           Добавить обменник
         </Link>
@@ -67,7 +67,7 @@ export default async function ExchangersPage() {
               key={ex.id}
               href={`/exchangers/${ex.slug}`}
               adId={isAd ? sponsoredAdId : null}
-              className={`flex flex-col gap-3 px-5 py-4 transition hover:bg-accent-soft/40 sm:flex-row sm:items-center sm:justify-between ${
+              className={`flex flex-col gap-3 px-4 py-4 transition hover:bg-accent-soft/40 sm:flex-row sm:items-center sm:justify-between sm:px-5 ${
                 isAd ? "bg-accent-soft/35 ring-1 ring-inset ring-accent/20" : ""
               }`}
             >
@@ -96,7 +96,7 @@ export default async function ExchangersPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex gap-4 pl-10 text-sm sm:pl-0">
+              <div className="flex flex-wrap gap-x-4 gap-y-1 pl-10 text-sm sm:pl-0">
                 <span>★ {formatRating(ex.rating, ex.reviews)}</span>
                 <span className="text-ink-muted">{ex.pairCount} пар</span>
                 <span className="text-ink-muted">

@@ -136,7 +136,7 @@ export function RatesBoard({
 
   return (
     <div className="card animate-rise-delay-2 overflow-hidden">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line px-4 py-4 sm:px-5">
+      <div className="flex flex-col gap-3 border-b border-line px-3 py-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:px-5">
         <div className="min-w-0 space-y-2">
           <h2 className="font-display text-lg font-semibold text-ink">
             Лучшие предложения
@@ -151,31 +151,32 @@ export function RatesBoard({
           <div className="flex flex-wrap items-center gap-2">
             <Link
               href={pairPath(from, to)}
-              className="text-xs font-semibold text-accent hover:underline"
+              className="inline-flex min-h-10 items-center text-sm font-semibold text-accent hover:underline"
             >
               Страница пары →
             </Link>
           </div>
         </div>
 
-        <div className="flex flex-col items-stretch gap-2 sm:items-end">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
           {onAmountChange ? (
-            <label className="flex items-center gap-2 text-xs text-ink-muted">
+            <label className="flex w-full flex-col gap-1.5 text-xs text-ink-muted sm:w-auto sm:flex-row sm:items-center sm:gap-2">
               Сумма ({fromName})
               <input
                 type="number"
                 min={0}
                 step="any"
+                inputMode="decimal"
                 value={amount || ""}
                 onChange={(e) =>
                   onAmountChange(Number(e.target.value) || 0)
                 }
-                className="w-32 rounded-xl border border-line bg-input px-2.5 py-1.5 text-sm text-ink outline-none focus:border-accent"
+                className="min-h-11 w-full rounded-xl border border-line bg-input px-3 py-2 text-base text-ink outline-none focus:border-accent sm:w-36 sm:text-sm"
               />
             </label>
           ) : null}
           {onSortChange ? (
-            <div className="flex flex-wrap gap-1">
+            <div className="grid w-full grid-cols-3 gap-1 sm:flex sm:w-auto sm:flex-wrap">
               {(
                 [
                   ["rate", "Курс"],
@@ -187,7 +188,7 @@ export function RatesBoard({
                   key={id}
                   type="button"
                   onClick={() => onSortChange(id)}
-                  className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold ${
+                  className={`min-h-10 rounded-xl px-2.5 py-2 text-xs font-semibold sm:min-h-0 sm:rounded-lg sm:py-1 sm:text-[11px] ${
                     sortBy === id
                       ? "bg-accent text-white"
                       : "border border-line text-ink-muted"
@@ -221,7 +222,7 @@ export function RatesBoard({
               return (
                 <div
                   key={offer.id}
-                  className={`space-y-3 px-4 py-4 ${
+                  className={`space-y-3 px-3 py-4 sm:px-4 ${
                     sponsored ? "bg-accent-soft/50" : ""
                   }`}
                 >
@@ -302,7 +303,7 @@ export function RatesBoard({
                   <div className="flex gap-2">
                     <Link
                       href={`/exchangers/${slug}`}
-                      className="flex-1 rounded-xl border border-line px-3 py-2.5 text-center text-sm font-semibold text-ink-muted"
+                      className="flex min-h-11 flex-1 items-center justify-center rounded-xl border border-line px-3 py-2.5 text-center text-sm font-semibold text-ink-muted"
                     >
                       Подробнее
                     </Link>
@@ -315,7 +316,7 @@ export function RatesBoard({
                       )}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="btn-primary flex flex-1 items-center justify-center rounded-xl px-3 py-2.5 text-sm font-semibold"
+                      className="btn-primary flex min-h-11 flex-1 items-center justify-center rounded-xl px-3 py-2.5 text-sm font-semibold"
                       onClick={() => onExchangeClick(sponsored)}
                     >
                       Обменять

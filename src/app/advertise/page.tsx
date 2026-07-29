@@ -36,20 +36,20 @@ export default async function AdvertisePage() {
 
   return (
     <div className="space-y-10">
-      <section className="relative overflow-hidden rounded-[2rem] border border-line bg-gradient-to-br from-bg-elevated via-bg to-accent-soft/40 px-6 py-10 sm:px-10 sm:py-14">
+      <section className="relative overflow-hidden rounded-2xl border border-line bg-gradient-to-br from-bg-elevated via-bg to-accent-soft/40 px-4 py-8 sm:rounded-[2rem] sm:px-10 sm:py-14">
         <p className="font-display text-sm font-semibold tracking-[0.2em] text-accent uppercase">
           GapSnap
         </p>
-        <h1 className="mt-3 max-w-2xl font-display text-3xl font-semibold text-ink sm:text-4xl">
+        <h1 className="mt-3 max-w-2xl font-display text-2xl font-semibold text-ink sm:text-4xl">
           Реклама в мониторинге
         </h1>
-        <p className="mt-4 max-w-2xl text-base leading-relaxed text-ink-muted sm:text-lg">
+        <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink-muted sm:text-lg">
           {pricing.intro}
         </p>
         {href ? (
           <Link
             href={href}
-            className="btn-primary mt-6 inline-flex rounded-2xl px-5 py-3 text-sm font-semibold"
+            className="btn-primary mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-2xl px-5 py-3 text-sm font-semibold sm:w-auto"
           >
             Связаться: {pricing.contact}
           </Link>

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { Manrope, Unbounded } from "next/font/google";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
@@ -13,6 +13,16 @@ import { getSeoSettings } from "@/lib/store";
 import "./globals.css";
 
 export const dynamic = "force-dynamic";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f6f5f8" },
+    { media: "(prefers-color-scheme: dark)", color: "#0d0c12" },
+  ],
+};
 
 const manrope = Manrope({
   variable: "--font-manrope",

@@ -101,18 +101,18 @@ export default async function ExchangerPage({ params }: Props) {
         ]}
       />
 
-      <div className="card p-6">
+      <div className="card p-4 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div className="flex items-start gap-4">
+          <div className="flex items-start gap-3 sm:gap-4">
             <ExchangerLogoMark
               name={ex.name}
               exchangerId={ex.id}
               logo={ex.logo}
-              size={64}
+              size={56}
             />
-            <div>
+            <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="font-display text-3xl font-semibold text-ink">
+                <h1 className="font-display text-2xl font-semibold text-ink sm:text-3xl">
                   {ex.name}
                 </h1>
                 <AchievementBadges achievements={badges} size={22} />
@@ -122,7 +122,9 @@ export default async function ExchangerPage({ params }: Props) {
                   </span>
                 ) : null}
               </div>
-              <p className="mt-2 max-w-2xl text-ink-muted">{ex.description}</p>
+              <p className="mt-2 max-w-2xl text-sm text-ink-muted sm:text-base">
+                {ex.description}
+              </p>
               <div className="mt-3">
                 <ShareButtons title={ex.name} url={shareUrl} />
               </div>
@@ -132,7 +134,7 @@ export default async function ExchangerPage({ params }: Props) {
             <ExchangerOutboundLink
               exchangerId={ex.id}
               href={ex.website}
-              className="btn-primary inline-flex w-fit rounded-2xl px-4 py-2.5 text-sm font-semibold"
+              className="btn-primary inline-flex min-h-11 w-full items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-semibold sm:w-fit"
             >
               Перейти на сайт
             </ExchangerOutboundLink>

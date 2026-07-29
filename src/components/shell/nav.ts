@@ -56,6 +56,15 @@ export const SITE_NAV: NavItem[] = [
   },
 ];
 
+/** Primary thumb destinations for sticky bottom bar (phones). */
+export const MOBILE_TAB_NAV: Array<Pick<NavItem, "href" | "label" | "icon">> = [
+  { href: "/", label: "Обмен", icon: "exchange" },
+  { href: "/rates", label: "Курсы", icon: "rates" },
+  { href: "/exchangers", label: "Список", icon: "list" },
+  { href: "/blog", label: "Новости", icon: "blog" },
+  { href: "/cabinet", label: "Кабинет", icon: "cabinet" },
+];
+
 export function isNavActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(`${href}/`);

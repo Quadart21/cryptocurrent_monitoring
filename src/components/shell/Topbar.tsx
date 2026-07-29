@@ -8,14 +8,14 @@ import { MobileNav } from "@/components/shell/MobileNav";
 
 export function Topbar() {
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-bg-elevated/95">
+    <header className="sticky top-0 z-40 border-b border-line bg-bg-elevated/95 pt-[env(safe-area-inset-top,0px)] backdrop-blur-md">
       <div className="mx-auto flex max-w-[1400px] flex-col">
-        <div className="grid h-14 min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-3 sm:h-16 sm:gap-4 sm:px-6">
+        <div className="grid h-14 min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-3 sm:h-16 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-2 justify-self-start">
             <MobileNav />
             <Link
               href="/"
-              className="flex min-w-0 shrink items-center gap-2.5"
+              className="flex min-w-0 shrink items-center gap-2 sm:gap-2.5"
             >
               <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent text-sm font-bold text-white sm:size-9">
                 G
@@ -30,7 +30,7 @@ export function Topbar() {
             <IconSpreadNav />
           </div>
 
-          <div className="flex min-w-0 items-center justify-end gap-2 justify-self-end sm:gap-3">
+          <div className="flex min-w-0 items-center justify-end gap-1.5 justify-self-end sm:gap-3">
             <GlobalSearch className="hidden min-w-0 max-w-[14rem] flex-1 md:block xl:max-w-xs" />
             <ThemeToggle />
           </div>

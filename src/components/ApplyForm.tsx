@@ -46,7 +46,7 @@ export function ApplyForm() {
 
   return (
     <div>
-      <form onSubmit={onSubmit} className="card space-y-5 p-6" encType="multipart/form-data">
+      <form onSubmit={onSubmit} className="card space-y-5 p-4 sm:p-6" encType="multipart/form-data">
         <Field label="Название обменника" name="name" placeholder="Kubex" required />
         <Field label="Сайт" name="website" placeholder="https://example.com" required />
         <Field
@@ -121,7 +121,7 @@ export function ApplyForm() {
           <textarea
             name="description"
             rows={3}
-            className="w-full rounded-2xl border border-line bg-input px-3 py-3 text-sm text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+            className="min-h-24 w-full rounded-2xl border border-line bg-input px-3 py-3 text-base text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 sm:text-sm"
             placeholder="Специализация, регионы, особенности"
           />
         </label>
@@ -149,7 +149,7 @@ export function ApplyForm() {
         <button
           type="submit"
           disabled={pending}
-          className="btn-primary w-full rounded-2xl px-4 py-3 text-sm font-semibold disabled:opacity-60"
+          className="btn-primary min-h-12 w-full rounded-2xl px-4 py-3 text-sm font-semibold disabled:opacity-60"
         >
           {pending ? "Проверяем XML-фид…" : "Отправить заявку"}
         </button>
@@ -211,7 +211,7 @@ function Field({
         minLength={minLength}
         placeholder={placeholder}
         autoComplete={autoComplete}
-        className="w-full rounded-2xl border border-line bg-input px-3 py-3 text-sm text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+        className="min-h-12 w-full rounded-2xl border border-line bg-input px-3 py-3 text-base text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 sm:text-sm"
       />
     </label>
   );

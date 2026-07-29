@@ -43,7 +43,7 @@ export function CookieBanner() {
     <div
       role="dialog"
       aria-label="Согласие на cookies"
-      className="fixed inset-x-0 bottom-0 z-[80] p-3 sm:p-4"
+      className="fixed inset-x-0 bottom-0 z-[80] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] max-md:bottom-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom,0px))] max-md:pb-3 sm:p-4"
     >
       <div className="mx-auto flex max-w-3xl flex-col gap-4 rounded-2xl border border-line bg-bg-elevated p-4 shadow-[var(--card-shadow)] sm:flex-row sm:items-end sm:p-5">
         <div className="min-w-0 flex-1 space-y-2">
@@ -71,14 +71,14 @@ export function CookieBanner() {
           <button
             type="button"
             onClick={acceptAll}
-            className="btn-primary rounded-xl px-4 py-2.5 text-sm font-semibold"
+            className="btn-primary min-h-11 rounded-xl px-4 py-2.5 text-sm font-semibold"
           >
             Принять все
           </button>
           <button
             type="button"
             onClick={acceptNecessary}
-            className="rounded-xl border border-line px-4 py-2.5 text-sm font-semibold text-ink-muted transition hover:border-accent/40 hover:text-ink"
+            className="min-h-11 rounded-xl border border-line px-4 py-2.5 text-sm font-semibold text-ink-muted transition hover:border-accent/40 hover:text-ink"
           >
             Только необходимые
           </button>

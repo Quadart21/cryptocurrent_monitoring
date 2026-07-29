@@ -98,7 +98,7 @@ export function CityAutocomplete({ cities, value, onChange }: Props) {
           setActiveIndex(0);
         }}
         onKeyDown={onKeyDown}
-        className="w-full rounded-2xl border border-line bg-input px-3 py-3 text-sm font-medium text-ink outline-none focus:border-accent"
+        className="min-h-12 w-full rounded-2xl border border-line bg-input px-3 py-3 text-base font-medium text-ink outline-none focus:border-accent sm:text-sm"
       />
 
       {open && (

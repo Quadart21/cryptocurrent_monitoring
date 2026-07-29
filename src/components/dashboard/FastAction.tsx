@@ -65,7 +65,7 @@ function CurrencySelect({
       <select
         value={selected}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-2xl border border-line bg-input px-3 py-3 text-sm font-medium text-ink outline-none focus:border-accent"
+        className="min-h-12 w-full rounded-2xl border border-line bg-input px-3 py-3 text-base font-medium text-ink outline-none focus:border-accent sm:text-sm"
       >
         {groups.map((group) => (
           <optgroup
@@ -116,83 +116,80 @@ export function FastAction({
 
   return (
     <section className="animate-rise overflow-hidden rounded-2xl border border-line bg-bg-elevated shadow-[var(--card-shadow)]">
-      <div className="border-b border-line px-4 py-4 sm:px-6 sm:py-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="border-b border-line px-3 py-4 sm:px-6 sm:py-5">
+        <div className="flex flex-col gap-4">
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-muted">
               Мониторинг курсов
             </p>
-            <h1 className="mt-1.5 font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
+            <h1 className="mt-1.5 font-display text-[1.35rem] font-semibold leading-tight tracking-tight text-ink sm:text-3xl">
               Сравните курсы и выберите обменник
             </h1>
-            <p className="mt-1.5 max-w-2xl text-sm text-ink-muted">
+            <p className="mt-1.5 hidden max-w-2xl text-sm text-ink-muted sm:block">
               Выберите пару — ниже актуальные предложения с курсом, объёмом и
               рейтингом.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="grid grid-cols-2 gap-1 rounded-2xl border border-line bg-bg-soft p-1">
-              {(
-                [
-                  ["online", "Онлайн"],
-                  ["cash", "Наличные"],
-                ] as const
-              ).map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => onModeChange(value)}
-                  className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                    mode === value
-                      ? "bg-accent text-white"
-                      : "text-ink-muted hover:text-ink"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <div className="rounded-2xl border border-line bg-bg-soft px-3 py-2 text-sm">
-              <p className="text-[11px] text-ink-muted">
-                Лучший курс
-                {mode === "cash" && city ? ` · ${cityName}` : ""}
-              </p>
-              <p className="font-semibold tabular-nums text-accent-deep">
-                {bestRate != null
-                  ? `${formatRate(bestRate)} ${toName}`
-                  : "—"}
-              </p>
-              <p className="text-[11px] text-ink-muted">
-                за 1 {fromName}
-                {offerCount > 0 ? ` · ${offerCount} оф.` : ""}
+          <div className="grid w-full grid-cols-2 gap-1 rounded-2xl border border-line bg-bg-soft p-1">
+            {(
+              [
+                ["online", "Онлайн"],
+                ["cash", "Наличные"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => onModeChange(value)}
+                className={`min-h-11 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+                  mode === value
+                    ? "bg-accent text-white"
+                    : "text-ink-muted hover:text-ink"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <div className="rounded-2xl border border-line bg-bg-soft px-3.5 py-3">
+            <div className="flex items-end justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11px] text-ink-muted">
+                  Лучший курс
+                  {mode === "cash" && city ? ` · ${cityName}` : ""}
+                </p>
+                <p className="mt-0.5 font-display text-xl font-semibold tabular-nums text-accent-deep sm:text-2xl">
+                  {bestRate != null ? formatRate(bestRate) : "—"}
+                </p>
+                <p className="mt-0.5 truncate text-[11px] text-ink-muted">
+                  {toName} за 1 {fromName}
+                </p>
+              </div>
+              <p className="shrink-0 rounded-xl bg-bg-elevated px-2.5 py-1.5 text-xs font-semibold tabular-nums text-ink">
+                {offerCount > 0 ? `${offerCount} оф.` : "нет оф."}
               </p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="space-y-4 px-4 py-4 sm:px-6 sm:py-5">
-        <div
-          className={`grid gap-3 ${
-            mode === "cash"
-              ? "lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)_auto_minmax(0,1.1fr)]"
-              : "lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]"
-          } lg:items-end`}
-        >
-          {mode === "cash" ? (
-            <div className="space-y-1.5">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-muted">
-                Город
-              </span>
-              <CityAutocomplete
-                cities={cities}
-                value={city}
-                onChange={onCityChange}
-              />
-            </div>
-          ) : null}
+      <div className="space-y-4 px-3 py-4 sm:px-6 sm:py-5">
+        {mode === "cash" ? (
+          <div className="space-y-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-muted">
+              Город
+            </span>
+            <CityAutocomplete
+              cities={cities}
+              value={city}
+              onChange={onCityChange}
+            />
+          </div>
+        ) : null}
 
+        <div className="relative grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-end">
           <CurrencySelect
             label="Отдаёте"
             value={from}
@@ -201,14 +198,15 @@ export function FastAction({
             onChange={onFromChange}
           />
 
-          <div className="flex justify-center lg:pb-1">
+          <div className="relative z-10 -my-1 flex justify-center sm:my-0 sm:pb-1">
             <button
               type="button"
               onClick={onSwap}
-              className="flex size-11 items-center justify-center rounded-full border border-line bg-bg-soft text-accent transition hover:border-accent hover:bg-accent-soft"
-              aria-label="Поменять"
+              className="flex h-11 min-w-[7.5rem] items-center justify-center gap-2 rounded-full border border-line bg-bg-elevated px-4 text-sm font-semibold text-accent shadow-sm transition hover:border-accent hover:bg-accent-soft sm:size-11 sm:min-w-0 sm:px-0 sm:text-base sm:shadow-none"
+              aria-label="Поменять валюты местами"
             >
-              ⇅
+              <span className="sm:hidden">Поменять</span>
+              <span aria-hidden>⇅</span>
             </button>
           </div>
 
@@ -221,33 +219,37 @@ export function FastAction({
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-ink-muted">Популярное:</span>
-          {popular.map(([a, b]) => {
-            const inList =
-              options.some((c) => c.code === a) &&
-              options.some((c) => c.code === b);
-            if (!inList) return null;
-            return (
-              <button
-                key={`${a}-${b}`}
-                type="button"
-                onClick={() => onPairChange(a, b)}
-                title={`${a} → ${b}`}
-                className={`max-w-full truncate rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${
-                  from === a && to === b
-                    ? "bg-accent text-white"
-                    : "bg-accent-soft text-accent hover:brightness-110"
-                }`}
-              >
-                {currencyOptionLabel(a, options)} →{" "}
-                {currencyOptionLabel(b, options)}
-              </button>
-            );
-          })}
+        <div className="space-y-3">
+          <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden">
+            <span className="shrink-0 self-center text-xs text-ink-muted">
+              Популярное:
+            </span>
+            {popular.map(([a, b]) => {
+              const inList =
+                options.some((c) => c.code === a) &&
+                options.some((c) => c.code === b);
+              if (!inList) return null;
+              return (
+                <button
+                  key={`${a}-${b}`}
+                  type="button"
+                  onClick={() => onPairChange(a, b)}
+                  title={`${a} → ${b}`}
+                  className={`shrink-0 rounded-full px-3 py-2 text-xs font-semibold transition ${
+                    from === a && to === b
+                      ? "bg-accent text-white"
+                      : "bg-accent-soft text-accent hover:brightness-110"
+                  }`}
+                >
+                  {currencyOptionLabel(a, options)} →{" "}
+                  {currencyOptionLabel(b, options)}
+                </button>
+              );
+            })}
+          </div>
           <Link
             href="/apply"
-            className="ml-auto text-xs font-semibold text-ink-muted hover:text-accent-deep"
+            className="inline-flex min-h-10 items-center text-sm font-semibold text-ink-muted hover:text-accent-deep"
           >
             Владельцам обменников →
           </Link>

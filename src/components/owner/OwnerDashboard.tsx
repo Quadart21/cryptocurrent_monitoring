@@ -109,7 +109,7 @@ function ReviewReplyCard({
                 rows={3}
                 maxLength={2000}
                 placeholder="Ответ появится на публичной странице обменника"
-                className="w-full rounded-2xl border border-line bg-input px-3 py-3 text-sm outline-none focus:border-accent"
+                className="min-h-24 w-full rounded-2xl border border-line bg-input px-3 py-3 text-base outline-none focus:border-accent sm:text-sm"
               />
             </label>
             {error && <p className="text-sm text-danger">{error}</p>}
@@ -152,35 +152,35 @@ export function OwnerDashboard() {
 
   return (
     <div className="relative z-10 min-h-screen">
-      <header className="border-b border-line bg-bg-elevated">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
-          <div className="flex items-center gap-3">
+      <header className="sticky top-0 z-30 border-b border-line bg-bg-elevated/95 pt-[env(safe-area-inset-top,0px)] backdrop-blur-md">
+        <div className="mx-auto flex max-w-5xl flex-col gap-3 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
+          <div className="flex min-w-0 items-center gap-3">
             {logoSrc ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={logoSrc}
                 alt=""
-                className="size-10 rounded-2xl bg-bg-soft object-contain"
+                className="size-10 shrink-0 rounded-2xl bg-bg-soft object-contain"
               />
             ) : (
-              <div className="flex size-10 items-center justify-center rounded-2xl bg-accent/20 text-sm font-bold text-accent">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-accent/20 text-sm font-bold text-accent">
                 {exchanger.name.slice(0, 1)}
               </div>
             )}
-            <div>
-              <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-ink-muted sm:text-xs">
                 Кабинет владельца
               </p>
-              <h1 className="font-display text-lg font-semibold text-ink">
+              <h1 className="truncate font-display text-base font-semibold text-ink sm:text-lg">
                 {exchanger.name}
               </h1>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <ThemeToggle />
             <Link
               href={`/exchangers/${exchanger.slug}`}
-              className="rounded-2xl border border-line px-3 py-2 text-xs font-semibold text-ink-muted hover:text-accent"
+              className="min-h-10 flex-1 rounded-2xl border border-line px-3 py-2 text-center text-xs font-semibold text-ink-muted hover:text-accent sm:flex-none"
             >
               Публичная страница
             </Link>
@@ -188,7 +188,7 @@ export function OwnerDashboard() {
               type="button"
               disabled={busy}
               onClick={() => void logout()}
-              className="rounded-2xl border border-line px-3 py-2 text-xs font-semibold text-ink-muted hover:text-danger"
+              className="min-h-10 rounded-2xl border border-line px-3 py-2 text-xs font-semibold text-ink-muted hover:text-danger"
             >
               Выйти
             </button>
@@ -196,7 +196,7 @@ export function OwnerDashboard() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6">
+      <main className="mx-auto max-w-5xl space-y-6 px-3 py-6 sm:px-6 sm:py-8">
         {!canReply && (
           <div className="rounded-2xl border border-warn/30 bg-warn/10 px-4 py-3 text-sm text-warn">
             {exchanger.status === "pending"

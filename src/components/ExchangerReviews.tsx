@@ -173,7 +173,7 @@ export function ExchangerReviews({
                 onChange={(e) => setOrderId(e.target.value)}
                 required
                 placeholder="Например, 128473"
-                className="w-full rounded-2xl border border-line bg-input px-3 py-3 text-sm outline-none focus:border-accent"
+                className="w-full rounded-2xl border border-line bg-input px-3 py-3 text-base outline-none focus:border-accent sm:text-sm"
               />
             </label>
 
@@ -188,7 +188,7 @@ export function ExchangerReviews({
                 required
                 autoComplete="email"
                 placeholder="you@example.com"
-                className="w-full rounded-2xl border border-line bg-input px-3 py-3 text-sm outline-none focus:border-accent"
+                className="w-full rounded-2xl border border-line bg-input px-3 py-3 text-base outline-none focus:border-accent sm:text-sm"
               />
               <span className="block text-xs text-ink-muted">
                 На этот адрес придёт ссылка. Без подтверждения отзыв не попадёт на
@@ -208,7 +208,7 @@ export function ExchangerReviews({
                 minLength={10}
                 maxLength={2000}
                 placeholder="Опишите опыт обмена…"
-                className="w-full rounded-2xl border border-line bg-input px-3 py-3 text-sm outline-none focus:border-accent"
+                className="w-full rounded-2xl border border-line bg-input px-3 py-3 text-base outline-none focus:border-accent sm:text-sm"
               />
             </label>
 

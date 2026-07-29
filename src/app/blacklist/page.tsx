@@ -10,10 +10,10 @@ export default async function BlacklistPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-3xl font-semibold text-ink">
+        <h1 className="font-display text-2xl font-semibold text-ink sm:text-3xl">
           Чёрный список
         </h1>
-        <p className="mt-2 max-w-2xl text-ink-muted">
+        <p className="mt-2 max-w-2xl text-sm text-ink-muted sm:text-base">
           Пункты с подтверждёнными жалобами: невыплаты, AML-скам, подмена курса.
         </p>
       </div>

@@ -111,7 +111,7 @@ export function MobileNav() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-line bg-bg-elevated px-3 py-2 text-sm font-semibold text-ink"
+        className="inline-flex size-10 items-center justify-center rounded-xl border border-line bg-bg-elevated text-ink sm:min-h-10 sm:w-auto sm:gap-2 sm:px-3 sm:py-2 sm:text-sm sm:font-semibold"
         aria-expanded={open}
         aria-controls="mobile-site-nav"
         aria-label="Открыть меню"
