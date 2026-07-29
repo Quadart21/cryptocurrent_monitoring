@@ -20,6 +20,7 @@ type ReviewCard = {
 type Props = {
   from: string;
   to: string;
+  currencies?: Array<{ code: string; name: string }>;
   initialOffers: LiveOffer[];
   initialLastSyncAt: string | null;
   recentReviews?: ReviewCard[];
@@ -28,12 +29,14 @@ type Props = {
 export function PairRatesClient({
   from,
   to,
+  currencies = [],
   initialOffers,
   initialLastSyncAt,
   recentReviews = [],
 }: Props) {
   const [offers, setOffers] = useState(initialOffers);
   const [lastSyncAt, setLastSyncAt] = useState(initialLastSyncAt);
+  const [currencyOptions, setCurrencyOptions] = useState(currencies);
   const [loading, setLoading] = useState(false);
   const [amount, setAmount] = useState(() => defaultAmountFor(from));
   const [sortBy, setSortBy] = useState<RatesSortBy>("rate");
@@ -47,9 +50,11 @@ export function PairRatesClient({
       const data = (await res.json()) as {
         offers: LiveOffer[];
         lastGlobalSyncAt: string | null;
+        currencies?: Array<{ code: string; name: string }>;
       };
       setOffers(data.offers ?? []);
       setLastSyncAt(data.lastGlobalSyncAt);
+      if (data.currencies?.length) setCurrencyOptions(data.currencies);
     } finally {
       setLoading(false);
     }
@@ -68,6 +73,7 @@ export function PairRatesClient({
       offers={offers}
       from={from}
       to={to}
+      currencies={currencyOptions}
       loading={loading}
       amount={amount}
       onAmountChange={setAmount}

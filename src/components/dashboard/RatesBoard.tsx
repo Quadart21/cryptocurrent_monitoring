@@ -16,6 +16,7 @@ import {
   formatRating,
   formatReserve,
 } from "@/lib/format";
+import { currencyOptionLabel } from "@/lib/currency-display";
 
 export type RatesSortBy = "rate" | "reserve" | "rating";
 
@@ -32,6 +33,7 @@ export function RatesBoard({
   offers,
   from,
   to,
+  currencies = [],
   loading,
   cityLabel,
   amount = 0,
@@ -44,6 +46,8 @@ export function RatesBoard({
   offers: LiveOffer[];
   from: string;
   to: string;
+  /** Used to show currency names instead of BestChange codes. */
+  currencies?: Array<{ code: string; name: string }>;
   loading?: boolean;
   cityLabel?: string;
   amount?: number;
@@ -53,7 +57,8 @@ export function RatesBoard({
   onSortChange?: (s: RatesSortBy) => void;
   recentReviews?: RatesBoardReview[];
 }) {
-  const pinAds = useAds("rates");
+  const fromName = currencyOptionLabel(from, currencies);
+  const toName = currencyOptionLabel(to, currencies);  const pinAds = useAds("rates");
   const pinKey = pinAds.map((a) => `${a.id}:${a.priority}`).join("|");
   const chosenPin = useMemo(
     () => pickWeightedRandom(pinAds),
@@ -104,8 +109,8 @@ export function RatesBoard({
   }, [ordered]);
 
   const pairLabel = cityLabel
-    ? `${from} → ${to} · ${cityLabel}`
-    : `${from} → ${to}`;
+    ? `${fromName} → ${toName} · ${cityLabel}`
+    : `${fromName} → ${toName}`;
 
   function onExchangeClick(sponsored: boolean) {
     if (sponsored && pinnedAdId) trackAdClick(pinnedAdId);
@@ -157,7 +162,7 @@ export function RatesBoard({
         <div className="flex flex-col items-stretch gap-2 sm:items-end">
           {onAmountChange ? (
             <label className="flex items-center gap-2 text-xs text-ink-muted">
-              Сумма ({from})
+              Сумма ({fromName})
               <input
                 type="number"
                 min={0}
@@ -276,7 +281,7 @@ export function RatesBoard({
                     <div className="rounded-xl bg-bg-soft/60 px-3 py-2">
                       <p className="text-[11px] text-ink-muted">Получите</p>
                       <p className="font-semibold tabular-nums text-accent-deep">
-                        {formatReceiveValue(receive)} {to}
+                        {formatReceiveValue(receive)} {toName}
                       </p>
                       {benefit > 0 ? (
                         <p className="text-[11px] font-medium text-ok">
@@ -405,7 +410,7 @@ export function RatesBoard({
                         <span className="font-semibold tabular-nums text-accent-deep">
                           {formatReceiveValue(receive)}
                         </span>{" "}
-                        <span className="text-ink-muted">{to}</span>
+                        <span className="text-ink-muted">{toName}</span>
                         {amount > 0 ? (
                           <p className="text-[11px] text-ink-muted">
                             курс {formatRate(offer.rate)}

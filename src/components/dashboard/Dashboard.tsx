@@ -327,6 +327,7 @@ export function Dashboard({
           offers={offers}
           from={from}
           to={to}
+          currencies={currencies}
           loading={loading}
           cityLabel={mode === "cash" ? cityDisplayName : undefined}
           amount={amount}

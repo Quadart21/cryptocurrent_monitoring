@@ -230,8 +230,8 @@ export function GlobalSearch({ className = "" }: { className?: string }) {
                         key={c.code}
                         active={active === index}
                         onPick={() => go({ kind: "currency", data: c })}
-                        primary={c.code}
-                        secondary={c.name}
+                        primary={c.name || c.code}
+                        secondary={c.code}
                       />
                     );
                   })}

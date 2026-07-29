@@ -117,7 +117,7 @@ export default async function RatePairPage({ params }: Props) {
   const crumbs = [
     { name: "Главная", path: "/" },
     { name: "Курсы", path: "/rates" },
-    { name: `${parsed.from} → ${parsed.to}`, path },
+    { name: `${fromL} → ${toL}`, path },
   ];
 
   const exchangerIds = new Set(rates.offers.map((o) => o.exchanger.id));
@@ -143,7 +143,7 @@ export default async function RatePairPage({ params }: Props) {
           buildFaqJsonLd(seo, faqs),
           buildPairProductJsonLd({
             seo,
-            name: `Обмен ${parsed.from} на ${parsed.to}`,
+            name: `Обмен ${fromL} на ${toL}`,
             description,
             urlPath: path,
             bestRate: best,
@@ -157,7 +157,7 @@ export default async function RatePairPage({ params }: Props) {
         items={[
           { href: "/", label: "Главная" },
           { href: "/rates", label: "Курсы" },
-          { label: `${parsed.from} → ${parsed.to}` },
+          { label: `${fromL} → ${toL}` },
         ]}
       />
 
@@ -169,7 +169,7 @@ export default async function RatePairPage({ params }: Props) {
           {description}
         </p>
         <ShareButtons
-          title={`Курс ${parsed.from} к ${parsed.to}`}
+          title={`Курс ${fromL} к ${toL}`}
           url={siteUrl ? shareUrl : undefined}
           text={description}
         />
@@ -178,6 +178,7 @@ export default async function RatePairPage({ params }: Props) {
       <PairRatesClient
         from={parsed.from}
         to={parsed.to}
+        currencies={rates.currencies}
         initialOffers={rates.offers}
         initialLastSyncAt={rates.lastGlobalSyncAt}
         recentReviews={recentReviews}

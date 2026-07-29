@@ -5,6 +5,7 @@ import {
   CityAutocomplete,
   type CityOption,
 } from "@/components/dashboard/CityAutocomplete";
+import { currencyOptionLabel } from "@/lib/currency-display";
 import { formatRate } from "@/lib/format";
 
 export type ExchangeMode = "online" | "cash";
@@ -57,6 +58,8 @@ export function FastAction({
   const popular = popularPairs.slice(0, 4);
 
   const cityName = cities.find((c) => c.code === city)?.name ?? city;
+  const fromName = currencyOptionLabel(from, options);
+  const toName = currencyOptionLabel(to, options);
 
   return (
     <div className="card animate-rise flex h-full flex-col p-5">
@@ -168,12 +171,12 @@ export function FastAction({
 
         <div className="rounded-2xl border border-line bg-bg-soft px-4 py-3">
           <p className="text-xs text-ink-muted">
-            Лучший курс (за 1 {from})
+            Лучший курс (за 1 {fromName})
             {mode === "cash" && city ? ` · ${cityName}` : ""}
           </p>
           <p className="mt-1 text-lg font-semibold tabular-nums text-accent-deep">
             {bestRate != null
-              ? `${formatRate(bestRate)} ${to}`
+              ? `${formatRate(bestRate)} ${toName}`
               : "нет предложений"}
           </p>
           <p className="mt-1 text-xs text-ink-muted">
@@ -194,13 +197,15 @@ export function FastAction({
                 key={`${a}-${b}`}
                 type="button"
                 onClick={() => onPairChange(a, b)}
+                title={`${a} → ${b}`}
                 className={`max-w-full truncate rounded-full px-2.5 py-1 text-[11px] font-semibold ${
                   from === a && to === b
                     ? "bg-accent text-white"
                     : "bg-accent-soft text-accent"
                 }`}
               >
-                {a.replace(/^CASH/, "")}→{b.replace(/^CASH/, "")}
+                {currencyOptionLabel(a, options)} →{" "}
+                {currencyOptionLabel(b, options)}
               </button>
             );
           })}
