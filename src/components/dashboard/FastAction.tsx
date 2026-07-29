@@ -5,12 +5,20 @@ import {
   CityAutocomplete,
   type CityOption,
 } from "@/components/dashboard/CityAutocomplete";
-import { currencyOptionLabel } from "@/lib/currency-display";
+import {
+  currencyOptionLabel,
+  groupCurrencyOptions,
+} from "@/lib/currency-display";
 import { formatRate } from "@/lib/format";
 
 export type ExchangeMode = "online" | "cash";
 
-type CurrencyOption = { code: string; name: string };
+type CurrencyOption = {
+  code: string;
+  name: string;
+  groupId?: number;
+  groupName?: string;
+};
 
 type Props = {
   mode: ExchangeMode;
@@ -29,6 +37,52 @@ type Props = {
   onPairChange: (from: string, to: string) => void;
   onSwap: () => void;
 };
+
+function CurrencySelect({
+  label,
+  value,
+  exclude,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  exclude: string;
+  options: CurrencyOption[];
+  onChange: (code: string) => void;
+}) {
+  const filtered = options.filter((c) => c.code !== exclude);
+  const groups = groupCurrencyOptions(filtered);
+  const selected = filtered.some((c) => c.code === value)
+    ? value
+    : (filtered[0]?.code ?? "");
+
+  return (
+    <label className="block space-y-2">
+      <span className="text-xs font-medium uppercase tracking-[0.14em] text-ink-muted">
+        {label}
+      </span>
+      <select
+        value={selected}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-2xl border border-line bg-input px-3 py-3 text-sm font-medium text-ink outline-none focus:border-accent"
+      >
+        {groups.map((group) => (
+          <optgroup
+            key={`${group.groupId}-${group.groupName}`}
+            label={group.groupName}
+          >
+            {group.items.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.name}
+              </option>
+            ))}
+          </optgroup>
+        ))}
+      </select>
+    </label>
+  );
+}
 
 export function FastAction({
   mode,
@@ -51,8 +105,8 @@ export function FastAction({
     currencies.length > 0
       ? currencies
       : [
-          { code: from, name: from },
-          { code: to, name: to },
+          { code: from, name: from, groupId: -1, groupName: "Другое" },
+          { code: to, name: to, groupId: -1, groupName: "Другое" },
         ];
 
   const popular = popularPairs.slice(0, 4);
@@ -114,26 +168,13 @@ export function FastAction({
           </div>
         )}
 
-        <label className="block space-y-2">
-          <span className="text-xs font-medium uppercase tracking-[0.14em] text-ink-muted">
-            Отдаёте
-          </span>
-          <select
-            value={
-              options.some((c) => c.code === from) ? from : options[0]?.code
-            }
-            onChange={(e) => onFromChange(e.target.value)}
-            className="w-full rounded-2xl border border-line bg-input px-3 py-3 text-sm font-medium text-ink outline-none focus:border-accent"
-          >
-            {options
-              .filter((c) => c.code !== to)
-              .map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.name}
-                </option>
-              ))}
-          </select>
-        </label>
+        <CurrencySelect
+          label="Отдаёте"
+          value={from}
+          exclude={to}
+          options={options}
+          onChange={onFromChange}
+        />
 
         <div className="flex justify-center">
           <button
@@ -146,28 +187,13 @@ export function FastAction({
           </button>
         </div>
 
-        <label className="block space-y-2">
-          <span className="text-xs font-medium uppercase tracking-[0.14em] text-ink-muted">
-            Получаете
-          </span>
-          <select
-            value={
-              options.some((c) => c.code === to)
-                ? to
-                : (options[1]?.code ?? options[0]?.code)
-            }
-            onChange={(e) => onToChange(e.target.value)}
-            className="w-full rounded-2xl border border-line bg-input px-3 py-3 text-sm font-medium text-ink outline-none focus:border-accent"
-          >
-            {options
-              .filter((c) => c.code !== from)
-              .map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.name}
-                </option>
-              ))}
-          </select>
-        </label>
+        <CurrencySelect
+          label="Получаете"
+          value={to}
+          exclude={from}
+          options={options}
+          onChange={onToChange}
+        />
 
         <div className="rounded-2xl border border-line bg-bg-soft px-4 py-3">
           <p className="text-xs text-ink-muted">

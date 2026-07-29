@@ -1,4 +1,9 @@
-export type DashboardCurrencyOption = { code: string; name: string };
+export type DashboardCurrencyOption = {
+  code: string;
+  name: string;
+  groupId: number;
+  groupName: string;
+};
 export type DashboardCityOption = { code: string; name: string };
 
 export type DashboardCatalog = {
