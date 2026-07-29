@@ -233,6 +233,7 @@ export async function seedCatalogsFromBundledIfEmpty(): Promise<boolean> {
 export async function loadCatalogSnapshotFromDb(): Promise<CatalogSnapshot> {
   await runMigrations();
   await seedCatalogsFromBundledIfEmpty();
+  await seedGroupsFromBundledIfEmpty();
   const db = getDb();
   const [groups, countries, cities, currencies, meta] = await Promise.all([
     db.select().from(bcGroups),
@@ -253,6 +254,26 @@ export async function loadCatalogSnapshotFromDb(): Promise<CatalogSnapshot> {
     currencies,
     meta[0]?.fetchedAt ?? meta[0]?.updatedAt ?? "",
   );
+}
+
+/** If currencies exist but groups table is empty, seed group labels. */
+async function seedGroupsFromBundledIfEmpty(): Promise<void> {
+  const db = getDb();
+  const [groupCount] = await db.select({ n: count() }).from(bcGroups);
+  if ((groupCount?.n ?? 0) > 0) return;
+  const groups = bundledGroups as BcGroup[];
+  if (!groups.length) return;
+  await db
+    .insert(bcGroups)
+    .values(
+      groups.map((g) => ({
+        id: g.id,
+        name: g.name,
+        nameEn: g.nameEn ?? "",
+      })),
+    )
+    .onConflictDoNothing();
+  console.info(`[gapsnap] catalog groups backfilled: ${groups.length}`);
 }
 
 export function getCatalogSnapshot(): CatalogSnapshot {

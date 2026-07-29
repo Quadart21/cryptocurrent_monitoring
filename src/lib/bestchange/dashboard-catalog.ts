@@ -8,9 +8,9 @@ import {
   cityLabel,
   listCashCurrencies,
   listCities,
-  listGroups,
   listOnlineCurrencies,
 } from "@/lib/bestchange/catalog";
+import { resolveCurrencyGroup } from "@/lib/bestchange/currency-groups";
 import { mergePopularPairs } from "@/lib/bestchange/popular-pairs";
 import { getTopDemandPairs } from "@/lib/store";
 
@@ -20,40 +20,39 @@ export type {
   DashboardCurrencyOption,
 } from "@/lib/bestchange/dashboard-catalog-types";
 
-function groupNameById(): Map<number, string> {
-  return new Map(listGroups().map((g) => [g.id, g.name]));
-}
-
-function toOption(
-  c: BcCurrency,
-  groups: Map<number, string>,
-): {
+function toOption(c: BcCurrency): {
   code: string;
   name: string;
   groupId: number;
   groupName: string;
 } {
+  const group = resolveCurrencyGroup({ code: c.code, groupId: c.groupId });
   return {
     code: c.code,
     name: c.name,
-    groupId: c.groupId,
-    groupName: groups.get(c.groupId) || "Другое",
+    groupId: group.groupId,
+    groupName: group.groupName,
   };
 }
 
 export async function getDashboardCatalog(): Promise<DashboardCatalog> {
-  const groups = groupNameById();
   const onlineRaw = listOnlineCurrencies();
-  const onlineCurrencies = onlineRaw.map((c) => toOption(c, groups));
-  const cashCurrencies = listCashCurrencies().map((c) => toOption(c, groups));
+  const onlineCurrencies = onlineRaw.map(toOption);
+  const cashCurrencies = listCashCurrencies().map(toOption);
   // В «Наличных»: наличный фиат + крипта/прочее, без банков.
   const BANK_GROUP_IDS = new Set([2, 3]);
   const seen = new Set(cashCurrencies.map((c) => c.code));
   const cashModeCurrencies = [
     ...cashCurrencies,
     ...onlineRaw
-      .filter((c) => !BANK_GROUP_IDS.has(c.groupId) && !seen.has(c.code))
-      .map((c) => toOption(c, groups)),
+      .filter((c) => {
+        const gid = resolveCurrencyGroup({
+          code: c.code,
+          groupId: c.groupId,
+        }).groupId;
+        return !BANK_GROUP_IDS.has(gid) && !seen.has(c.code);
+      })
+      .map(toOption),
   ];
 
   const cities = [...listCities()]

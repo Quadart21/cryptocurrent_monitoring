@@ -7,7 +7,8 @@ import {
   listExchangers,
 } from "@/lib/store";
 import { logoPublicUrl } from "@/lib/logo-url";
-import { currencyLabel, listCurrencies, listGroups } from "@/lib/bestchange/catalog";
+import { currencyLabel, listCurrencies } from "@/lib/bestchange/catalog";
+import { resolveCurrencyGroup } from "@/lib/bestchange/currency-groups";
 
 export type RatesQueryInput = {
   from?: string;
@@ -157,7 +158,6 @@ export async function queryRates(
 
   const activePairCount = new Set(rates.map((r) => `${r.from}:${r.to}`)).size;
 
-  const groupNames = new Map(listGroups().map((g) => [g.id, g.name]));
   return {
     lastGlobalSyncAt,
     activePairCount,
@@ -165,12 +165,18 @@ export async function queryRates(
     city: city || null,
     currencies: listCurrencies(
       mode === "online" ? { cash: false } : undefined,
-    ).map((c) => ({
-      code: c.code,
-      name: c.name || currencyLabel(c.code),
-      groupId: c.groupId,
-      groupName: groupNames.get(c.groupId) || "Другое",
-    })),
+    ).map((c) => {
+      const group = resolveCurrencyGroup({
+        code: c.code,
+        groupId: c.groupId,
+      });
+      return {
+        code: c.code,
+        name: c.name || currencyLabel(c.code),
+        groupId: group.groupId,
+        groupName: group.groupName,
+      };
+    }),
     offers,
   };
 }
