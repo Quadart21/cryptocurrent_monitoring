@@ -17,6 +17,8 @@ import {
   buildAggregateRatingJsonLd,
   buildBreadcrumbJsonLd,
 } from "@/lib/seo-jsonld";
+import { exchangerSeoSections } from "@/lib/seo-landing-content";
+import { SeoContentBlocks } from "@/components/seo/SeoContentBlocks";
 import {
   getActiveRates,
   getExchangerBySlug,
@@ -193,6 +195,24 @@ export default async function ExchangerPage({ params }: Props) {
           </div>
         </section>
       ) : null}
+
+      <SeoContentBlocks
+        className="border-t border-line/70 pt-8"
+        sections={exchangerSeoSections({
+          name: ex.name,
+          slug: ex.slug,
+          description: ex.description,
+          rating: ex.rating,
+          reviews: ex.reviews,
+          reviewsPositive: ex.reviewsPositive,
+          reviewsNegative: ex.reviewsNegative,
+          pairCount: directions,
+          verified: ex.verified,
+          approvedAt: ex.approvedAt,
+          workingSinceLabel: formatWorkingSince(ex.approvedAt),
+          siteName: seo.siteName || "GapSnap",
+        })}
+      />
 
       <ExchangerReviews
         exchangerId={ex.id}
