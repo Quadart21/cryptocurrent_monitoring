@@ -5,7 +5,7 @@ import {
   formatCurrencyAmount,
   formatRate,
   formatRating,
-  formatReserve,
+  formatVolumeLimits,
 } from "@/lib/format";
 
 export type LiveOffer = {
@@ -84,7 +84,7 @@ export function RateTable({
               <th className="px-4 py-3 font-medium sm:px-5">Отдаёте</th>
               <th className="px-4 py-3 font-medium sm:px-5">Получаете</th>
               <th className="hidden px-4 py-3 font-medium md:table-cell sm:px-5">
-                Резерв
+                Объём
               </th>
               <th className="px-4 py-3 font-medium sm:px-5" />
             </tr>
@@ -96,6 +96,11 @@ export function RateTable({
                 (amount < offer.minAmount ||
                   (Number.isFinite(offer.maxAmount) &&
                     amount > offer.maxAmount));
+              const volume = formatVolumeLimits(
+                offer.minAmount,
+                offer.maxAmount,
+                from,
+              );
 
               return (
                 <tr
@@ -158,7 +163,15 @@ export function RateTable({
                     )}
                   </td>
                   <td className="hidden px-4 py-4 tabular-nums text-ink-muted md:table-cell sm:px-5">
-                    {formatReserve(offer.reserve, to)}
+                    {volume ? (
+                      <span>
+                        от {volume.from}
+                        <br />
+                        до {volume.to}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
                   </td>
                   <td className="px-4 py-4 sm:px-5">
                     <a

@@ -13,11 +13,11 @@ import {
   formatCurrencyAmount,
   formatRate,
   formatRating,
-  formatReserve,
+  formatVolumeLimits,
 } from "@/lib/format";
 import { currencyOptionLabel } from "@/lib/currency-display";
 
-export type RatesSortBy = "rate" | "reserve" | "rating";
+export type RatesSortBy = "rate" | "volume" | "rating";
 
 export type RatesBoardReview = {
   id: string;
@@ -68,7 +68,11 @@ export function RatesBoard({
   const sorted = useMemo(() => {
     const list = [...offers];
     list.sort((a, b) => {
-      if (sortBy === "reserve") return b.reserve - a.reserve;
+      if (sortBy === "volume") {
+        const maxA = Number.isFinite(a.maxAmount) ? a.maxAmount : 0;
+        const maxB = Number.isFinite(b.maxAmount) ? b.maxAmount : 0;
+        if (maxB !== maxA) return maxB - maxA;
+      }
       if (sortBy === "rating") {
         const d = (b.exchanger?.rating ?? 0) - (a.exchanger?.rating ?? 0);
         if (d !== 0) return d;
@@ -100,11 +104,6 @@ export function RatesBoard({
     }));
   }, [sorted, pinnedId]);
 
-  const worstRate = useMemo(() => {
-    if (!ordered.length) return 0;
-    return Math.min(...ordered.map((o) => o.rate));
-  }, [ordered]);
-
   const pairLabel = cityLabel
     ? `${fromName} → ${toName} · ${cityLabel}`
     : `${fromName} → ${toName}`;
@@ -117,14 +116,13 @@ export function RatesBoard({
     return amount > 0 ? amount * rate : rate;
   }
 
-  function benefitFor(rate: number) {
-    const mult = amount > 0 ? amount : 1;
-    return (rate - worstRate) * mult;
-  }
-
   /** Unit rate when amount is empty; otherwise currency amount. */
   function formatReceiveValue(value: number) {
     return amount > 0 ? formatCurrencyAmount(value, to) : formatRate(value);
+  }
+
+  function volumeFor(offer: LiveOffer) {
+    return formatVolumeLimits(offer.minAmount, offer.maxAmount, from);
   }
 
   function isWarned(offer: LiveOffer) {
@@ -176,7 +174,7 @@ export function RatesBoard({
               {(
                 [
                   ["rate", "Курс"],
-                  ["reserve", "Резерв"],
+                  ["volume", "Объём"],
                   ["rating", "Рейтинг"],
                 ] as const
               ).map(([id, label]) => (
@@ -214,7 +212,7 @@ export function RatesBoard({
               const slug = offer.exchanger?.slug || offer.exchanger?.id || "";
               const sponsored = offer.exchanger?.id === pinnedId;
               const receive = receiveFor(offer.rate);
-              const benefit = benefitFor(offer.rate);
+              const volume = volumeFor(offer);
               return (
                 <div
                   key={offer.id}
@@ -279,18 +277,20 @@ export function RatesBoard({
                       <p className="font-semibold tabular-nums text-accent-deep">
                         {formatReceiveValue(receive)} {toName}
                       </p>
-                      {benefit > 0 ? (
-                        <p className="text-[11px] font-medium text-ok">
-                          Выгода: +
-                          {formatReceiveValue(benefit)}
-                        </p>
-                      ) : null}
                     </div>
                     <div className="rounded-xl bg-bg-soft/60 px-3 py-2">
-                      <p className="text-[11px] text-ink-muted">Резерв</p>
-                      <p className="font-medium tabular-nums text-ink">
-                        {formatReserve(offer.reserve, to)}
+                      <p className="text-[11px] text-ink-muted">
+                        Объём ({fromName})
                       </p>
+                      {volume ? (
+                        <p className="font-medium tabular-nums text-ink">
+                          от {volume.from}
+                          <br />
+                          до {volume.to}
+                        </p>
+                      ) : (
+                        <p className="font-medium text-ink-muted">—</p>
+                      )}
                     </div>
                   </div>
 
@@ -329,8 +329,9 @@ export function RatesBoard({
                   <th className="px-5 py-3 font-medium">
                     {amount > 0 ? "Получите" : "Курс"}
                   </th>
-                  <th className="px-5 py-3 font-medium">Выгода</th>
-                  <th className="px-5 py-3 font-medium">Резерв</th>
+                  <th className="px-5 py-3 font-medium">
+                    Объём ({fromName})
+                  </th>
                   <th className="px-5 py-3 font-medium">Действие</th>
                 </tr>
               </thead>
@@ -340,7 +341,7 @@ export function RatesBoard({
                   const slug = offer.exchanger?.slug || offer.exchanger?.id || "";
                   const sponsored = offer.exchanger?.id === pinnedId;
                   const receive = receiveFor(offer.rate);
-                  const benefit = benefitFor(offer.rate);
+                  const volume = volumeFor(offer);
                   return (
                     <tr
                       key={offer.id}
@@ -413,17 +414,16 @@ export function RatesBoard({
                           </p>
                         ) : null}
                       </td>
-                      <td className="px-5 py-4">
-                        {benefit > 0 ? (
-                          <span className="font-medium tabular-nums text-ok">
-                            +{formatReceiveValue(benefit)}
+                      <td className="px-5 py-4 tabular-nums text-ink-muted">
+                        {volume ? (
+                          <span>
+                            от {volume.from}
+                            <br />
+                            до {volume.to}
                           </span>
                         ) : (
-                          <span className="text-ink-muted">—</span>
+                          "—"
                         )}
-                      </td>
-                      <td className="px-5 py-4 tabular-nums text-ink-muted">
-                        {formatReserve(offer.reserve, to)}
                       </td>
                       <td className="px-5 py-4">
                         <div className="flex flex-wrap gap-2">

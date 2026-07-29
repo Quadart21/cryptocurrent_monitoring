@@ -54,6 +54,21 @@ export function formatReserve(value: number, symbol: string): string {
   return `${formatAmount(value, 0)} ${symbol}`;
 }
 
+/** XML min/max (`minamount`/`maxamount` or `frommin`/`frommax`) as «от … / до …». */
+export function formatVolumeLimits(
+  minAmount: number,
+  maxAmount: number,
+  code: string,
+): { from: string; to: string } | null {
+  const hasMin = Number.isFinite(minAmount) && minAmount > 0;
+  const hasMax = Number.isFinite(maxAmount) && maxAmount > 0;
+  if (!hasMin && !hasMax) return null;
+  return {
+    from: hasMin ? formatCurrencyAmount(minAmount, code) : "—",
+    to: hasMax ? formatCurrencyAmount(maxAmount, code) : "—",
+  };
+}
+
 export function formatRating(value: number, reviewCount?: number): string {
   if (reviewCount === 0 || (reviewCount === undefined && value <= 0)) {
     return "—";
