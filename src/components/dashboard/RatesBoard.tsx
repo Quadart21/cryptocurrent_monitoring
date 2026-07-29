@@ -236,249 +236,124 @@ export function RatesBoard({
           Ни один обменник пока не отдаёт направление {pairLabel}.
         </div>
       ) : (
-        <>
-          <div className="space-y-2.5 px-3 py-3 md:hidden">
-            {ordered.map((offer) => {
-              const name = offer.exchanger?.name?.trim() || "Обменник";
-              const slug = offer.exchanger?.slug || offer.exchanger?.id || "";
-              const sponsored = offer.exchanger?.id === pinnedId;
-              const volume = volumeFor(offer);
-              const href = exchangeHref(offer);
-              return (
-                <article
-                  key={offer.id}
-                  className={`overflow-hidden rounded-2xl border transition ${
-                    sponsored
-                      ? "border-accent/25 bg-accent-soft/25 shadow-[inset_0_1px_0_0_color-mix(in_srgb,var(--accent)_12%,transparent)]"
-                      : "border-line/70 bg-bg-elevated/50"
-                  }`}
-                >
-                  <div className="flex items-center gap-3 px-3.5 pt-3.5 pb-2">
-                    {offer.exchanger.logoUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={offer.exchanger.logoUrl}
-                        alt=""
-                        width={44}
-                        height={44}
-                        className="size-11 shrink-0 rounded-xl bg-bg-soft object-contain ring-1 ring-line/60"
-                        loading="lazy"
+        <div className="space-y-2.5 px-3 py-3 md:px-5 md:py-4">
+          {ordered.map((offer) => {
+            const name = offer.exchanger?.name?.trim() || "Обменник";
+            const slug = offer.exchanger?.slug || offer.exchanger?.id || "";
+            const sponsored = offer.exchanger?.id === pinnedId;
+            const volume = volumeFor(offer);
+            const href = exchangeHref(offer);
+            return (
+              <article
+                key={offer.id}
+                className={`overflow-hidden rounded-2xl border transition md:flex md:items-stretch ${
+                  sponsored
+                    ? "border-accent/25 bg-accent-soft/25 shadow-[inset_0_1px_0_0_color-mix(in_srgb,var(--accent)_12%,transparent)]"
+                    : "border-line/70 bg-bg-elevated/50"
+                }`}
+              >
+                <div className="flex items-center gap-3 px-3.5 pt-3.5 pb-2 md:w-[min(300px,34%)] md:shrink-0 md:border-r md:border-line/50 md:px-4 md:py-4">
+                  {offer.exchanger.logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={offer.exchanger.logoUrl}
+                      alt=""
+                      width={44}
+                      height={44}
+                      className="size-11 shrink-0 rounded-xl bg-bg-soft object-contain ring-1 ring-line/60"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-accent text-sm font-bold text-white">
+                      {name.slice(0, 1)}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <Link
+                        href={`/exchangers/${slug}`}
+                        className="truncate font-semibold text-ink hover:text-accent"
+                        onClick={() => onExchangeClick(sponsored)}
+                      >
+                        {name}
+                      </Link>
+                      <AchievementBadges
+                        achievements={offer.exchanger.achievements ?? []}
+                        size={16}
                       />
-                    ) : (
-                      <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-accent text-sm font-bold text-white">
-                        {name.slice(0, 1)}
-                      </div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <Link
-                          href={`/exchangers/${slug}`}
-                          className="truncate font-semibold text-ink hover:text-accent"
-                          onClick={() => onExchangeClick(sponsored)}
-                        >
-                          {name}
-                        </Link>
-                        <AchievementBadges
-                          achievements={offer.exchanger.achievements ?? []}
-                          size={16}
-                        />
-                        {sponsored ? (
-                          <span className="rounded-md bg-accent/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-accent">
-                            Реклама
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="mt-0.5 text-xs text-ink-muted">
-                        ★{" "}
-                        {formatRating(
-                          offer.exchanger.rating,
-                          offer.exchanger.reviews,
-                        )}{" "}
-                        · {offer.exchanger.reviews} отзывов
+                      {sponsored ? (
+                        <span className="rounded-md bg-accent/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-accent">
+                          Реклама
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-0.5 text-xs text-ink-muted">
+                      ★{" "}
+                      {formatRating(
+                        offer.exchanger.rating,
+                        offer.exchanger.reviews,
+                      )}{" "}
+                      · {offer.exchanger.reviews} отзывов
+                    </p>
+                    {isWarned(offer) ? (
+                      <p className="mt-1 text-xs font-medium text-danger">
+                        Много жалоб — будьте осторожны
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mx-3.5 mb-3.5 block flex-1 overflow-hidden rounded-xl border border-line/60 bg-bg-soft/40 transition hover:border-accent/30 active:bg-accent-soft/30 md:mx-0 md:my-3 md:mr-3 md:flex md:items-center md:rounded-xl"
+                  onClick={() => onExchangeClick(sponsored)}
+                >
+                  <div className="grid w-full grid-cols-3 divide-x divide-line/50 text-center text-sm md:text-left">
+                    <div className="px-2 py-2.5 md:px-5 md:py-3">
+                      <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-ink-muted">
+                        Отдаете
+                      </p>
+                      <p className="mt-0.5 text-xs font-medium tabular-nums leading-snug text-ink md:text-sm">
+                        {giveLabel(offer)}
+                      </p>
+                      {isOutOfRange(offer) && volume ? (
+                        <p className="mt-1 text-[9px] leading-tight text-[var(--warn)] md:text-[11px]">
+                          {volume.from}–{volume.to}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="px-2 py-2.5 md:px-5 md:py-3">
+                      <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-ink-muted">
+                        Получаете
+                      </p>
+                      <p className="mt-0.5 text-sm font-semibold tabular-nums leading-snug text-accent-deep">
+                        {amount > 0
+                          ? formatCurrencyAmount(receiveFor(offer.rate), to)
+                          : formatRate(offer.rate)}
+                      </p>
+                      <p className="mt-0.5 text-[10px] text-ink-muted md:text-xs">
+                        {toName}
+                        {amount > 0
+                          ? ` · курс ${formatRate(offer.rate)}`
+                          : ""}
+                      </p>
+                    </div>
+                    <div className="px-2 py-2.5 md:px-5 md:py-3">
+                      <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-ink-muted">
+                        Резерв
+                      </p>
+                      <p className="mt-0.5 text-xs font-medium tabular-nums leading-snug text-ink-muted md:text-sm">
+                        {reserveLabel(offer)}
                       </p>
                     </div>
                   </div>
-
-                  <a
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mx-3.5 mb-3.5 block overflow-hidden rounded-xl border border-line/60 bg-bg-soft/40 transition hover:border-accent/30 active:bg-accent-soft/30"
-                    onClick={() => onExchangeClick(sponsored)}
-                  >
-                    <div className="grid grid-cols-3 divide-x divide-line/50 text-center text-sm">
-                      <div className="px-2 py-2.5">
-                        <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-ink-muted">
-                          Отдаете
-                        </p>
-                        <p className="mt-0.5 text-xs font-medium tabular-nums leading-snug text-ink">
-                          {giveLabel(offer)}
-                        </p>
-                        {isOutOfRange(offer) && volume ? (
-                          <p className="mt-1 text-[9px] leading-tight text-[var(--warn)]">
-                            {volume.from}–{volume.to}
-                          </p>
-                        ) : null}
-                      </div>
-                      <div className="px-2 py-2.5">
-                        <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-ink-muted">
-                          Получаете
-                        </p>
-                        <p className="mt-0.5 text-sm font-semibold tabular-nums leading-snug text-accent-deep">
-                          {amount > 0
-                            ? formatCurrencyAmount(receiveFor(offer.rate), to)
-                            : formatRate(offer.rate)}
-                        </p>
-                        <p className="mt-0.5 text-[10px] text-ink-muted">
-                          {toName}
-                        </p>
-                      </div>
-                      <div className="px-2 py-2.5">
-                        <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-ink-muted">
-                          Резерв
-                        </p>
-                        <p className="mt-0.5 text-xs font-medium tabular-nums leading-snug text-ink-muted">
-                          {reserveLabel(offer)}
-                        </p>
-                      </div>
-                    </div>
-                  </a>
-
-                  {isWarned(offer) ? (
-                    <p className="px-3.5 pb-3 text-xs font-medium text-danger">
-                      Много жалоб — будьте осторожны
-                    </p>
-                  ) : null}
-                </article>
-              );
-            })}
-          </div>
-
-          <div className="hidden overflow-x-auto md:block">
-            <table className="min-w-full text-left text-sm">
-              <thead className="text-xs uppercase tracking-[0.12em] text-ink-muted">
-                <tr>
-                  <th className="px-5 py-3 font-medium">Обменник</th>
-                  <th className="px-5 py-3 font-medium">Отдаете</th>
-                  <th className="px-5 py-3 font-medium">Получаете</th>
-                  <th className="px-5 py-3 font-medium">Резерв</th>
-                  <th className="px-5 py-3 font-medium">Отзывы</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ordered.map((offer) => {
-                  const name = offer.exchanger?.name?.trim() || "Обменник";
-                  const slug = offer.exchanger?.slug || offer.exchanger?.id || "";
-                  const sponsored = offer.exchanger?.id === pinnedId;
-                  const volume = volumeFor(offer);
-                  return (
-                    <tr
-                      key={offer.id}
-                      className={`border-t border-line/70 transition hover:bg-accent-soft/40 ${
-                        sponsored ? "bg-accent-soft/50" : ""
-                      }`}
-                    >
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          {offer.exchanger.logoUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={offer.exchanger.logoUrl}
-                              alt=""
-                              width={40}
-                              height={40}
-                              className="size-10 shrink-0 flex-none rounded-2xl bg-bg-soft object-contain"
-                              loading="lazy"
-                            />
-                          ) : (
-                            <div className="flex size-10 shrink-0 flex-none items-center justify-center rounded-xl bg-accent text-xs font-bold text-white">
-                              {name.slice(0, 1)}
-                            </div>
-                          )}
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <Link
-                                href={`/exchangers/${slug}`}
-                                className="font-semibold text-ink hover:text-accent"
-                                onClick={() => onExchangeClick(sponsored)}
-                              >
-                                {name}
-                              </Link>
-                              <AchievementBadges
-                                achievements={
-                                  offer.exchanger.achievements ?? []
-                                }
-                                size={16}
-                              />
-                              {sponsored ? (
-                                <span className="rounded-lg bg-accent/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent">
-                                  Реклама
-                                </span>
-                              ) : null}
-                            </div>
-                            {isWarned(offer) ? (
-                              <p className="mt-1 text-xs font-semibold text-danger">
-                                Много жалоб
-                              </p>
-                            ) : null}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-5 py-4 tabular-nums text-ink">
-                        {giveLabel(offer)}
-                        {isOutOfRange(offer) && volume ? (
-                          <p className="mt-1 text-[11px] text-[var(--warn)]">
-                            вне лимита {volume.from}–{volume.to}
-                          </p>
-                        ) : null}
-                      </td>
-                      <td className="px-5 py-4">
-                        <a
-                          href={exchangeHref(offer)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="group inline-block"
-                          onClick={() => onExchangeClick(sponsored)}
-                        >
-                          <span className="font-semibold tabular-nums text-accent-deep group-hover:underline">
-                            {amount > 0
-                              ? formatCurrencyAmount(receiveFor(offer.rate), to)
-                              : formatRate(offer.rate)}
-                          </span>{" "}
-                          <span className="text-ink-muted">{toName}</span>
-                          {amount > 0 ? (
-                            <p className="text-[11px] text-ink-muted">
-                              курс {formatRate(offer.rate)}
-                            </p>
-                          ) : null}
-                        </a>
-                      </td>
-                      <td className="px-5 py-4 tabular-nums text-ink-muted">
-                        {reserveLabel(offer)}
-                      </td>
-                      <td className="px-5 py-4">
-                        <Link
-                          href={`/exchangers/${slug}`}
-                          className="font-medium tabular-nums text-ink hover:text-accent"
-                          onClick={() => onExchangeClick(sponsored)}
-                        >
-                          ★{" "}
-                          {formatRating(
-                            offer.exchanger.rating,
-                            offer.exchanger.reviews,
-                          )}
-                        </Link>
-                        <p className="text-xs text-ink-muted">
-                          {offer.exchanger.reviews} отзывов
-                        </p>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </>
+                </a>
+              </article>
+            );
+          })}
+        </div>
       )}
 
       {recentReviews.length > 0 ? (
