@@ -6,7 +6,8 @@ import { useState } from "react";
 import { SITE_NAV, isNavActive } from "@/components/shell/nav";
 import { NavIcon } from "@/components/shell/NavIcon";
 
-const SPREAD_PX = 14;
+/** How far neighbors move away — capped so we don't collide with logo/search. */
+const SPREAD_PX = 10;
 
 export function IconSpreadNav() {
   const pathname = usePathname();
@@ -18,26 +19,24 @@ export function IconSpreadNav() {
 
   return (
     <nav
-      className="ml-2 hidden min-w-0 items-center lg:flex"
+      className="flex items-center justify-center"
       aria-label="Основное меню"
       onMouseLeave={() => setHovered(null)}
     >
-      <ul className="flex items-center gap-0.5">
+      <ul className="flex items-center justify-center gap-0.5">
         {SITE_NAV.map((item, index) => {
           const active = isNavActive(pathname, item.href);
           const isOpen = hovered === item.href;
           let shift = 0;
           if (hoveredIndex >= 0 && !isOpen) {
-            shift =
-              index < hoveredIndex
-                ? -SPREAD_PX * (hoveredIndex - index)
-                : SPREAD_PX * (index - hoveredIndex);
+            // Same offset for all left / all right — no distance stacking into search.
+            shift = index < hoveredIndex ? -SPREAD_PX : SPREAD_PX;
           }
 
           return (
             <li
               key={item.href}
-              className="relative"
+              className="relative shrink-0"
               style={{
                 transform: `translateX(${shift}px)`,
                 transition:
@@ -53,7 +52,7 @@ export function IconSpreadNav() {
                 onMouseEnter={() => setHovered(item.href)}
                 onFocus={() => setHovered(item.href)}
                 onBlur={() => setHovered(null)}
-                className={`group flex h-10 items-center overflow-hidden rounded-2xl transition-[background-color,color,box-shadow,padding] duration-300 ${
+                className={`flex h-10 items-center overflow-hidden rounded-2xl transition-[background-color,color,box-shadow,padding,gap] duration-300 ${
                   isOpen ? "gap-2 px-3" : "gap-0 px-2.5"
                 } ${
                   active || isOpen
@@ -68,7 +67,7 @@ export function IconSpreadNav() {
                 <span
                   className={`overflow-hidden whitespace-nowrap font-display text-sm font-semibold transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                     isOpen
-                      ? "max-w-[7rem] translate-x-0 opacity-100"
+                      ? "max-w-[6.5rem] translate-x-0 opacity-100"
                       : "max-w-0 -translate-x-1 opacity-0"
                   }`}
                 >
