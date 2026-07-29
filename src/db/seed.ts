@@ -8,6 +8,7 @@ import {
   appMeta,
   blacklist,
   exchangers,
+  legal,
   qualityTags,
   seo,
 } from "@/db/schema";
@@ -17,6 +18,7 @@ import type {
   AdTariff,
   BlacklistItem,
   FeedExchanger,
+  LegalSettings,
   ReviewQualityTag,
   SeoSettings,
 } from "@/lib/store-types";
@@ -151,6 +153,51 @@ export const seedSeo: SeoSettings = {
   googleAnalyticsId: "",
   yandexMetricaId: "",
   gtmId: "",
+};
+
+export const seedLegal: LegalSettings = {
+  privacyTitle: "Политика конфиденциальности",
+  privacyUpdatedAt: SEED_AT,
+  privacyBody: `GapSnap («мы») — сервис мониторинга курсов обменников. Мы не проводим обмен валют и не храним средства пользователей.
+
+## Какие данные собираем
+
+- Email при подтверждении отзыва или заявке обменника
+- Технические логи (IP, User-Agent) для безопасности
+- Cookies: необходимые (тема, сессия кабинета/админки, согласие) и аналитические (по вашему выбору)
+- При входе в кабинет — проверка Cloudflare Turnstile (защита от ботов)
+
+## Зачем
+
+Для модерации отзывов, связи с владельцами обменников, защиты от злоупотреблений и улучшения сервиса.
+
+## Передача третьим лицам
+
+Данные не продаём. Могут обрабатываться хостинг-провайдером и сервисами почты/аналитики в рамках выбранных настроек. Для защиты входа в кабинет используется Cloudflare Turnstile.
+
+## Контакты
+
+По вопросам персональных данных используйте контакт из раздела рекламы или заявки на сайте.`,
+  cookieTitle: "Политика cookies",
+  cookieUpdatedAt: SEED_AT,
+  cookieBody: `На сайте GapSnap используются cookies и похожие технологии.
+
+## Необходимые cookies
+
+Нужны для работы сайта: тема оформления, согласие на cookies, сессия кабинета владельца и админки. Их нельзя отключить без потери функций.
+
+## Аналитические cookies
+
+Помогают понять, как пользуются сайтом (Google Analytics, Яндекс.Метрика, GTM — если подключены в настройках). Загружаются **только после вашего согласия**.
+
+## Управление
+
+При первом визите вы можете принять все cookies или только необходимые. Изменить выбор можно, очистив cookies браузера и обновив страницу — снова появится плашка согласия.
+
+Подробнее о персональных данных — в [политике конфиденциальности](/privacy).`,
+  bannerTitle: "Мы используем cookies",
+  bannerBody:
+    "Необходимые cookies нужны для работы сайта. Аналитические — только с вашего согласия. Подробнее в политике cookies.",
 };
 
 export const seedAdTariffs: AdTariff[] = [
@@ -378,6 +425,18 @@ export async function ensureSeeded(db: Db): Promise<void> {
       googleAnalyticsId: seedSeo.googleAnalyticsId,
       yandexMetricaId: seedSeo.yandexMetricaId,
       gtmId: seedSeo.gtmId,
+    });
+
+    await tx.insert(legal).values({
+      id: 1,
+      privacyTitle: seedLegal.privacyTitle,
+      privacyBody: seedLegal.privacyBody,
+      privacyUpdatedAt: seedLegal.privacyUpdatedAt,
+      cookieTitle: seedLegal.cookieTitle,
+      cookieBody: seedLegal.cookieBody,
+      cookieUpdatedAt: seedLegal.cookieUpdatedAt,
+      bannerTitle: seedLegal.bannerTitle,
+      bannerBody: seedLegal.bannerBody,
     });
 
     await tx

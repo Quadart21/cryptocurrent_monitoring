@@ -51,6 +51,12 @@ export const ADMIN_NAV: AdminNavItem[] = [
     description: "Мета, robots, sitemap",
   },
   {
+    id: "legal",
+    href: `${ADMIN_PATH}/legal`,
+    label: "Правовые",
+    description: "Политики и cookies",
+  },
+  {
     id: "blog",
     href: `${ADMIN_PATH}/blog`,
     label: "Новости",

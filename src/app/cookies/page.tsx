@@ -8,16 +8,15 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata(): Promise<Metadata> {
   const legal = await getLegalSettings();
   return {
-    title: legal.privacyTitle || "Политика конфиденциальности",
-    description:
-      "Как GapSnap обрабатывает персональные данные пользователей и владельцев обменников.",
+    title: legal.cookieTitle || "Политика cookies",
+    description: "Какие cookies использует GapSnap и как управлять согласием.",
   };
 }
 
-export default async function PrivacyPage() {
+export default async function CookiesPage() {
   const legal = await getLegalSettings();
-  const updated = legal.privacyUpdatedAt
-    ? new Date(legal.privacyUpdatedAt)
+  const updated = legal.cookieUpdatedAt
+    ? new Date(legal.cookieUpdatedAt)
     : null;
 
   return (
@@ -25,11 +24,11 @@ export default async function PrivacyPage() {
       <Breadcrumbs
         items={[
           { href: "/", label: "Главная" },
-          { label: "Конфиденциальность" },
+          { label: "Cookies" },
         ]}
       />
       <h1 className="font-display text-3xl font-semibold text-ink">
-        {legal.privacyTitle}
+        {legal.cookieTitle}
       </h1>
       {updated && Number.isFinite(updated.getTime()) ? (
         <p className="text-sm text-ink-muted">
@@ -42,7 +41,7 @@ export default async function PrivacyPage() {
         </p>
       ) : null}
       <div className="space-y-4 text-sm leading-relaxed text-ink-muted">
-        {renderBlogMarkdown(legal.privacyBody)}
+        {renderBlogMarkdown(legal.cookieBody)}
       </div>
     </article>
   );

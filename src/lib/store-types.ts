@@ -210,6 +210,21 @@ export type AdPricingSettings = {
   note: string;
 };
 
+/** Политики конфиденциальности и cookies (админка → Правовые) */
+export type LegalSettings = {
+  privacyTitle: string;
+  /** Markdown */
+  privacyBody: string;
+  privacyUpdatedAt: string;
+  cookieTitle: string;
+  /** Markdown */
+  cookieBody: string;
+  cookieUpdatedAt: string;
+  /** Текст плашки согласия */
+  bannerTitle: string;
+  bannerBody: string;
+};
+
 /** Глобальные SEO-настройки сайта (админка → /trulala/seo) */
 export type SeoSettings = {
   siteName: string;

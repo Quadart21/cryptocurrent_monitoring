@@ -40,6 +40,9 @@ export function Footer() {
           <Link href="/privacy" className="hover:text-accent-deep">
             Конфиденциальность
           </Link>
+          <Link href="/cookies" className="hover:text-accent-deep">
+            Cookies
+          </Link>
           <Link href="/offer" className="hover:text-accent-deep">
             Оферта
           </Link>

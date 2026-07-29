@@ -214,6 +214,19 @@ export const adPricing = pgTable("ad_pricing", {
   note: text("note").notNull(),
 });
 
+/** Privacy / cookie policies + consent banner copy (admin-editable). */
+export const legal = pgTable("legal", {
+  id: integer("id").primaryKey().default(1),
+  privacyTitle: text("privacy_title").notNull(),
+  privacyBody: text("privacy_body").notNull(),
+  privacyUpdatedAt: text("privacy_updated_at").notNull(),
+  cookieTitle: text("cookie_title").notNull(),
+  cookieBody: text("cookie_body").notNull(),
+  cookieUpdatedAt: text("cookie_updated_at").notNull(),
+  bannerTitle: text("banner_title").notNull(),
+  bannerBody: text("banner_body").notNull(),
+});
+
 export const seo = pgTable("seo", {
   id: integer("id").primaryKey().default(1),
   siteName: text("site_name").notNull(),

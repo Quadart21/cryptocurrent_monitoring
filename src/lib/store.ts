@@ -11,6 +11,7 @@ import {
   blacklist,
   blogPosts,
   exchangers,
+  legal,
   newsSettings,
   qualityTags,
   rates,
@@ -20,7 +21,7 @@ import {
   type BannerCheckJson,
   type ExchangerTrafficJson,
 } from "@/db/schema";
-import { seedAdPricing, seedSeo } from "@/db/seed";
+import { seedAdPricing, seedLegal, seedSeo } from "@/db/seed";
 import {
   DEFAULT_PROXY_HOSTS,
   DEFAULT_PROXY_PORT,
@@ -55,6 +56,7 @@ import type {
   ExchangerReview,
   FeedExchanger,
   FeedExchangerStatus,
+  LegalSettings,
   ReviewQualityTag,
   ReviewSentiment,
   ReviewStatus,
@@ -110,6 +112,7 @@ type ReviewRow = typeof reviews.$inferSelect;
 type AchievementRow = typeof achievements.$inferSelect;
 type TariffRow = typeof adTariffs.$inferSelect;
 type SeoRow = typeof seo.$inferSelect;
+type LegalRow = typeof legal.$inferSelect;
 
 function mapExchanger(row: ExchangerRow): FeedExchanger {
   const logo: ExchangerLogo | null =
@@ -1724,6 +1727,95 @@ export async function updateSeoSettings(
         yandexMetricaId: merged.yandexMetricaId,
         gtmId: merged.gtmId,
       },
+    });
+  return merged;
+}
+
+function mapLegal(row: LegalRow): LegalSettings {
+  return {
+    privacyTitle: row.privacyTitle,
+    privacyBody: row.privacyBody,
+    privacyUpdatedAt: row.privacyUpdatedAt,
+    cookieTitle: row.cookieTitle,
+    cookieBody: row.cookieBody,
+    cookieUpdatedAt: row.cookieUpdatedAt,
+    bannerTitle: row.bannerTitle,
+    bannerBody: row.bannerBody,
+  };
+}
+
+function normalizeLegalSettings(
+  raw: Partial<LegalSettings> | null | undefined,
+): LegalSettings {
+  const base = structuredClone(seedLegal);
+  return {
+    privacyTitle:
+      typeof raw?.privacyTitle === "string" && raw.privacyTitle.trim()
+        ? raw.privacyTitle.trim()
+        : base.privacyTitle,
+    privacyBody:
+      typeof raw?.privacyBody === "string" ? raw.privacyBody : base.privacyBody,
+    privacyUpdatedAt:
+      typeof raw?.privacyUpdatedAt === "string" && raw.privacyUpdatedAt.trim()
+        ? raw.privacyUpdatedAt
+        : base.privacyUpdatedAt,
+    cookieTitle:
+      typeof raw?.cookieTitle === "string" && raw.cookieTitle.trim()
+        ? raw.cookieTitle.trim()
+        : base.cookieTitle,
+    cookieBody:
+      typeof raw?.cookieBody === "string" ? raw.cookieBody : base.cookieBody,
+    cookieUpdatedAt:
+      typeof raw?.cookieUpdatedAt === "string" && raw.cookieUpdatedAt.trim()
+        ? raw.cookieUpdatedAt
+        : base.cookieUpdatedAt,
+    bannerTitle:
+      typeof raw?.bannerTitle === "string" && raw.bannerTitle.trim()
+        ? raw.bannerTitle.trim()
+        : base.bannerTitle,
+    bannerBody:
+      typeof raw?.bannerBody === "string" ? raw.bannerBody : base.bannerBody,
+  };
+}
+
+export async function getLegalSettings(): Promise<LegalSettings> {
+  const db = getDb();
+  const [row] = await db.select().from(legal).where(eq(legal.id, 1)).limit(1);
+  if (!row) {
+    const seeded = normalizeLegalSettings(seedLegal);
+    await db
+      .insert(legal)
+      .values({ id: 1, ...seeded })
+      .onConflictDoNothing();
+    return seeded;
+  }
+  return normalizeLegalSettings(mapLegal(row));
+}
+
+export async function updateLegalSettings(
+  patch: Partial<LegalSettings>,
+): Promise<LegalSettings> {
+  const current = await getLegalSettings();
+  const now = new Date().toISOString();
+  const merged = normalizeLegalSettings({
+    ...current,
+    ...patch,
+    privacyUpdatedAt:
+      patch.privacyBody !== undefined || patch.privacyTitle !== undefined
+        ? now
+        : current.privacyUpdatedAt,
+    cookieUpdatedAt:
+      patch.cookieBody !== undefined || patch.cookieTitle !== undefined
+        ? now
+        : current.cookieUpdatedAt,
+  });
+  const db = getDb();
+  await db
+    .insert(legal)
+    .values({ id: 1, ...merged })
+    .onConflictDoUpdate({
+      target: legal.id,
+      set: { ...merged },
     });
   return merged;
 }
