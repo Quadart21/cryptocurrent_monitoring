@@ -52,12 +52,12 @@ export function IconSpreadNav() {
                 onMouseEnter={() => setHovered(item.href)}
                 onFocus={() => setHovered(item.href)}
                 onBlur={() => setHovered(null)}
-                className={`flex h-10 items-center overflow-hidden rounded-2xl transition-[background-color,color,box-shadow,padding,gap] duration-300 ${
+                className={`flex h-10 items-center overflow-hidden rounded-xl transition-[background-color,color,padding,gap] duration-300 ${
                   isOpen ? "gap-2 px-3" : "gap-0 px-2.5"
                 } ${
                   active || isOpen
-                    ? "bg-accent text-white shadow-[var(--glow)]"
-                    : "text-ink-muted hover:bg-accent-soft hover:text-ink"
+                    ? "bg-accent text-white"
+                    : "text-ink-muted hover:bg-bg-soft hover:text-ink"
                 }`}
               >
                 <NavIcon

@@ -115,16 +115,12 @@ export function FastAction({
   const toName = currencyOptionLabel(to, options);
 
   return (
-    <section className="animate-rise overflow-hidden rounded-[1.75rem] border border-line bg-bg-elevated shadow-[var(--card-shadow)]">
-      <div className="relative border-b border-line/70 px-4 py-4 sm:px-6 sm:py-5">
-        <div
-          className="pointer-events-none absolute -right-10 -top-16 size-48 rounded-full bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] opacity-20 blur-3xl"
-          aria-hidden
-        />
-        <div className="relative flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <section className="animate-rise overflow-hidden rounded-2xl border border-line bg-bg-elevated shadow-[var(--card-shadow)]">
+      <div className="border-b border-line px-4 py-4 sm:px-6 sm:py-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-deep">
-              GapSnap · мониторинг
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-muted">
+              Мониторинг курсов
             </p>
             <h1 className="mt-1.5 font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
               Сравните курсы и выберите обменник
@@ -147,9 +143,9 @@ export function FastAction({
                   key={value}
                   type="button"
                   onClick={() => onModeChange(value)}
-                  className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                  className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
                     mode === value
-                      ? "bg-accent text-white shadow-[var(--glow)]"
+                      ? "bg-accent text-white"
                       : "text-ink-muted hover:text-ink"
                   }`}
                 >
@@ -209,7 +205,7 @@ export function FastAction({
             <button
               type="button"
               onClick={onSwap}
-              className="flex size-11 items-center justify-center rounded-full border border-line bg-bg-soft text-accent transition hover:border-accent hover:shadow-[var(--glow)]"
+              className="flex size-11 items-center justify-center rounded-full border border-line bg-bg-soft text-accent transition hover:border-accent hover:bg-accent-soft"
               aria-label="Поменять"
             >
               ⇅

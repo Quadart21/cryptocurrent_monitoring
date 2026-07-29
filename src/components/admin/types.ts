@@ -54,9 +54,31 @@ export type AdminNavId =
   | "catalog"
   | "sync";
 
+export type AdminNavGroupId =
+  | "main"
+  | "moderation"
+  | "content"
+  | "ads"
+  | "site"
+  | "data";
+
+export type AdminNavBadge =
+  | "pending"
+  | "pendingReviews"
+  | "pendingCatalog"
+  | "bannerMissing"
+  | "syncQueue";
+
 export type AdminNavItem = {
   id: AdminNavId;
   href: string;
   label: string;
   description: string;
+  group: AdminNavGroupId;
+  badge?: AdminNavBadge;
+};
+
+export type AdminNavGroup = {
+  id: AdminNavGroupId;
+  label: string;
 };

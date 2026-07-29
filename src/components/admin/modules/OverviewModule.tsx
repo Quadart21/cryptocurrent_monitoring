@@ -186,27 +186,64 @@ export function OverviewModule() {
         </div>
       </AdminSection>
 
-      <AdminSection title="Быстрые разделы">
-        <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-3">
+      <AdminSection title="Разделы по группам">
+        <div className="space-y-5 p-5">
           {[
-            ["Обменники", `${ADMIN_PATH}/exchangers`],
-            ["Отзывы", `${ADMIN_PATH}/reviews`],
-            ["Качества", `${ADMIN_PATH}/qualities`],
-            ["Ачивки", `${ADMIN_PATH}/achievements`],
-            ["Реклама", `${ADMIN_PATH}/ads`],
-            ["SEO", `${ADMIN_PATH}/seo`],
-            ["Новости", `${ADMIN_PATH}/blog`],
-            ["Чёрный список", `${ADMIN_PATH}/blacklist`],
-            ["Каталог", `${ADMIN_PATH}/catalog`],
-            ["Синхронизация", `${ADMIN_PATH}/sync`],
-          ].map(([label, href]) => (
-            <Link
-              key={href}
-              href={href}
-              className="rounded-2xl border border-line px-4 py-3 text-sm font-semibold hover:border-accent hover:bg-accent-soft"
-            >
-              {label}
-            </Link>
+            {
+              label: "Модерация",
+              links: [
+                ["Обменники", `${ADMIN_PATH}/exchangers`],
+                ["Отзывы", `${ADMIN_PATH}/reviews`],
+                ["Чёрный список", `${ADMIN_PATH}/blacklist`],
+              ],
+            },
+            {
+              label: "Контент",
+              links: [
+                ["Новости", `${ADMIN_PATH}/blog`],
+                ["Качества", `${ADMIN_PATH}/qualities`],
+                ["Ачивки", `${ADMIN_PATH}/achievements`],
+              ],
+            },
+            {
+              label: "Реклама",
+              links: [
+                ["Креативы", `${ADMIN_PATH}/ads`],
+                ["Тарифы", `${ADMIN_PATH}/ad-tariffs`],
+              ],
+            },
+            {
+              label: "Сайт",
+              links: [
+                ["SEO", `${ADMIN_PATH}/seo`],
+                ["Правовые", `${ADMIN_PATH}/legal`],
+                ["Email", `${ADMIN_PATH}/email`],
+              ],
+            },
+            {
+              label: "Данные",
+              links: [
+                ["Каталог", `${ADMIN_PATH}/catalog`],
+                ["Синхронизация", `${ADMIN_PATH}/sync`],
+              ],
+            },
+          ].map((group) => (
+            <div key={group.label}>
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-muted">
+                {group.label}
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {group.links.map(([label, href]) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    className="rounded-xl border border-line px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-accent hover:bg-accent-soft"
+                  >
+                    {label}
+                  </Link>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       </AdminSection>

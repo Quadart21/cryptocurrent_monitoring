@@ -237,7 +237,7 @@ export function RatesBoard({
                         loading="lazy"
                       />
                     ) : (
-                      <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] text-xs font-bold text-white">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent text-xs font-bold text-white">
                         {name.slice(0, 1)}
                       </div>
                     )}
@@ -367,7 +367,7 @@ export function RatesBoard({
                               loading="lazy"
                             />
                           ) : (
-                            <div className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] text-xs font-bold text-white">
+                            <div className="flex size-10 items-center justify-center rounded-xl bg-accent text-xs font-bold text-white">
                               {name.slice(0, 1)}
                             </div>
                           )}

@@ -45,7 +45,7 @@ export function CookieBanner() {
       aria-label="Согласие на cookies"
       className="fixed inset-x-0 bottom-0 z-[80] p-3 sm:p-4"
     >
-      <div className="mx-auto flex max-w-3xl flex-col gap-4 rounded-[1.5rem] border border-line bg-bg-elevated/95 p-4 shadow-[var(--card-shadow)] backdrop-blur-md sm:flex-row sm:items-end sm:p-5">
+      <div className="mx-auto flex max-w-3xl flex-col gap-4 rounded-2xl border border-line bg-bg-elevated p-4 shadow-[var(--card-shadow)] sm:flex-row sm:items-end sm:p-5">
         <div className="min-w-0 flex-1 space-y-2">
           <p className="font-display text-base font-semibold text-ink">
             {title}

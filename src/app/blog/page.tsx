@@ -66,20 +66,12 @@ export default async function BlogIndexPage() {
         items={[{ href: "/", label: "Главная" }, { label: "Новости" }]}
       />
 
-      <section className="animate-rise relative overflow-hidden rounded-[1.75rem] border border-line bg-bg-elevated px-5 py-8 sm:px-8 sm:py-10">
-        <div
-          className="pointer-events-none absolute -right-16 -top-20 size-64 rounded-full bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] opacity-20 blur-3xl"
-          aria-hidden
-        />
-        <div
-          className="pointer-events-none absolute -bottom-24 -left-10 size-56 rounded-full bg-[var(--accent-2)]/20 blur-3xl"
-          aria-hidden
-        />
-        <div className="relative max-w-2xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent-deep">
-            GapSnap · лента
+      <section className="animate-rise rounded-2xl border border-line bg-bg-elevated px-5 py-8 sm:px-8 sm:py-10">
+        <div className="max-w-2xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">
+            Лента
           </p>
-          <h1 className="mt-3 font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+          <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
             Новости
           </h1>
           <p className="mt-3 text-base leading-relaxed text-ink-muted sm:text-lg">
@@ -137,7 +129,7 @@ export default async function BlogIndexPage() {
                 <Link
                   key={p.id}
                   href={`/blog/${p.slug}`}
-                  className="group flex flex-col overflow-hidden rounded-[1.5rem] border border-line bg-bg-elevated shadow-[var(--card-shadow)] transition hover:border-accent/40 hover:shadow-[var(--glow)]"
+                  className="group flex flex-col overflow-hidden rounded-2xl border border-line bg-bg-elevated shadow-[var(--card-shadow)] transition hover:border-accent/40"
                 >
                   <div className="relative aspect-[16/10] overflow-hidden bg-bg-soft">
                     <Cover

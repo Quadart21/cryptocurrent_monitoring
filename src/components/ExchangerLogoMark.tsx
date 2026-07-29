@@ -33,7 +33,7 @@ export function ExchangerLogoMark({
 
   return (
     <div
-      className={`flex items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] text-sm font-bold text-white ${className}`}
+      className={`flex items-center justify-center rounded-xl bg-accent text-sm font-bold text-white ${className}`}
       style={{ width: size, height: size }}
       aria-hidden
     >

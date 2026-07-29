@@ -20,52 +20,51 @@ export function AdminLogin() {
   }
 
   return (
-    <div className="relative z-10 flex min-h-screen items-center justify-center px-4">
+    <div className="relative z-10 flex min-h-screen items-center justify-center bg-bg px-4">
       <div className="absolute right-4 top-4">
         <ThemeToggle />
       </div>
       <form
         onSubmit={(e) => void onSubmit(e)}
-        className="card w-full max-w-sm space-y-4 p-6"
+        className="card w-full max-w-sm space-y-4 p-6 sm:p-7"
       >
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">
-            Служебный доступ
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-muted">
+            GapSnap
           </p>
           <h1 className="mt-1 font-display text-2xl font-semibold text-ink">
             Вход в админку
           </h1>
+          <p className="mt-1.5 text-sm text-ink-muted">
+            Служебный доступ к панели управления.
+          </p>
         </div>
-        <label className="block space-y-2">
-          <span className="text-xs font-medium uppercase tracking-[0.14em] text-ink-muted">
-            Логин
-          </span>
+        <label className="block space-y-1.5">
+          <span className="text-xs font-medium text-ink-muted">Логин</span>
           <input
             value={loginValue}
             onChange={(e) => setLoginValue(e.target.value)}
             autoComplete="username"
             required
-            className="w-full rounded-2xl border border-line bg-input px-3 py-3 text-sm outline-none focus:border-accent"
+            className="w-full rounded-xl border border-line bg-input px-3 py-2.5 text-sm outline-none focus:border-accent"
           />
         </label>
-        <label className="block space-y-2">
-          <span className="text-xs font-medium uppercase tracking-[0.14em] text-ink-muted">
-            Пароль
-          </span>
+        <label className="block space-y-1.5">
+          <span className="text-xs font-medium text-ink-muted">Пароль</span>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
             required
-            className="w-full rounded-2xl border border-line bg-input px-3 py-3 text-sm outline-none focus:border-accent"
+            className="w-full rounded-xl border border-line bg-input px-3 py-2.5 text-sm outline-none focus:border-accent"
           />
         </label>
-        {error && <p className="text-sm text-danger">{error}</p>}
+        {error ? <p className="text-sm text-danger">{error}</p> : null}
         <button
           type="submit"
           disabled={busy}
-          className="btn-primary w-full rounded-2xl px-4 py-3 text-sm font-semibold disabled:opacity-60"
+          className="btn-primary w-full rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-60"
         >
           {busy ? "Входим…" : "Войти"}
         </button>

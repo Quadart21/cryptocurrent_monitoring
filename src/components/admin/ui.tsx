@@ -24,10 +24,14 @@ export function AdminPageHeader({
 }) {
   return (
     <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <h1 className="font-display text-3xl font-semibold text-ink">{title}</h1>
+      <div className="min-w-0">
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
+          {title}
+        </h1>
         {description ? (
-          <div className="mt-1 max-w-2xl text-sm text-ink-muted">{description}</div>
+          <div className="mt-1.5 max-w-2xl text-sm leading-relaxed text-ink-muted">
+            {description}
+          </div>
         ) : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
@@ -75,10 +79,10 @@ export function AdminSection({
 }) {
   return (
     <section className={`card overflow-hidden ${className}`}>
-      <div className="border-b border-line px-5 py-4">
-        <h2 className="font-display text-xl font-semibold">{title}</h2>
+      <div className="border-b border-line bg-bg-soft/40 px-5 py-3.5">
+        <h2 className="font-display text-lg font-semibold text-ink">{title}</h2>
         {description ? (
-          <p className="mt-1 text-sm text-ink-muted">{description}</p>
+          <p className="mt-0.5 text-sm text-ink-muted">{description}</p>
         ) : null}
       </div>
       {children}

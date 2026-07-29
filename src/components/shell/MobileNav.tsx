@@ -40,7 +40,7 @@ export function MobileNav() {
           <div className="fixed inset-0 z-[200] lg:hidden">
             <button
               type="button"
-              className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
+              className="absolute inset-0 bg-black/45"
               aria-label="Закрыть меню"
               onClick={() => setOpen(false)}
             />
@@ -74,10 +74,10 @@ export function MobileNav() {
                     <Link
                       key={item.href}
                       href={item.href}
-                      className={`flex items-center gap-3 rounded-2xl px-3 py-3 transition ${
+                      className={`flex items-center gap-3 rounded-xl px-3 py-3 transition ${
                         active
-                          ? "bg-accent text-white shadow-[var(--glow)]"
-                          : "text-ink hover:bg-accent-soft"
+                          ? "bg-accent text-white"
+                          : "text-ink hover:bg-bg-soft"
                       }`}
                     >
                       <NavIcon
