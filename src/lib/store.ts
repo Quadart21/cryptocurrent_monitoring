@@ -214,6 +214,7 @@ function mapAd(row: AdRow): AdCreative {
     href: row.href,
     imageUrl: row.imageUrl,
     exchangerId: row.exchangerId,
+    pairs: Array.isArray(row.pairs) ? row.pairs : [],
     active: row.active,
     priority: row.priority,
     startsAt: row.startsAt,
@@ -644,6 +645,24 @@ export async function getActiveRates(): Promise<StoredRate[]> {
     .from(rates)
     .where(inArray(rates.exchangerId, activeIds));
   return rateRows.map(mapRate);
+}
+
+/** Distinct FROM→TO pairs from XML rates for one exchanger (admin ads scope). */
+export async function listExchangerRatePairs(
+  exchangerId: string,
+): Promise<Array<{ from: string; to: string; key: string }>> {
+  const db = getDb();
+  const rows = await db
+    .selectDistinct({ from: rates.from, to: rates.to })
+    .from(rates)
+    .where(eq(rates.exchangerId, exchangerId));
+  return rows
+    .map((r) => ({
+      from: r.from,
+      to: r.to,
+      key: `${r.from}:${r.to}`,
+    }))
+    .sort((a, b) => a.key.localeCompare(b.key, "en"));
 }
 
 /** Match blacklist by linked id or by name (legacy free-text entries). */
@@ -1454,6 +1473,7 @@ export async function addAd(
   const db = getDb();
   const item: AdCreative = {
     ...input,
+    pairs: input.pairs ?? [],
     id: `ad_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
     createdAt: new Date().toISOString(),
     stats: input.stats ? normalizeAdStats(input.stats) : emptyAdStats(),
@@ -1468,6 +1488,7 @@ export async function addAd(
     href: item.href,
     imageUrl: item.imageUrl,
     exchangerId: item.exchangerId,
+    pairs: item.pairs ?? [],
     active: item.active,
     priority: item.priority,
     startsAt: item.startsAt,
@@ -1507,6 +1528,7 @@ export async function updateAd(
       ...(patch.exchangerId !== undefined
         ? { exchangerId: patch.exchangerId }
         : {}),
+      ...(patch.pairs !== undefined ? { pairs: patch.pairs } : {}),
       ...(patch.active !== undefined ? { active: patch.active } : {}),
       ...(patch.priority !== undefined ? { priority: patch.priority } : {}),
       ...(patch.startsAt !== undefined ? { startsAt: patch.startsAt } : {}),

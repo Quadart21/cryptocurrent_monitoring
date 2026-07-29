@@ -7,7 +7,7 @@ import { useAds } from "@/components/ads/useAds";
 import { trackAdClick, trackAdImpression } from "@/components/ads/track";
 import type { LiveOffer } from "@/components/RateTable";
 import { pairPath } from "@/lib/bestchange/pair-slug";
-import { pickWeightedRandom } from "@/lib/ads";
+import { adMatchesPair, pickWeightedRandom } from "@/lib/ads";
 import { buildExchangeUrl } from "@/lib/exchange-link";
 import {
   formatCurrencyAmount,
@@ -55,10 +55,15 @@ export function RatesBoard({
   recentReviews?: RatesBoardReview[];
 }) {
   const fromName = currencyOptionLabel(from, currencies);
-  const toName = currencyOptionLabel(to, currencies);  const pinAds = useAds("rates");
-  const pinKey = pinAds.map((a) => `${a.id}:${a.priority}`).join("|");
+  const toName = currencyOptionLabel(to, currencies);
+  const pinAds = useAds("rates");
+  const scopedPinAds = useMemo(
+    () => pinAds.filter((ad) => adMatchesPair(ad, from, to)),
+    [pinAds, from, to],
+  );
+  const pinKey = scopedPinAds.map((a) => `${a.id}:${a.priority}`).join("|");
   const chosenPin = useMemo(
-    () => pickWeightedRandom(pinAds),
+    () => pickWeightedRandom(scopedPinAds),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [pinKey],
   );

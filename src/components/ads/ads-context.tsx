@@ -13,6 +13,7 @@ export type PublicAd = Pick<
   | "href"
   | "imageUrl"
   | "exchangerId"
+  | "pairs"
   | "priority"
 >;
 

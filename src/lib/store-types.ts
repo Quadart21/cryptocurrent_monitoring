@@ -171,6 +171,11 @@ export type AdCreative = {
   imageUrl: string;
   /** Для highlight / rates_pin */
   exchangerId: string | null;
+  /**
+   * Область для rates_pin: пусто = везде, иначе только эти пары (`FROM:TO`).
+   * Для highlight обычно пусто (глобальный список /exchangers).
+   */
+  pairs: string[];
   active: boolean;
   priority: number;
   startsAt: string | null;

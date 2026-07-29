@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
 import { assertAdmin } from "@/lib/admin-guard";
-import { AD_TYPE_PLACEMENTS } from "@/lib/ads";
+import {
+  AD_TYPE_PLACEMENTS,
+  normalizeAdPairs,
+  parseAdPairKey,
+} from "@/lib/ads";
 import {
   addAd,
   listAds,
+  listExchangerRatePairs,
   removeAd,
   updateAd,
 } from "@/lib/store";
@@ -52,6 +57,22 @@ function parseAdBody(body: Record<string, unknown>) {
     } as const;
   }
 
+  let pairs: string[] = [];
+  if (type === "rates_pin" || type === "highlight") {
+    pairs = normalizeAdPairs(body.pairs);
+    if (type === "rates_pin" && pairs.length) {
+      for (const key of pairs) {
+        if (!parseAdPairKey(key)) {
+          return { error: `Некорректная пара: ${key}` } as const;
+        }
+      }
+    }
+    if (type === "highlight") {
+      // Highlight lives on /exchangers — pair scope is only for rates_pin.
+      pairs = [];
+    }
+  }
+
   return {
     data: {
       name,
@@ -65,6 +86,7 @@ function parseAdBody(body: Record<string, unknown>) {
         type === "highlight" || type === "rates_pin"
           ? String(body.exchangerId ?? "").trim() || null
           : null,
+      pairs,
       active: body.active !== false,
       priority: Number(body.priority) || 0,
       startsAt: body.startsAt ? String(body.startsAt) : null,
@@ -73,9 +95,16 @@ function parseAdBody(body: Record<string, unknown>) {
   } as const;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const denied = await assertAdmin();
   if (denied) return denied;
+
+  const exchangerId = new URL(request.url).searchParams.get("exchangerId");
+  if (exchangerId) {
+    const pairs = await listExchangerRatePairs(exchangerId);
+    return NextResponse.json({ pairs });
+  }
+
   return NextResponse.json({ ads: await listAds() });
 }
 
@@ -87,6 +116,24 @@ export async function POST(request: Request) {
   const parsed = parseAdBody(body);
   if ("error" in parsed) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
+  }
+
+  if (
+    parsed.data.type === "rates_pin" &&
+    parsed.data.pairs.length &&
+    parsed.data.exchangerId
+  ) {
+    const available = await listExchangerRatePairs(parsed.data.exchangerId);
+    const allowed = new Set(available.map((p) => p.key));
+    const unknown = parsed.data.pairs.filter((k) => !allowed.has(k));
+    if (unknown.length) {
+      return NextResponse.json(
+        {
+          error: `Пары нет у обменника в XML: ${unknown.slice(0, 5).join(", ")}`,
+        },
+        { status: 400 },
+      );
+    }
   }
 
   const ad = await addAd(parsed.data);
@@ -126,6 +173,24 @@ export async function PATCH(request: Request) {
   const parsed = parseAdBody(body);
   if ("error" in parsed) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
+  }
+
+  if (
+    parsed.data.type === "rates_pin" &&
+    parsed.data.pairs.length &&
+    parsed.data.exchangerId
+  ) {
+    const available = await listExchangerRatePairs(parsed.data.exchangerId);
+    const allowed = new Set(available.map((p) => p.key));
+    const unknown = parsed.data.pairs.filter((k) => !allowed.has(k));
+    if (unknown.length) {
+      return NextResponse.json(
+        {
+          error: `Пары нет у обменника в XML: ${unknown.slice(0, 5).join(", ")}`,
+        },
+        { status: 400 },
+      );
+    }
   }
 
   const ad = await updateAd(body.id, parsed.data);

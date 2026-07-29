@@ -178,6 +178,11 @@ export const ads = pgTable("ads", {
   href: text("href").notNull().default(""),
   imageUrl: text("image_url").notNull().default(""),
   exchangerId: text("exchanger_id"),
+  /**
+   * Pair scope for rates_pin / highlight: empty = everywhere.
+   * Keys are `FROM:TO` (uppercase BestChange codes).
+   */
+  pairs: text("pairs").array().notNull().default([]),
   active: boolean("active").notNull().default(true),
   priority: integer("priority").notNull().default(0),
   startsAt: text("starts_at"),

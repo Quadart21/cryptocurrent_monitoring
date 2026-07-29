@@ -1,7 +1,7 @@
 "use client";
 
 import type { FormEvent } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   AD_PLACEMENT_HINTS,
@@ -29,11 +29,16 @@ type FormState = {
   href: string;
   imageUrl: string;
   exchangerId: string;
+  /** empty = everywhere; otherwise selected FROM:TO keys */
+  pairs: string[];
+  pairScope: "everywhere" | "pairs";
   active: boolean;
   priority: string;
   startsAt: string;
   endsAt: string;
 };
+
+type ExchangerPairOption = { from: string; to: string; key: string };
 
 const emptyForm = (): FormState => ({
   name: "",
@@ -44,6 +49,8 @@ const emptyForm = (): FormState => ({
   href: "",
   imageUrl: "",
   exchangerId: "",
+  pairs: [],
+  pairScope: "everywhere",
   active: true,
   priority: "10",
   startsAt: "",
@@ -51,6 +58,7 @@ const emptyForm = (): FormState => ({
 });
 
 function formFromAd(ad: AdCreative): FormState {
+  const pairs = ad.pairs ?? [];
   return {
     name: ad.name,
     type: ad.type,
@@ -60,6 +68,8 @@ function formFromAd(ad: AdCreative): FormState {
     href: ad.href,
     imageUrl: ad.imageUrl,
     exchangerId: ad.exchangerId ?? "",
+    pairs,
+    pairScope: pairs.length ? "pairs" : "everywhere",
     active: ad.active,
     priority: String(ad.priority),
     startsAt: ad.startsAt ? ad.startsAt.slice(0, 16) : "",
@@ -72,10 +82,52 @@ export function AdsModule() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [exchangerPairs, setExchangerPairs] = useState<ExchangerPairOption[]>(
+    [],
+  );
+  const [pairsLoading, setPairsLoading] = useState(false);
 
   const ads = overview?.ads ?? [];
   const exchangers = overview?.exchangers ?? [];
   const placements = AD_TYPE_PLACEMENTS[form.type];
+  const needsExchanger =
+    form.type === "highlight" || form.type === "rates_pin";
+  const showPairScope = form.type === "rates_pin";
+
+  useEffect(() => {
+    if (!showPairScope || !form.exchangerId) {
+      setExchangerPairs([]);
+      return;
+    }
+    let cancelled = false;
+    setPairsLoading(true);
+    void fetch(
+      `/api/admin/ads?exchangerId=${encodeURIComponent(form.exchangerId)}`,
+      { cache: "no-store" },
+    )
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { pairs?: ExchangerPairOption[] } | null) => {
+        if (cancelled) return;
+        const pairs = data?.pairs ?? [];
+        setExchangerPairs(pairs);
+        // Drop stale keys only when we know the exchanger's live pairs.
+        if (pairs.length) {
+          setForm((f) => ({
+            ...f,
+            pairs: f.pairs.filter((key) => pairs.some((p) => p.key === key)),
+          }));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setExchangerPairs([]);
+      })
+      .finally(() => {
+        if (!cancelled) setPairsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showPairScope, form.exchangerId]);
 
   const payload = useMemo(
     () => ({
@@ -87,21 +139,47 @@ export function AdsModule() {
       href: form.href,
       imageUrl: form.imageUrl,
       exchangerId: form.exchangerId || null,
+      pairs:
+        showPairScope && form.pairScope === "pairs" ? form.pairs : [],
       active: form.active,
       priority: Number(form.priority) || 0,
       startsAt: form.startsAt ? new Date(form.startsAt).toISOString() : null,
       endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : null,
     }),
-    [form],
+    [form, showPairScope],
   );
 
   function onTypeChange(type: AdType) {
     const nextPlacement = AD_TYPE_PLACEMENTS[type][0];
-    setForm((f) => ({ ...f, type, placement: nextPlacement }));
+    setForm((f) => ({
+      ...f,
+      type,
+      placement: nextPlacement,
+      pairs: type === "rates_pin" ? f.pairs : [],
+      pairScope: type === "rates_pin" ? f.pairScope : "everywhere",
+    }));
+  }
+
+  function togglePair(key: string) {
+    setForm((f) => {
+      const has = f.pairs.includes(key);
+      return {
+        ...f,
+        pairs: has ? f.pairs.filter((k) => k !== key) : [...f.pairs, key],
+      };
+    });
   }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
+    if (
+      showPairScope &&
+      form.pairScope === "pairs" &&
+      form.pairs.length === 0
+    ) {
+      setError("Выберите хотя бы одну пару или режим «везде»");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -189,8 +267,8 @@ export function AdsModule() {
         title="Реклама"
         description={
           <>
-            Баннеры ротируются в слоте (вес = приоритет). Цены для рекламодателей
-            — в{" "}
+            Баннеры ротируются в слоте (вес = приоритет). Закреп в курсах можно
+            показывать везде или только на выбранных парах. Цены — в{" "}
             <Link
               href={`${ADMIN_PATH}/ad-tariffs`}
               className="text-accent underline underline-offset-2"
@@ -355,13 +433,17 @@ export function AdsModule() {
             </label>
           ) : null}
 
-          {(form.type === "highlight" || form.type === "rates_pin") && (
+          {needsExchanger ? (
             <label className="block space-y-1">
               <span className="text-xs text-ink-muted">Обменник</span>
               <select
                 value={form.exchangerId}
                 onChange={(e) =>
-                  setForm({ ...form, exchangerId: e.target.value })
+                  setForm({
+                    ...form,
+                    exchangerId: e.target.value,
+                    pairs: [],
+                  })
                 }
                 required
                 className="w-full rounded-2xl border border-line bg-input px-3 py-2.5 text-sm outline-none focus:border-accent"
@@ -374,7 +456,88 @@ export function AdsModule() {
                 ))}
               </select>
             </label>
-          )}
+          ) : null}
+
+          {showPairScope ? (
+            <div className="space-y-3 rounded-2xl border border-line bg-bg-soft/40 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-ink-muted">
+                Область закрепа
+              </p>
+              <div className="flex flex-wrap gap-3 text-sm text-ink">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="pairScope"
+                    checked={form.pairScope === "everywhere"}
+                    onChange={() =>
+                      setForm({ ...form, pairScope: "everywhere", pairs: [] })
+                    }
+                  />
+                  Везде (все пары, где есть этот обменник)
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="pairScope"
+                    checked={form.pairScope === "pairs"}
+                    onChange={() =>
+                      setForm({ ...form, pairScope: "pairs" })
+                    }
+                  />
+                  Только выбранные пары
+                </label>
+              </div>
+
+              {form.pairScope === "pairs" ? (
+                <div className="space-y-2">
+                  {!form.exchangerId ? (
+                    <p className="text-xs text-ink-muted">
+                      Сначала выберите обменник — покажем его направления из
+                      XML.
+                    </p>
+                  ) : pairsLoading ? (
+                    <p className="text-xs text-ink-muted">Загрузка пар…</p>
+                  ) : exchangerPairs.length === 0 ? (
+                    <p className="text-xs text-[var(--warn)]">
+                      У обменника пока нет направлений в фиде.
+                    </p>
+                  ) : (
+                    <div className="max-h-56 overflow-y-auto rounded-xl border border-line bg-input p-2">
+                      <div className="grid gap-1 sm:grid-cols-2">
+                        {exchangerPairs.map((p) => {
+                          const checked = form.pairs.includes(p.key);
+                          return (
+                            <label
+                              key={p.key}
+                              className={`flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm ${
+                                checked
+                                  ? "bg-accent-soft text-ink"
+                                  : "text-ink-muted hover:bg-bg-soft"
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => togglePair(p.key)}
+                              />
+                              <span className="tabular-nums">
+                                {p.from} → {p.to}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  {form.pairs.length > 0 ? (
+                    <p className="text-xs text-ink-muted">
+                      Выбрано: {form.pairs.length}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block space-y-1">
@@ -452,6 +615,15 @@ export function AdsModule() {
               const daily = [...(stats.daily ?? [])]
                 .sort((a, b) => b.date.localeCompare(a.date))
                 .slice(0, 14);
+              const exName =
+                exchangers.find((e) => e.id === ad.exchangerId)?.name ??
+                ad.exchangerId;
+              const pairLabel =
+                ad.type === "rates_pin"
+                  ? !(ad.pairs ?? []).length
+                    ? "везде"
+                    : `${ad.pairs.length} пар`
+                  : null;
               return (
                 <div key={ad.id} className="space-y-4 px-5 py-5">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -467,8 +639,20 @@ export function AdsModule() {
                       <p className="mt-1 text-sm text-ink">{ad.title}</p>
                       <p className="mt-1 text-xs text-ink-muted">
                         приоритет {ad.priority}
-                        {ad.exchangerId ? ` · обменник ${ad.exchangerId}` : ""}
+                        {exName ? ` · ${exName}` : ""}
+                        {pairLabel ? ` · ${pairLabel}` : ""}
                       </p>
+                      {(ad.pairs ?? []).length > 0 ? (
+                        <p className="mt-1 text-xs text-ink-muted">
+                          {(ad.pairs ?? [])
+                            .slice(0, 8)
+                            .map((k) => k.replace(":", " → "))
+                            .join(", ")}
+                          {(ad.pairs ?? []).length > 8
+                            ? `… +${(ad.pairs ?? []).length - 8}`
+                            : ""}
+                        </p>
+                      ) : null}
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <button

@@ -23,7 +23,7 @@ export const AD_PLACEMENT_HINTS: Record<AdPlacement, string> = {
   dashboard: "Главная (/), над таблицей курсов",
   footer: "Публичные страницы, внизу контента",
   exchangers: "Страница /exchangers",
-  rates: "Главная (/), закреп в таблице курсов",
+  rates: "Главная и страницы пар — закреп в таблице курсов (везде или выбранные пары)",
 };
 
 /** Рекомендуемые размеры image-баннеров */
@@ -180,4 +180,46 @@ export function formatAdPrice(price: number, currency: "RUB" = "RUB") {
 
 export function utcDayKey(d = new Date()): string {
   return d.toISOString().slice(0, 10);
+}
+
+/** Ключ пары для ads.pairs: `BTC:RUB` */
+export function adPairKey(from: string, to: string): string {
+  return `${from.trim().toUpperCase()}:${to.trim().toUpperCase()}`;
+}
+
+export function parseAdPairKey(
+  key: string,
+): { from: string; to: string } | null {
+  const raw = String(key ?? "").trim().toUpperCase();
+  const idx = raw.indexOf(":");
+  if (idx <= 0) return null;
+  const from = raw.slice(0, idx);
+  const to = raw.slice(idx + 1);
+  if (!/^[A-Z0-9]+$/.test(from) || !/^[A-Z0-9]+$/.test(to)) return null;
+  return { from, to };
+}
+
+/** Пустой список = везде; иначе только перечисленные пары. */
+export function normalizeAdPairs(raw: unknown): string[] {
+  const list = Array.isArray(raw)
+    ? raw
+    : typeof raw === "string" && raw.trim()
+      ? raw.split(/[\s,;]+/)
+      : [];
+  const keys = new Set<string>();
+  for (const item of list) {
+    const parsed = parseAdPairKey(String(item));
+    if (parsed) keys.add(adPairKey(parsed.from, parsed.to));
+  }
+  return [...keys].sort();
+}
+
+export function adMatchesPair(
+  ad: { pairs?: string[] | null },
+  from: string,
+  to: string,
+): boolean {
+  const pairs = ad.pairs ?? [];
+  if (!pairs.length) return true;
+  return pairs.includes(adPairKey(from, to));
 }

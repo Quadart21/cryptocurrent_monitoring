@@ -24,6 +24,7 @@ export async function GET(request: Request) {
       href: ad.href,
       imageUrl: ad.imageUrl,
       exchangerId: ad.exchangerId,
+      pairs: ad.pairs ?? [],
       priority: ad.priority,
     })),
   });

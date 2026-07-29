@@ -92,6 +92,13 @@
       "when": 1785283000000,
       "tag": "0012_news_sync_progress",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1785350000000,
+      "tag": "0013_ads_pairs",
+      "breakpoints": true
     }
   ]
 }
