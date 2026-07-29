@@ -1,7 +1,7 @@
 /**
  * Build outbound exchange URL for the monitoring pair.
  * Template placeholders: `{0}` = from (отдаёте), `{1}` = to (получаете).
- * Codes are BestChange tickers (ACRUB, BTC, USDTTRC20, …).
+ * Codes are feed tickers (ACRUB, BTC, USDTTRC20, …).
  * Falls back to `website` when the template is empty.
  */
 export function buildExchangeUrl(

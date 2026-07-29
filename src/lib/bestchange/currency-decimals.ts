@@ -1,4 +1,4 @@
-/** Lightweight decimals helper — no BestChange JSON in the client bundle. */
+/** Lightweight decimals helper — no catalog JSON in the client bundle. */
 export function currencyDecimals(code: string): number {
   const upper = code.toUpperCase();
   if (upper.startsWith("CASH")) return 0;

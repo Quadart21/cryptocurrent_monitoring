@@ -112,7 +112,7 @@ export function SyncModule() {
       });
       const body = (await res.json()) as DiscoveryResult & { error?: string };
       if (!res.ok) {
-        setError(body.error ?? "Проверка BestChange не удалась");
+        setError(body.error ?? "Проверка каталога не удалась");
         return;
       }
       setDiscovery(body);
@@ -201,7 +201,7 @@ export function SyncModule() {
     <div className="space-y-6">
       <AdminPageHeader
         title="Синхронизация"
-        description="XML-фиды обменников и новые коды BestChange на модерацию"
+        description="XML-фиды обменников и новые коды валют на модерацию"
       />
 
       {error && (
@@ -287,8 +287,8 @@ export function SyncModule() {
       </AdminSection>
 
       <AdminSection
-        title="Новые коды BestChange"
-        description="Опрос API раз в 12ч. Новые коды — на модерацию; после одобрения пишутся в PostgreSQL (раздел «Каталог»)"
+        title="Новые коды валют"
+        description="Опрос внешнего каталога раз в 12ч. Новые коды — на модерацию; после одобрения пишутся в PostgreSQL (раздел «Каталог»)"
       >
         <div className="space-y-4 p-5">
           <div className="flex flex-wrap items-center gap-3">
@@ -298,7 +298,7 @@ export function SyncModule() {
               onClick={() => void runDiscovery()}
               className="rounded-xl border border-line px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-accent/40 disabled:opacity-60"
             >
-              Проверить BestChange сейчас
+              Проверить каталог сейчас
             </button>
             <Link
               href={`${ADMIN_PATH}/catalog`}

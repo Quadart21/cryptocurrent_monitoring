@@ -38,7 +38,7 @@ const parser = new XMLParser({
 });
 
 /**
- * Parses BestChange-compatible export (`valuta.xml` / `<rates><item>…`).
+ * Parses monitoring XML export (`rates.xml` / `<rates><item>…`).
  * Supports classic `minamount`/`maxamount` and newer `frommin`/`frommax`.
  */
 export function parseRatesXml(xml: string): ParsedRateItem[] {

@@ -3,6 +3,7 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
 import Link from "next/link";
+import { FieldHint } from "@/components/ui/FieldHint";
 
 type ApplyResult = {
   ok?: boolean;
@@ -51,15 +52,15 @@ export function ApplyForm() {
         <Field
           label="Ссылка на обмен по паре"
           name="exchangeUrlTemplate"
-          placeholder="https://kubex.me/ru/exchange/{0}/{1}"
-          hint="{0} — код валюты «отдаёте», {1} — «получаете» (как в XML-фиде: ACRUB, BTC, USDTTRC20). При клике «Обменять» откроется направление, выбранное на мониторинге."
+          placeholder="https://example.com/exchange/{0}/{1}"
+          hint="{0} — код валюты «отдаёте», {1} — «получаете» (например BTC, USDTTRC20, SBP). При клике «Обменять» откроется направление, выбранное на мониторинге."
           required
         />
         <Field
-          label="URL XML-фида (valuta.xml)"
+          label="URL XML-фида"
           name="feedUrl"
-          placeholder="https://example.com/exports/valuta.xml"
-          hint="Формат BestChange: <rates><item><from/><to/><in/><out/><amount/>…"
+          placeholder="https://example.com/exports/rates.xml"
+          hint="Публичный XML со списком курсов: корневой тег rates, внутри item с полями from, to, in, out, amount (резерв). Опционально — minamount/maxamount или frommin/frommax (лимиты)."
           required
         />
         <Field label="Контакт" name="contact" placeholder="email@ или @telegram" required />
@@ -126,8 +127,9 @@ export function ApplyForm() {
         </label>
 
         <label className="block space-y-2">
-          <span className="text-xs font-medium uppercase tracking-[0.14em] text-ink-muted">
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.14em] text-ink-muted">
             Логотип
+            <FieldHint text="Только SVG или PNG с прозрачным фоном, до 512 КБ. После одобрения логотип появится в списке и на странице обменника." />
           </span>
           <input
             type="file"
@@ -139,10 +141,6 @@ export function ApplyForm() {
             }}
             className="block w-full text-sm text-ink file:mr-3 file:rounded-xl file:border-0 file:bg-accent/15 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-accent"
           />
-          <span className="block text-xs text-ink-muted">
-            Только SVG или PNG с прозрачным фоном, до 512 КБ. После одобрения
-            логотип появится в списке и на странице обменника.
-          </span>
           {logoName ? (
             <span className="block text-xs text-ink">Выбрано: {logoName}</span>
           ) : null}
@@ -202,8 +200,9 @@ function Field({
 }) {
   return (
     <label className="block space-y-2">
-      <span className="text-xs font-medium uppercase tracking-[0.14em] text-ink-muted">
+      <span className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.14em] text-ink-muted">
         {label}
+        {hint ? <FieldHint text={hint} /> : null}
       </span>
       <input
         name={name}
@@ -214,7 +213,6 @@ function Field({
         autoComplete={autoComplete}
         className="w-full rounded-2xl border border-line bg-input px-3 py-3 text-sm text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
       />
-      {hint && <span className="block text-xs text-ink-muted">{hint}</span>}
     </label>
   );
 }

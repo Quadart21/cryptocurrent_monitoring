@@ -24,7 +24,7 @@ function intervalMs(): number {
 }
 
 /**
- * Discover new BestChange currencies/cities/countries and queue for moderation.
+ * Discover new currencies/cities/countries and queue for moderation.
  * Live catalog is unchanged until admin approves.
  */
 export async function runCatalogDiscovery(): Promise<{

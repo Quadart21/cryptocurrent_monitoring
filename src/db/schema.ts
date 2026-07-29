@@ -51,7 +51,7 @@ export const exchangers = pgTable(
     slug: text("slug").notNull().unique(),
     name: text("name").notNull(),
     website: text("website").notNull().default(""),
-    /** Deep-link template: `{0}` = from code, `{1}` = to code (BestChange). */
+    /** Deep-link template: `{0}` = from code, `{1}` = to code. */
     exchangeUrlTemplate: text("exchange_url_template").notNull().default(""),
     feedUrl: text("feed_url").notNull().default(""),
     contact: text("contact").notNull().default(""),
@@ -180,7 +180,7 @@ export const ads = pgTable("ads", {
   exchangerId: text("exchanger_id"),
   /**
    * Pair scope for rates_pin / highlight: empty = everywhere.
-   * Keys are `FROM:TO` (uppercase BestChange codes).
+   * Keys are `FROM:TO` (uppercase currency codes).
    */
   pairs: text("pairs").array().notNull().default([]),
   active: boolean("active").notNull().default(true),
@@ -363,7 +363,7 @@ export const emailContacts = pgTable(
 );
 
 /**
- * New BestChange currencies/cities/countries awaiting admin moderation.
+ * New currency/city/country codes awaiting admin moderation.
  * Live catalog is NOT updated until status = approved.
  */
 export const catalogProposals = pgTable(
@@ -384,7 +384,7 @@ export const catalogProposals = pgTable(
   ],
 );
 
-/** Live BestChange-style catalogs — editable in admin, source of truth in DB. */
+/** Live currency catalogs — editable in admin, source of truth in DB. */
 export const bcGroups = pgTable("bc_groups", {
   id: integer("id").primaryKey(),
   name: text("name").notNull(),

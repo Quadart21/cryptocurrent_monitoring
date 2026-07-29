@@ -16,7 +16,7 @@ export type CurrencyGroupBucket<
   items: T[];
 };
 
-/** Preferred BestChange group order for selects. */
+/** Preferred currency group order for selects. */
 const GROUP_ORDER = [0, 1, 2, 3, 4, 5];
 
 export function groupCurrencyOptions<

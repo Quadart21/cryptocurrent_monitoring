@@ -11,8 +11,8 @@ export default function ApplyPage() {
           Добавить обменник
         </h1>
         <p className="mt-2 text-ink-muted">
-          Укажите публичный XML-фид BestChange (`valuta.xml`). Курсы будут
-          обновляться каждую минуту.
+          Укажите публичный XML-фид курсов. Мы будем обновлять предложения
+          каждую минуту.
         </p>
       </div>
       <ApplyForm />

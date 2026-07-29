@@ -80,7 +80,7 @@ export const seedExchanger: FeedExchanger = {
   feedUrl: "https://kubex.me/exports/valuta.xml",
   contact: "seed@gapsnap.local",
   description:
-    "Пример обменника с публичным BestChange-совместимым XML-фидом курсов.",
+    "Пример обменника с публичным XML-фидом курсов.",
   status: "active",
   verified: true,
   rating: 0,

@@ -113,7 +113,7 @@ async function knownProposalKeys(): Promise<Set<string>> {
 }
 
 /**
- * Poll BestChange API and queue NEW codes for admin moderation.
+ * Poll external catalog API and queue NEW codes for admin moderation.
  * Does NOT update the live catalog automatically.
  */
 export async function discoverCatalogProposals(): Promise<{

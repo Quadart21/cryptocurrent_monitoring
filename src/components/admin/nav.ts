@@ -78,6 +78,6 @@ export const ADMIN_NAV: AdminNavItem[] = [
     id: "sync",
     href: `${ADMIN_PATH}/sync`,
     label: "Синхронизация",
-    description: "Фиды и новые коды BestChange",
+    description: "Фиды и новые коды валют",
   },
 ];

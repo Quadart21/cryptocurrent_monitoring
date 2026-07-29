@@ -72,7 +72,7 @@ export async function fetchFeedXml(feedUrl: string): Promise<string> {
 
   const text = buf.toString("utf8");
   if (!text.includes("<") || !/<rates[\s>]/i.test(text)) {
-    throw new Error("Ответ не похож на BestChange XML (<rates>)");
+    throw new Error("Ответ не похож на XML-фид курсов (нужен корневой тег rates)");
   }
 
   return text;

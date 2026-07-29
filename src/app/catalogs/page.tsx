@@ -8,7 +8,7 @@ import {
 } from "@/lib/bestchange/catalog";
 import { ensureCatalogsHydrated } from "@/lib/bestchange/catalog-store";
 
-export const metadata: Metadata = { title: "Справочники BestChange" };
+export const metadata: Metadata = { title: "Справочники валют" };
 export const dynamic = "force-dynamic";
 
 export default async function CatalogsPage() {
@@ -23,10 +23,10 @@ export default async function CatalogsPage() {
     <div className="space-y-8">
       <div>
         <h1 className="font-display text-3xl font-semibold text-ink">
-          Справочники BestChange
+          Справочники валют
         </h1>
         <p className="mt-2 max-w-2xl text-ink-muted">
-          XML-коды валют, города и страны. Обновлено:{" "}
+          Коды валют, города и страны для XML-фидов. Обновлено:{" "}
           {new Date(meta.fetchedAt).toLocaleString("ru-RU")}. Валют:{" "}
           {meta.counts.currencies}, городов: {meta.counts.cities}, стран:{" "}
           {meta.counts.countries}.

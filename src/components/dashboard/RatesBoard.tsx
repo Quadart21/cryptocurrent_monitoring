@@ -44,7 +44,7 @@ export function RatesBoard({
   offers: LiveOffer[];
   from: string;
   to: string;
-  /** Used to show currency names instead of BestChange codes. */
+  /** Used to show currency names instead of raw feed codes. */
   currencies?: Array<{ code: string; name: string }>;
   loading?: boolean;
   cityLabel?: string;
