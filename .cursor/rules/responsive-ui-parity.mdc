@@ -1,0 +1,13 @@
+---
+description: Apply UI changes to both mobile and desktop at once
+alwaysApply: true
+---
+
+# Responsive UI parity
+
+When changing public UI (layouts, tables, cards, nav, ads, forms):
+
+1. **Always update mobile and desktop together** in the same change — never ship a fix or redesign for only one breakpoint.
+2. **Typical split in this project**: `md:hidden` (mobile cards) vs `hidden md:block` (desktop table) in components like `RatesBoard.tsx`; `MobileBottomNav` vs `Topbar`/`SITE_NAV`.
+3. **Before finishing**, verify both code paths reflect the same logic, labels, columns, and actions (adapted to each form factor — not identical markup, but equivalent behavior).
+4. If removing or adding a control (button, column, link), apply the equivalent on both breakpoints in the same PR.
