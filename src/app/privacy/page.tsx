@@ -19,7 +19,7 @@ export default function PrivacyPage() {
       <h1 className="font-display text-3xl font-semibold text-ink">
         Политика конфиденциальности
       </h1>
-      <p className="text-sm text-ink-muted">Редакция от 28 июля 2026 г.</p>
+      <p className="text-sm text-ink-muted">Редакция от 29 июля 2026 г.</p>
       <div className="space-y-4 text-sm leading-relaxed text-ink-muted">
         <p>
           GapSnap («мы») — сервис мониторинга курсов обменников. Мы не проводим
@@ -32,6 +32,9 @@ export default function PrivacyPage() {
           <li>Email при подтверждении отзыва или заявке обменника</li>
           <li>Технические логи (IP, User-Agent) для безопасности</li>
           <li>Cookies для сессии админки/кабинета и темы оформления</li>
+          <li>
+            При входе в кабинет — проверка Cloudflare Turnstile (защита от ботов)
+          </li>
           <li>Анонимная аналитика (если подключена Метрика/GA4)</li>
         </ul>
         <h2 className="font-display text-lg font-semibold text-ink">
@@ -46,7 +49,8 @@ export default function PrivacyPage() {
         </h2>
         <p>
           Данные не продаём. Могут обрабатываться хостинг-провайдером и сервисами
-          почты/аналитики по вашему поручению конфигурации.
+          почты/аналитики по вашему поручению конфигурации. Для защиты входа в
+          кабинет используется Cloudflare Turnstile.
         </p>
         <h2 className="font-display text-lg font-semibold text-ink">
           Контакты

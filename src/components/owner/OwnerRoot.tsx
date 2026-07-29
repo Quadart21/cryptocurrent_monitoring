@@ -9,8 +9,12 @@ function OwnerGate() {
 
   if (checking) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-ink-muted">
-        Загрузка…
+      <div className="relative flex min-h-screen items-center justify-center overflow-hidden">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -left-20 top-10 size-72 rounded-full bg-[radial-gradient(circle_at_center,rgba(124,58,237,0.28),transparent_70%)] blur-2xl"
+        />
+        <p className="relative text-sm text-ink-muted">Загрузка кабинета…</p>
       </div>
     );
   }

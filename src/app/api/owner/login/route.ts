@@ -16,6 +16,7 @@ import {
   setOwnerCredentials,
 } from "@/lib/store";
 import { verifyTotpCode } from "@/lib/totp";
+import { verifyTurnstileToken } from "@/lib/turnstile";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,11 +28,25 @@ export async function POST(request: Request) {
   const limited = rateLimit(`owner-login:${clientIp(request)}`, 8, 60_000);
   if (!limited.ok) return rateLimitedResponse(limited.retryAfterSec);
 
-  let body: { login?: string; password?: string; totpCode?: string };
+  let body: {
+    login?: string;
+    password?: string;
+    totpCode?: string;
+    turnstileToken?: string;
+  };
   try {
     body = (await request.json()) as typeof body;
   } catch {
     return NextResponse.json({ error: "Некорректный запрос" }, { status: 400 });
+  }
+
+  const captcha = await verifyTurnstileToken({
+    token: body.turnstileToken,
+    request,
+    expectedAction: "owner-login",
+  });
+  if (!captcha.ok) {
+    return NextResponse.json({ error: captcha.error }, { status: 403 });
   }
 
   const login = String(body.login ?? "").trim().toLowerCase();

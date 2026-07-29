@@ -72,6 +72,7 @@ type OwnerContextValue = {
     login: string,
     password: string,
     totpCode?: string,
+    turnstileToken?: string,
   ) => Promise<{ error: string; needsTotp?: boolean } | null>;
   logout: () => Promise<void>;
 };
@@ -111,7 +112,12 @@ export function OwnerProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const login = useCallback(
-    async (loginValue: string, password: string, totpCode?: string) => {
+    async (
+      loginValue: string,
+      password: string,
+      totpCode?: string,
+      turnstileToken?: string,
+    ) => {
       setBusy(true);
       try {
         const res = await fetch("/api/owner/login", {
@@ -121,6 +127,7 @@ export function OwnerProvider({ children }: { children: ReactNode }) {
             login: loginValue,
             password,
             totpCode,
+            turnstileToken,
           }),
         });
         const body = (await res.json()) as {
