@@ -15,7 +15,11 @@ export type SmtpBzSendInput = {
 };
 
 function requireApiKey(): string {
-  const apiKey = process.env.SMTPBZ_API_KEY?.trim();
+  let apiKey = process.env.SMTPBZ_API_KEY?.trim() || "";
+  // People often paste "Bearer …" from docs — smtp.bz wants the raw key only.
+  if (/^bearer\s+/i.test(apiKey)) {
+    apiKey = apiKey.replace(/^bearer\s+/i, "").trim();
+  }
   if (!apiKey) throw new Error("SMTPBZ_API_KEY не задан");
   return apiKey;
 }
