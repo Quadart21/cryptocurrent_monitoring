@@ -17,7 +17,7 @@ export function MobileBottomNav() {
       }}
     >
       <ul
-        className="mx-auto grid max-w-[1400px] grid-cols-5"
+        className="mx-auto grid max-w-[1400px] grid-cols-4"
         style={{ height: "var(--mobile-nav-h)" }}
       >
         {MOBILE_TAB_NAV.map((item) => {

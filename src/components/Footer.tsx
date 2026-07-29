@@ -16,7 +16,6 @@ export function Footer() {
           <FooterCol
             title="Сервис"
             links={[
-              { href: "/rates", label: "Курсы" },
               { href: "/exchangers", label: "Обменники" },
               { href: "/blog", label: "Новости" },
               { href: "/blacklist", label: "Чёрный список" },

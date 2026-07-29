@@ -117,7 +117,6 @@ export default async function RatePairPage({ params }: Props) {
 
   const crumbs = [
     { name: "Главная", path: "/" },
-    { name: "Курсы", path: "/rates" },
     { name: `${fromL} → ${toL}`, path },
   ];
 
@@ -157,7 +156,6 @@ export default async function RatePairPage({ params }: Props) {
       <Breadcrumbs
         items={[
           { href: "/", label: "Главная" },
-          { href: "/rates", label: "Курсы" },
           { label: `${fromL} → ${toL}` },
         ]}
       />
