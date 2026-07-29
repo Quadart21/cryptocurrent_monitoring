@@ -364,11 +364,11 @@ export function RatesBoard({
                               alt=""
                               width={40}
                               height={40}
-                              className="size-10 rounded-2xl bg-bg-soft object-contain"
+                              className="size-10 shrink-0 flex-none rounded-2xl bg-bg-soft object-contain"
                               loading="lazy"
                             />
                           ) : (
-                            <div className="flex size-10 items-center justify-center rounded-xl bg-accent text-xs font-bold text-white">
+                            <div className="flex size-10 shrink-0 flex-none items-center justify-center rounded-xl bg-accent text-xs font-bold text-white">
                               {name.slice(0, 1)}
                             </div>
                           )}

@@ -81,7 +81,7 @@ export default async function ExchangersPage() {
                   logo={ex.logo}
                   size={44}
                 />
-                <div>
+                <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <p className="font-semibold text-ink">{ex.name}</p>
                     <AchievementBadges achievements={badges} size={16} />

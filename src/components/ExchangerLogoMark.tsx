@@ -25,16 +25,26 @@ export function ExchangerLogoMark({
         alt=""
         width={size}
         height={size}
-        className={`rounded-2xl object-contain bg-bg-soft ${className}`}
-        style={{ width: size, height: size }}
+        className={`shrink-0 flex-none rounded-2xl object-contain bg-bg-soft ${className}`}
+        style={{
+          width: size,
+          height: size,
+          minWidth: size,
+          minHeight: size,
+        }}
       />
     );
   }
 
   return (
     <div
-      className={`flex items-center justify-center rounded-xl bg-accent text-sm font-bold text-white ${className}`}
-      style={{ width: size, height: size }}
+      className={`flex shrink-0 flex-none items-center justify-center rounded-xl bg-accent text-sm font-bold text-white ${className}`}
+      style={{
+        width: size,
+        height: size,
+        minWidth: size,
+        minHeight: size,
+      }}
       aria-hidden
     >
       {letter}
