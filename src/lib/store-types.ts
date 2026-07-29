@@ -130,6 +130,9 @@ export type AdType = "banner" | "ticker" | "highlight" | "rates_pin";
  * - header: полоса под топбаром (весь сайт)
  * - ticker: бегущая строка под топбаром
  * - dashboard: баннер над таблицей курсов
+ * - home_mid: баннер на главной между курсами и новостями
+ * - pair_after: баннер на странице пары после таблицы курсов
+ * - exchanger_page: баннер на карточке обменника
  * - footer: баннер внизу контента
  * - exchangers: подсветка в списке обменников
  * - rates: закрепление в таблице курсов
@@ -138,6 +141,9 @@ export type AdPlacement =
   | "header"
   | "ticker"
   | "dashboard"
+  | "home_mid"
+  | "pair_after"
+  | "exchanger_page"
   | "footer"
   | "exchangers"
   | "rates";

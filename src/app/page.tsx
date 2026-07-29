@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { Dashboard } from "@/components/dashboard/Dashboard";
+import { HomeMidAdSlot } from "@/components/ads/SiteAds";
 import { HomeNewsStrip } from "@/components/home/HomeNewsStrip";
 import { SeoContentBlocks } from "@/components/seo/SeoContentBlocks";
 import { PageSkeleton } from "@/components/shell/PageSkeleton";
@@ -58,6 +59,8 @@ export default async function HomePage({ searchParams }: Props) {
           initialOffers={rates.offers}
         />
       </Suspense>
+
+      <HomeMidAdSlot />
 
       <HomeNewsStrip posts={posts.slice(0, 4)} />
 

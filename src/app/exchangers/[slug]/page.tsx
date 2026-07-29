@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { AchievementBadges } from "@/components/AchievementBadges";
+import { ExchangerPageAdSlot } from "@/components/ads/SiteAds";
 import { ExchangerLogoMark } from "@/components/ExchangerLogoMark";
 import {
   ExchangerOutboundLink,
@@ -215,6 +216,8 @@ export default async function ExchangerPage({ params }: Props) {
           siteName: seo.siteName || "GapSnap",
         })}
       />
+
+      <ExchangerPageAdSlot />
 
       <ExchangerReviews
         exchangerId={ex.id}

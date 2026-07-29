@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { PairAfterAdSlot } from "@/components/ads/SiteAds";
 import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { ShareButtons } from "@/components/seo/ShareButtons";
@@ -182,6 +183,8 @@ export default async function RatePairPage({ params }: Props) {
         initialOffers={rates.offers}
         recentReviews={recentReviews}
       />
+
+      <PairAfterAdSlot />
 
       <section className="card space-y-4 p-5">
         <h2 className="font-display text-xl font-semibold text-ink">FAQ</h2>

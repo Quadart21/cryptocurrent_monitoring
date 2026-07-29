@@ -243,6 +243,66 @@ export const seedAdTariffs: AdTariff[] = [
     updatedAt: SEED_AT,
   },
   {
+    id: "tar_home_mid",
+    placement: "home_mid",
+    type: "banner",
+    title: "Баннер между курсами и новостями",
+    description:
+      "Баннер на главной после таблицы курсов — второй контакт, когда пользователь уже смотрел предложения.",
+    sizeLabel: "1200×120",
+    price: 28000,
+    period: "week",
+    currency: "RUB",
+    features: [
+      "Только главная",
+      "После таблицы курсов",
+      "Статистика CTR",
+    ],
+    active: true,
+    sortOrder: 25,
+    updatedAt: SEED_AT,
+  },
+  {
+    id: "tar_pair_after",
+    placement: "pair_after",
+    type: "banner",
+    title: "Баннер на странице пары",
+    description:
+      "Баннер на SEO-страницах направлений после таблицы курсов, до FAQ.",
+    sizeLabel: "1200×90",
+    price: 22000,
+    period: "week",
+    currency: "RUB",
+    features: [
+      "Страницы /rates/…",
+      "Целевой трафик по направлению",
+      "Статистика CTR",
+    ],
+    active: true,
+    sortOrder: 28,
+    updatedAt: SEED_AT,
+  },
+  {
+    id: "tar_exchanger_page",
+    placement: "exchanger_page",
+    type: "banner",
+    title: "Баннер на карточке обменника",
+    description:
+      "Баннер на странице обменника между описанием и отзывами.",
+    sizeLabel: "1200×90",
+    price: 20000,
+    period: "week",
+    currency: "RUB",
+    features: [
+      "Страницы /exchangers/…",
+      "Аудитория, сравнивающая обменники",
+      "Статистика CTR",
+    ],
+    active: true,
+    sortOrder: 29,
+    updatedAt: SEED_AT,
+  },
+  {
     id: "tar_footer",
     placement: "footer",
     type: "banner",
@@ -314,6 +374,30 @@ export const seedAdTariffs: AdTariff[] = [
   },
 ];
 
+/** Insert any seed tariffs that are missing (safe for already-seeded DBs). */
+export async function ensureMissingAdTariffs(db: Db): Promise<void> {
+  if (!seedAdTariffs.length) return;
+  await db
+    .insert(adTariffs)
+    .values(
+      seedAdTariffs.map((t) => ({
+        id: t.id,
+        placement: t.placement,
+        type: t.type,
+        title: t.title,
+        description: t.description,
+        sizeLabel: t.sizeLabel,
+        price: t.price,
+        period: t.period,
+        currency: t.currency,
+        features: t.features,
+        active: t.active,
+        sortOrder: t.sortOrder,
+        updatedAt: t.updatedAt,
+      })),
+    )
+    .onConflictDoNothing({ target: adTariffs.id });
+}
 export async function ensureSeeded(db: Db): Promise<void> {
   const [meta] = await db.select().from(appMeta).where(eq(appMeta.id, 1)).limit(1);
   if (meta?.seededAt) return;

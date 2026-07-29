@@ -11,6 +11,9 @@ export const AD_PLACEMENT_LABELS: Record<AdPlacement, string> = {
   header: "Под шапкой (весь сайт)",
   ticker: "Бегущая строка",
   dashboard: "Над таблицей курсов",
+  home_mid: "Главная — между курсами и новостями",
+  pair_after: "Страница пары — после курсов",
+  exchanger_page: "Карточка обменника",
   footer: "Низ страницы",
   exchangers: "Список обменников",
   rates: "Таблица курсов",
@@ -21,6 +24,9 @@ export const AD_PLACEMENT_HINTS: Record<AdPlacement, string> = {
   header: "Публичные страницы, сразу под топбаром",
   ticker: "Публичные страницы, полоса под топбаром (в админке не видно)",
   dashboard: "Главная (/), над таблицей курсов",
+  home_mid: "Главная (/), между таблицей курсов и блоком новостей",
+  pair_after: "Страницы /rates/…, после таблицы курсов, до FAQ",
+  exchanger_page: "Страницы /exchangers/…, между SEO-блоками и отзывами",
   footer: "Публичные страницы, внизу контента",
   exchangers: "Страница /exchangers",
   rates: "Главная и страницы пар — закреп в таблице курсов (везде или выбранные пары)",
@@ -53,6 +59,27 @@ export const BANNER_SPECS: Partial<
     aspectClass: "aspect-[1200/120]",
     maxHeightClass: "max-h-[120px]",
   },
+  home_mid: {
+    sizeLabel: "1200×120",
+    width: 1200,
+    height: 120,
+    aspectClass: "aspect-[1200/120]",
+    maxHeightClass: "max-h-[120px]",
+  },
+  pair_after: {
+    sizeLabel: "1200×90",
+    width: 1200,
+    height: 90,
+    aspectClass: "aspect-[1200/90]",
+    maxHeightClass: "max-h-[90px]",
+  },
+  exchanger_page: {
+    sizeLabel: "1200×90",
+    width: 1200,
+    height: 90,
+    aspectClass: "aspect-[1200/90]",
+    maxHeightClass: "max-h-[90px]",
+  },
   footer: {
     sizeLabel: "970×250",
     width: 970,
@@ -64,7 +91,14 @@ export const BANNER_SPECS: Partial<
 
 /** Какие placement допустимы для типа */
 export const AD_TYPE_PLACEMENTS: Record<AdType, AdPlacement[]> = {
-  banner: ["header", "dashboard", "footer"],
+  banner: [
+    "header",
+    "dashboard",
+    "home_mid",
+    "pair_after",
+    "exchanger_page",
+    "footer",
+  ],
   ticker: ["ticker"],
   highlight: ["exchangers"],
   rates_pin: ["rates"],

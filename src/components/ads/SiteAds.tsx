@@ -68,3 +68,21 @@ export function DashboardAdSlot() {
   if (!ads.length) return null;
   return <AdBannerSlot ads={ads} />;
 }
+
+export function HomeMidAdSlot() {
+  const ads = useAds("home_mid");
+  if (!ads.length) return null;
+  return <AdBannerSlot ads={ads} />;
+}
+
+export function PairAfterAdSlot() {
+  const ads = useAds("pair_after");
+  if (!ads.length) return null;
+  return <AdBannerSlot ads={ads} />;
+}
+
+export function ExchangerPageAdSlot() {
+  const ads = useAds("exchanger_page");
+  if (!ads.length) return null;
+  return <AdBannerSlot ads={ads} />;
+}
