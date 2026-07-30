@@ -209,69 +209,6 @@ export function OverviewModule() {
           </Link>
         </div>
       </AdminSection>
-
-      <AdminSection title="Разделы по группам">
-        <div className="space-y-5 p-5">
-          {[
-            {
-              label: "Модерация",
-              links: [
-                ["Обменники", `${ADMIN_PATH}/exchangers`],
-                ["Отзывы", `${ADMIN_PATH}/reviews`],
-                ["Чёрный список", `${ADMIN_PATH}/blacklist`],
-                ["Баннеры", `${ADMIN_PATH}/banners`],
-              ],
-            },
-            {
-              label: "Контент",
-              links: [
-                ["Новости", `${ADMIN_PATH}/blog`],
-                ["Качества", `${ADMIN_PATH}/qualities`],
-                ["Ачивки", `${ADMIN_PATH}/achievements`],
-              ],
-            },
-            {
-              label: "Реклама",
-              links: [
-                ["Креативы", `${ADMIN_PATH}/ads`],
-                ["Тарифы", `${ADMIN_PATH}/ad-tariffs`],
-              ],
-            },
-            {
-              label: "Сайт",
-              links: [
-                ["SEO", `${ADMIN_PATH}/seo`],
-                ["Правовые", `${ADMIN_PATH}/legal`],
-                ["Email", `${ADMIN_PATH}/email`],
-              ],
-            },
-            {
-              label: "Данные",
-              links: [
-                ["Каталог", `${ADMIN_PATH}/catalog`],
-                ["Синхронизация", `${ADMIN_PATH}/sync`],
-              ],
-            },
-          ].map((group) => (
-            <div key={group.label}>
-              <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-muted">
-                {group.label}
-              </p>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {group.links.map(([label, href]) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    className="rounded-xl border border-line px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-accent hover:bg-accent-soft"
-                  >
-                    {label}
-                  </Link>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </AdminSection>
     </div>
   );
 }

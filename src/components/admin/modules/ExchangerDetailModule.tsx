@@ -17,8 +17,18 @@ import { useAdmin } from "@/components/admin/AdminProvider";
 import {
   AdminPageHeader,
   AdminSection,
+  AdminTabBar,
   StatusPill,
 } from "@/components/admin/ui";
+
+type DetailTab =
+  | "overview"
+  | "edit"
+  | "banner"
+  | "cabinet"
+  | "achievements"
+  | "traffic"
+  | "reviews";
 
 type EditForm = {
   name: string;
@@ -65,6 +75,7 @@ export function ExchangerDetailModule() {
   const [ownerError, setOwnerError] = useState<string | null>(null);
   const [ownerOk, setOwnerOk] = useState(false);
   const [bannerMsg, setBannerMsg] = useState<string | null>(null);
+  const [tab, setTab] = useState<DetailTab>("overview");
 
   useEffect(() => {
     if (ex) {
@@ -365,6 +376,25 @@ export function ExchangerDetailModule() {
         description={`Карточка обменника · ${ex.slug}`}
       />
 
+      <AdminTabBar
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { id: "overview", label: "Обзор" },
+          { id: "edit", label: "Редактирование" },
+          { id: "banner", label: "Баннер" },
+          { id: "cabinet", label: "Кабинет" },
+          { id: "achievements", label: "Ачивки" },
+          { id: "traffic", label: "Трафик" },
+          {
+            id: "reviews",
+            label: "Отзывы",
+            badge: reviews.filter((r) => r.status === "pending").length,
+          },
+        ]}
+      />
+
+      {tab === "banner" ? (
       <AdminSection
         title="Баннер GapSnap"
         description="Маленькая кнопка 88×31 на сайте обменника. Проверка раз в сутки."
@@ -465,7 +495,9 @@ export function ExchangerDetailModule() {
           ) : null}
         </div>
       </AdminSection>
+      ) : null}
 
+      {tab === "overview" ? (
       <div className="card p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-4">
@@ -604,7 +636,9 @@ export function ExchangerDetailModule() {
           ))}
         </dl>
       </div>
+      ) : null}
 
+      {tab === "edit" ? (
       <AdminSection title="Редактирование">
         <form onSubmit={(ev) => void saveEdit(ev)} className="space-y-4 p-5">
           <div className="grid gap-3 sm:grid-cols-2">
@@ -726,7 +760,9 @@ export function ExchangerDetailModule() {
           </button>
         </form>
       </AdminSection>
+      ) : null}
 
+      {tab === "cabinet" ? (
       <AdminSection title="Кабинет владельца">
         <form
           onSubmit={(ev) => void saveOwnerCredentials(ev)}
@@ -776,9 +812,14 @@ export function ExchangerDetailModule() {
           </button>
         </form>
       </AdminSection>
+      ) : null}
 
-      {achievements.length > 0 && (
+      {tab === "achievements" ? (
         <AdminSection title="Ачивки">
+          {achievements.length === 0 ? (
+            <p className="px-5 py-6 text-sm text-ink-muted">Ачивок пока нет</p>
+          ) : null}
+          {achievements.length > 0 ? (
           <div className="space-y-4 p-5">
             {achievements.some((a) => (a.mode ?? "manual") === "manual") && (
               <div>
@@ -850,9 +891,11 @@ export function ExchangerDetailModule() {
               </div>
             )}
           </div>
+          ) : null}
         </AdminSection>
-      )}
+      ) : null}
 
+      {tab === "traffic" ? (
       <AdminSection title="Трафик страницы">
         <div className="overflow-x-auto p-5">
           <table className="min-w-full text-left text-xs">
@@ -891,13 +934,15 @@ export function ExchangerDetailModule() {
           </table>
         </div>
       </AdminSection>
+      ) : null}
 
+      {tab === "reviews" ? (
       <AdminSection title={`Отзывы (${reviews.length})`}>
         <div className="divide-y divide-line">
           {reviews.length === 0 ? (
             <p className="px-5 py-6 text-sm text-ink-muted">Отзывов нет</p>
           ) : (
-            reviews.slice(0, 20).map((r) => (
+            reviews.map((r) => (
               <div key={r.id} className="px-5 py-3 text-sm">
                 <div className="flex flex-wrap items-center gap-2">
                   <StatusPill status={r.status} />
@@ -912,6 +957,7 @@ export function ExchangerDetailModule() {
           )}
         </div>
       </AdminSection>
+      ) : null}
     </div>
   );
 }

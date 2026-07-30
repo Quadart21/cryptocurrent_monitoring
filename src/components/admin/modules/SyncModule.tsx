@@ -1,14 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAdmin } from "@/components/admin/AdminProvider";
 import {
   AdminPageHeader,
+  AdminPagination,
   AdminSection,
   AdminStatGrid,
+  AdminTabBar,
 } from "@/components/admin/ui";
 import { ADMIN_PATH } from "@/lib/admin-auth";
+
+type TabId = "feeds" | "codes" | "targets";
 
 type FeedSyncResult = {
   action?: string;
@@ -42,9 +46,13 @@ const KIND_LABEL: Record<string, string> = {
   country: "Страна",
 };
 
+const TARGETS_PAGE_SIZE = 40;
+
 export function SyncModule() {
   const { overview, counts, lastGlobalSyncAt, busy, setBusy, refresh } =
     useAdmin();
+  const [tab, setTab] = useState<TabId>("feeds");
+  const [targetsPage, setTargetsPage] = useState(1);
   const [feedResult, setFeedResult] = useState<FeedSyncResult | null>(null);
   const [discovery, setDiscovery] = useState<DiscoveryResult | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>([]);
@@ -150,6 +158,11 @@ export function SyncModule() {
     (e) => e.status === "active" || e.status === "error",
   );
 
+  const pagedTargets = useMemo(() => {
+    const start = (targetsPage - 1) * TARGETS_PAGE_SIZE;
+    return active.slice(start, start + TARGETS_PAGE_SIZE);
+  }, [active, targetsPage]);
+
   return (
     <div className="space-y-6">
       <AdminPageHeader
@@ -168,161 +181,183 @@ export function SyncModule() {
         </p>
       )}
 
-      <AdminSection title="XML-фиды" description="Автоопрос каждую минуту">
-        <div className="space-y-4 p-5">
-          <AdminStatGrid
-            items={[
-              {
-                label: "Последняя синхронизация",
-                value: lastGlobalSyncAt
-                  ? new Date(lastGlobalSyncAt).toLocaleString("ru-RU")
-                  : "—",
-              },
-              { label: "Курсов в базе", value: counts?.rates ?? 0 },
-              { label: "Целей", value: active.length },
-              { label: "Ошибки", value: counts?.error ?? 0, tone: "warn" },
-            ]}
-          />
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void runFeedSync()}
-            className="btn-primary rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-60"
-          >
-            Синхронизировать фиды
-          </button>
-          {feedResult && (
-            <p className="text-sm text-ink-muted">
-              Результат: {feedResult.ok}/{feedResult.total} успешно
-              {feedResult.failed ? `, ошибок ${feedResult.failed}` : ""} ·{" "}
-              {new Date(feedResult.syncedAt).toLocaleString("ru-RU")}
-            </p>
-          )}
-        </div>
-      </AdminSection>
+      <AdminTabBar
+        tabs={[
+          { id: "feeds", label: "Фиды" },
+          { id: "codes", label: "Новые коды", badge: proposals.length },
+          { id: "targets", label: "Цели", badge: active.length },
+        ]}
+        value={tab}
+        onChange={setTab}
+      />
 
-      <AdminSection
-        title="Новые коды валют"
-        description="Опрос внешнего каталога раз в 12ч. Новые коды — на модерацию; после одобрения пишутся в PostgreSQL (раздел «Каталог»)"
-      >
-        <div className="space-y-4 p-5">
-          <div className="flex flex-wrap items-center gap-3">
+      {tab === "feeds" ? (
+        <AdminSection title="XML-фиды" description="Автоопрос каждую минуту">
+          <div className="space-y-4 p-5">
+            <AdminStatGrid
+              items={[
+                {
+                  label: "Последняя синхронизация",
+                  value: lastGlobalSyncAt
+                    ? new Date(lastGlobalSyncAt).toLocaleString("ru-RU")
+                    : "—",
+                },
+                { label: "Курсов в базе", value: counts?.rates ?? 0 },
+                { label: "Целей", value: active.length },
+                { label: "Ошибки", value: counts?.error ?? 0, tone: "warn" },
+              ]}
+            />
             <button
               type="button"
               disabled={busy}
-              onClick={() => void runDiscovery()}
-              className="rounded-xl border border-line px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-accent/40 disabled:opacity-60"
+              onClick={() => void runFeedSync()}
+              className="btn-primary rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-60"
             >
-              Проверить каталог сейчас
+              Синхронизировать фиды
             </button>
-            <Link
-              href={`${ADMIN_PATH}/catalog`}
-              className="rounded-xl border border-line px-4 py-2.5 text-sm font-semibold text-ink-muted transition hover:border-accent/40 hover:text-ink"
-            >
-              Открыть каталог в БД →
-            </Link>
-            <p className="text-sm text-ink-muted">
-              В очереди:{" "}
-              <strong className="text-ink">{proposals.length}</strong>
-              {discovery
-                ? ` · последний опрос ${new Date(discovery.fetchedAt).toLocaleString("ru-RU")}`
-                : ""}
-            </p>
+            {feedResult && (
+              <p className="text-sm text-ink-muted">
+                Результат: {feedResult.ok}/{feedResult.total} успешно
+                {feedResult.failed ? `, ошибок ${feedResult.failed}` : ""} ·{" "}
+                {new Date(feedResult.syncedAt).toLocaleString("ru-RU")}
+              </p>
+            )}
           </div>
+        </AdminSection>
+      ) : null}
 
-          {proposals.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-line px-4 py-8 text-center text-sm text-ink-muted">
-              Новых кодов на модерации нет
-            </p>
-          ) : (
-            <div className="divide-y divide-line overflow-hidden rounded-2xl border border-line">
-              {proposals.map((p) => (
+      {tab === "codes" ? (
+        <AdminSection
+          title="Новые коды валют"
+          description="Опрос внешнего каталога раз в 12ч. Новые коды — на модерацию; после одобрения пишутся в PostgreSQL (раздел «Каталог»)"
+        >
+          <div className="space-y-4 p-5">
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void runDiscovery()}
+                className="rounded-xl border border-line px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-accent/40 disabled:opacity-60"
+              >
+                Проверить каталог сейчас
+              </button>
+              <Link
+                href={`${ADMIN_PATH}/catalog`}
+                className="rounded-xl border border-line px-4 py-2.5 text-sm font-semibold text-ink-muted transition hover:border-accent/40 hover:text-ink"
+              >
+                Открыть каталог в БД →
+              </Link>
+              <p className="text-sm text-ink-muted">
+                В очереди:{" "}
+                <strong className="text-ink">{proposals.length}</strong>
+                {discovery
+                  ? ` · последний опрос ${new Date(discovery.fetchedAt).toLocaleString("ru-RU")}`
+                  : ""}
+              </p>
+            </div>
+
+            {proposals.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-line px-4 py-8 text-center text-sm text-ink-muted">
+                Новых кодов на модерации нет
+              </p>
+            ) : (
+              <div className="divide-y divide-line overflow-hidden rounded-2xl border border-line">
+                {proposals.map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-md bg-bg-soft px-2 py-0.5 text-[11px] font-semibold text-ink-muted">
+                          {KIND_LABEL[p.kind] ?? p.kind}
+                        </span>
+                        <code className="text-sm font-semibold text-accent">
+                          {p.code}
+                        </code>
+                      </div>
+                      <p className="mt-1 text-sm text-ink">{p.name}</p>
+                      <p className="mt-0.5 text-xs text-ink-muted">
+                        Найдено{" "}
+                        {new Date(p.discoveredAt).toLocaleString("ru-RU")}
+                        {p.kind === "city" && p.payload.countryName
+                          ? ` · ${String(p.payload.countryName)}`
+                          : ""}
+                        {p.kind === "currency" && p.payload.cash
+                          ? " · наличные"
+                          : ""}
+                        {p.kind === "currency" && p.payload.crypto
+                          ? " · крипта"
+                          : ""}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 gap-2">
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void moderate(p.id, "rejected")}
+                        className="rounded-xl border border-line px-3 py-2 text-xs font-semibold text-ink-muted hover:text-danger disabled:opacity-60"
+                      >
+                        Отклонить
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void moderate(p.id, "approved")}
+                        className="btn-primary rounded-xl px-3 py-2 text-xs font-semibold disabled:opacity-60"
+                      >
+                        Добавить в каталог
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </AdminSection>
+      ) : null}
+
+      {tab === "targets" ? (
+        <AdminSection
+          title="Обменники в синхронизации"
+          description="Активные и с ошибкой опрашиваются автоматически"
+        >
+          <div className="divide-y divide-line">
+            {active.length === 0 ? (
+              <p className="px-5 py-6 text-sm text-ink-muted">Нет целей</p>
+            ) : (
+              pagedTargets.map((ex) => (
                 <div
-                  key={p.id}
-                  className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+                  key={ex.id}
+                  className="flex flex-col gap-1 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-md bg-bg-soft px-2 py-0.5 text-[11px] font-semibold text-ink-muted">
-                        {KIND_LABEL[p.kind] ?? p.kind}
-                      </span>
-                      <code className="text-sm font-semibold text-accent">
-                        {p.code}
-                      </code>
-                    </div>
-                    <p className="mt-1 text-sm text-ink">{p.name}</p>
-                    <p className="mt-0.5 text-xs text-ink-muted">
-                      Найдено{" "}
-                      {new Date(p.discoveredAt).toLocaleString("ru-RU")}
-                      {p.kind === "city" && p.payload.countryName
-                        ? ` · ${String(p.payload.countryName)}`
-                        : ""}
-                      {p.kind === "currency" && p.payload.cash
-                        ? " · наличные"
-                        : ""}
-                      {p.kind === "currency" && p.payload.crypto
-                        ? " · крипта"
-                        : ""}
-                    </p>
+                    <p className="font-semibold">{ex.name}</p>
+                    <p className="truncate text-xs text-ink-muted">{ex.feedUrl}</p>
                   </div>
-                  <div className="flex shrink-0 gap-2">
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => void moderate(p.id, "rejected")}
-                      className="rounded-xl border border-line px-3 py-2 text-xs font-semibold text-ink-muted hover:text-danger disabled:opacity-60"
-                    >
-                      Отклонить
-                    </button>
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => void moderate(p.id, "approved")}
-                      className="btn-primary rounded-xl px-3 py-2 text-xs font-semibold disabled:opacity-60"
-                    >
-                      Добавить в каталог
-                    </button>
+                  <div className="text-xs text-ink-muted">
+                    {ex.status === "active"
+                      ? "Активен"
+                      : ex.status === "error"
+                        ? "Ошибка"
+                        : ex.status}
+                    {ex.lastSyncAt
+                      ? ` · ${new Date(ex.lastSyncAt).toLocaleString("ru-RU")}`
+                      : ""}
+                    {ex.lastError ? ` · ${ex.lastError}` : ""}
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </AdminSection>
-
-      <AdminSection
-        title="Обменники в синхронизации"
-        description="Активные и с ошибкой опрашиваются автоматически"
-      >
-        <div className="divide-y divide-line">
-          {active.length === 0 ? (
-            <p className="px-5 py-6 text-sm text-ink-muted">Нет целей</p>
-          ) : (
-            active.map((ex) => (
-              <div
-                key={ex.id}
-                className="flex flex-col gap-1 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div className="min-w-0">
-                  <p className="font-semibold">{ex.name}</p>
-                  <p className="truncate text-xs text-ink-muted">{ex.feedUrl}</p>
-                </div>
-                <div className="text-xs text-ink-muted">
-                  {ex.status === "active"
-                    ? "Активен"
-                    : ex.status === "error"
-                      ? "Ошибка"
-                      : ex.status}
-                  {ex.lastSyncAt
-                    ? ` · ${new Date(ex.lastSyncAt).toLocaleString("ru-RU")}`
-                    : ""}
-                  {ex.lastError ? ` · ${ex.lastError}` : ""}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </AdminSection>
+              ))
+            )}
+          </div>
+          <AdminPagination
+            page={targetsPage}
+            pageSize={TARGETS_PAGE_SIZE}
+            total={active.length}
+            onPageChange={setTargetsPage}
+          />
+        </AdminSection>
+      ) : null}
     </div>
   );
 }

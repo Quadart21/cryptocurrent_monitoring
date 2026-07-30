@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAdmin } from "@/components/admin/AdminProvider";
 import {
   AdminPageHeader,
+  AdminPagination,
   AdminSection,
   AdminStatGrid,
   StatusPill,
@@ -13,6 +14,8 @@ import { ADMIN_PATH } from "@/lib/admin-auth";
 import { bannerStatusLabel } from "@/lib/banner";
 
 type FilterId = "problem" | "ok" | "pending" | "all";
+
+const PAGE_SIZE = 30;
 
 const FILTERS: Array<{ id: FilterId; label: string }> = [
   { id: "problem", label: "Проблемы" },
@@ -42,6 +45,7 @@ export function BannerModule() {
   const { overview, counts, busy, setBusy, refresh } = useAdmin();
   const [filter, setFilter] = useState<FilterId>("problem");
   const [q, setQ] = useState("");
+  const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -89,6 +93,15 @@ export function BannerModule() {
     });
   }, [active, filter, q]);
 
+  const paginatedRows = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return rows.slice(start, start + PAGE_SIZE);
+  }, [rows, page]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filter, q]);
+
   const stats = useMemo(() => {
     let ok = 0;
     let missing = 0;
@@ -114,7 +127,7 @@ export function BannerModule() {
   }
 
   function toggleAllVisible() {
-    const ids = rows.map((r) => r.id);
+    const ids = paginatedRows.map((r) => r.id);
     const allOn = ids.length > 0 && ids.every((id) => selected.has(id));
     setSelected((prev) => {
       const next = new Set(prev);
@@ -250,10 +263,10 @@ export function BannerModule() {
         ]}
       />
 
-      <AdminSection
-        title="Что делать"
-        description="Порядок работы с обменниками без кнопки"
-      >
+      <details className="card overflow-hidden">
+        <summary className="cursor-pointer border-b border-line bg-bg-soft/40 px-5 py-3.5 font-display text-lg font-semibold text-ink">
+          Что делать
+        </summary>
         <ol className="list-decimal space-y-2 px-5 py-5 pl-9 text-sm text-ink-muted">
           <li>
             <strong className="text-ink">Проверить сайт</strong> — убедиться,
@@ -269,7 +282,7 @@ export function BannerModule() {
             пропадают из мониторинга. Можно сразу уведомить владельца.
           </li>
         </ol>
-      </AdminSection>
+      </details>
 
       <AdminSection
         title="Обменники"
@@ -349,7 +362,7 @@ export function BannerModule() {
               onClick={toggleAllVisible}
               className="ml-auto text-xs font-semibold text-accent hover:underline"
             >
-              {rows.length > 0 && rows.every((r) => selected.has(r.id))
+              {rows.length > 0 && paginatedRows.every((r) => selected.has(r.id))
                 ? "Снять выделение"
                 : "Выбрать видимые"}
             </button>
@@ -361,7 +374,7 @@ export function BannerModule() {
             </p>
           ) : (
             <div className="divide-y divide-line overflow-hidden rounded-2xl border border-line">
-              {rows.map((ex) => {
+              {paginatedRows.map((ex) => {
                 const check = ex.bannerCheck;
                 const status = check?.status ?? "pending";
                 const email = ownerEmailOf(ex);
@@ -470,6 +483,12 @@ export function BannerModule() {
               })}
             </div>
           )}
+          <AdminPagination
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={rows.length}
+            onPageChange={setPage}
+          />
         </div>
       </AdminSection>
     </div>

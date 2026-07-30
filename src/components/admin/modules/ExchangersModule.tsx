@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { FeedExchangerStatus } from "@/lib/store-types";
 import { formatOutboundCtr } from "@/lib/exchanger-traffic";
 import { logoPublicUrl } from "@/lib/logo-url";
@@ -9,9 +9,12 @@ import { ADMIN_PATH } from "@/lib/admin-auth";
 import { useAdmin } from "@/components/admin/AdminProvider";
 import {
   AdminPageHeader,
+  AdminPagination,
   AdminSection,
   StatusPill,
 } from "@/components/admin/ui";
+
+const PAGE_SIZE = 30;
 
 const FILTERS: Array<{ id: "all" | FeedExchangerStatus; label: string }> = [
   { id: "all", label: "Все" },
@@ -25,6 +28,7 @@ export function ExchangersModule() {
   const { overview } = useAdmin();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("all");
   const [q, setQ] = useState("");
+  const [page, setPage] = useState(1);
 
   const rows = useMemo(() => {
     let list = overview?.exchangers ?? [];
@@ -41,6 +45,15 @@ export function ExchangersModule() {
     }
     return list;
   }, [overview, filter, q]);
+
+  const paginatedRows = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return rows.slice(start, start + PAGE_SIZE);
+  }, [rows, page]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filter, q]);
 
   return (
     <div className="space-y-6">
@@ -79,7 +92,7 @@ export function ExchangersModule() {
           {rows.length === 0 ? (
             <p className="px-5 py-6 text-sm text-ink-muted">Ничего не найдено</p>
           ) : (
-            rows.map((ex) => {
+            paginatedRows.map((ex) => {
               const logoSrc = logoPublicUrl(ex.id, ex.logo);
               return (
                 <Link
@@ -129,6 +142,12 @@ export function ExchangersModule() {
             })
           )}
         </div>
+        <AdminPagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={rows.length}
+          onPageChange={setPage}
+        />
       </AdminSection>
     </div>
   );

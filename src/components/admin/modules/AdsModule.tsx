@@ -18,6 +18,7 @@ import { useAdmin } from "@/components/admin/AdminProvider";
 import {
   AdminPageHeader,
   AdminSection,
+  AdminTabBar,
   StatusPill,
 } from "@/components/admin/ui";
 
@@ -106,6 +107,8 @@ export function AdsModule() {
     [],
   );
   const [pairsLoading, setPairsLoading] = useState(false);
+  const [tab, setTab] = useState<"list" | "form">("list");
+  const [expandedStatsId, setExpandedStatsId] = useState<string | null>(null);
 
   const ads = overview?.ads ?? [];
   const exchangers = overview?.exchangers ?? [];
@@ -390,6 +393,16 @@ export function AdsModule() {
         </div>
       </div>
 
+      <AdminTabBar
+        tabs={[
+          { id: "list", label: "Креативы", badge: ads.length },
+          { id: "form", label: editingId ? "Редактирование" : "Форма" },
+        ]}
+        value={tab}
+        onChange={setTab}
+      />
+
+      {tab === "form" ? (
       <AdminSection
         title={editingId ? "Редактировать креатив" : "Новый креатив"}
       >
@@ -762,6 +775,7 @@ export function AdsModule() {
                   setForm(emptyForm());
                   setImageFile(null);
                   setError(null);
+                  setTab("list");
                 }}
                 className="rounded-2xl border border-line px-4 py-2.5 text-sm text-ink-muted"
               >
@@ -771,8 +785,26 @@ export function AdsModule() {
           </div>
         </form>
       </AdminSection>
+      ) : null}
 
-      <AdminSection title={`Креативы и статистика (${ads.length})`}>
+      {tab === "list" ? (
+      <AdminSection title={`Креативы (${ads.length})`}>
+        <div className="flex justify-end border-b border-line px-5 py-3">
+          <button
+            type="button"
+            disabled={busy}
+            className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold"
+            onClick={() => {
+              setEditingId(null);
+              setForm(emptyForm());
+              setImageFile(null);
+              setError(null);
+              setTab("form");
+            }}
+          >
+            Новый креатив
+          </button>
+        </div>
         <div className="divide-y divide-line">
           {ads.length === 0 ? (
             <p className="px-5 py-6 text-sm text-ink-muted">Пока пусто</p>
@@ -836,6 +868,7 @@ export function AdsModule() {
                           setForm(formFromAd(ad));
                           setImageFile(null);
                           setError(null);
+                          setTab("form");
                         }}
                         className="rounded-xl border border-line px-3 py-2 text-xs font-semibold text-ink-muted"
                       >
@@ -852,10 +885,14 @@ export function AdsModule() {
                       <button
                         type="button"
                         disabled={busy}
-                        onClick={() => void resetStats(ad.id)}
+                        onClick={() =>
+                          setExpandedStatsId((id) =>
+                            id === ad.id ? null : ad.id,
+                          )
+                        }
                         className="rounded-xl border border-line px-3 py-2 text-xs font-semibold text-ink-muted"
                       >
-                        Сбросить статистику
+                        Статистика
                       </button>
                       <button
                         type="button"
@@ -883,6 +920,7 @@ export function AdsModule() {
                   </div>
 
                   <div className="overflow-x-auto rounded-2xl border border-line">
+                    {expandedStatsId === ad.id ? (
                     <table className="min-w-full text-left text-xs">
                       <thead className="bg-bg-soft text-ink-muted">
                         <tr>
@@ -923,13 +961,27 @@ export function AdsModule() {
                         )}
                       </tbody>
                     </table>
+                    ) : null}
                   </div>
+                  {expandedStatsId === ad.id ? (
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void resetStats(ad.id)}
+                        className="rounded-xl border border-line px-3 py-2 text-xs font-semibold text-ink-muted"
+                      >
+                        Сбросить статистику
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               );
             })
           )}
         </div>
       </AdminSection>
+      ) : null}
     </div>
   );
 }

@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAdmin } from "@/components/admin/AdminProvider";
 import {
+  AdminDrawer,
   AdminPageHeader,
+  AdminPagination,
   AdminSection,
   AdminStatGrid,
 } from "@/components/admin/ui";
@@ -68,6 +70,8 @@ const TABS: { id: Kind; label: string }[] = [
   { id: "groups", label: "Группы" },
 ];
 
+const PAGE_SIZE = 50;
+
 const emptyCurrency = (): CurrencyRow => ({
   id: 0,
   code: "",
@@ -113,6 +117,7 @@ export function CatalogModule() {
   const [kind, setKind] = useState<Kind>("currencies");
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
+  const [page, setPage] = useState(1);
   const [meta, setMeta] = useState<Meta | null>(null);
   const [items, setItems] = useState<unknown[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -127,6 +132,10 @@ export function CatalogModule() {
     const t = setTimeout(() => setDebouncedQ(q.trim()), 250);
     return () => clearTimeout(t);
   }, [q]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [kind, debouncedQ]);
 
   const load = useCallback(async () => {
     setError(null);
@@ -155,6 +164,10 @@ export function CatalogModule() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  function closeEdit() {
+    setEditing(false);
+  }
 
   function startCreate() {
     setEditing(true);
@@ -242,7 +255,27 @@ export function CatalogModule() {
     }
   }
 
-  const visible = useMemo(() => items.slice(0, 200), [items]);
+  const visible = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return items.slice(start, start + PAGE_SIZE);
+  }, [items, page]);
+
+  const drawerTitle =
+    kind === "currencies"
+      ? currencyForm.code
+        ? `Валюта ${currencyForm.code}`
+        : "Новая валюта"
+      : kind === "cities"
+        ? cityForm.code
+          ? `Город ${cityForm.code}`
+          : "Новый город"
+        : kind === "countries"
+          ? countryForm.code
+            ? `Страна ${countryForm.code}`
+            : "Новая страна"
+          : groupForm.id
+            ? `Группа #${groupForm.id}`
+            : "Новая группа";
 
   return (
     <div className="space-y-6">
@@ -324,225 +357,11 @@ export function CatalogModule() {
             </button>
           </div>
 
-          {editing && (
-            <div className="rounded-2xl border border-line bg-bg-soft/40 p-4">
-              {kind === "currencies" && (
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  <Field
-                    label="XML-код"
-                    value={currencyForm.code}
-                    onChange={(v) =>
-                      setCurrencyForm((s) => ({ ...s, code: v.toUpperCase() }))
-                    }
-                  />
-                  <Field
-                    label="ID"
-                    value={String(currencyForm.id)}
-                    onChange={(v) =>
-                      setCurrencyForm((s) => ({ ...s, id: Number(v) || 0 }))
-                    }
-                  />
-                  <Field
-                    label="Название"
-                    value={currencyForm.name}
-                    onChange={(v) =>
-                      setCurrencyForm((s) => ({ ...s, name: v }))
-                    }
-                  />
-                  <Field
-                    label="EN"
-                    value={currencyForm.nameEn}
-                    onChange={(v) =>
-                      setCurrencyForm((s) => ({ ...s, nameEn: v }))
-                    }
-                  />
-                  <Field
-                    label="Viewname"
-                    value={currencyForm.viewname}
-                    onChange={(v) =>
-                      setCurrencyForm((s) => ({ ...s, viewname: v }))
-                    }
-                  />
-                  <Field
-                    label="Group ID"
-                    value={String(currencyForm.groupId)}
-                    onChange={(v) =>
-                      setCurrencyForm((s) => ({
-                        ...s,
-                        groupId: Number(v) || 0,
-                      }))
-                    }
-                  />
-                  <Field
-                    label="Rank"
-                    value={String(currencyForm.rank)}
-                    onChange={(v) =>
-                      setCurrencyForm((s) => ({
-                        ...s,
-                        rank: Number(v) || 9999,
-                      }))
-                    }
-                  />
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={currencyForm.cash}
-                      onChange={(e) =>
-                        setCurrencyForm((s) => ({
-                          ...s,
-                          cash: e.target.checked,
-                        }))
-                      }
-                    />
-                    Наличные
-                  </label>
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={currencyForm.crypto}
-                      onChange={(e) =>
-                        setCurrencyForm((s) => ({
-                          ...s,
-                          crypto: e.target.checked,
-                        }))
-                      }
-                    />
-                    Крипта
-                  </label>
-                </div>
-              )}
-
-              {kind === "cities" && (
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  <Field
-                    label="Код"
-                    value={cityForm.code}
-                    onChange={(v) =>
-                      setCityForm((s) => ({ ...s, code: v.toUpperCase() }))
-                    }
-                  />
-                  <Field
-                    label="ID"
-                    value={String(cityForm.id)}
-                    onChange={(v) =>
-                      setCityForm((s) => ({ ...s, id: Number(v) || 0 }))
-                    }
-                  />
-                  <Field
-                    label="Город"
-                    value={cityForm.name}
-                    onChange={(v) => setCityForm((s) => ({ ...s, name: v }))}
-                  />
-                  <Field
-                    label="EN"
-                    value={cityForm.nameEn}
-                    onChange={(v) => setCityForm((s) => ({ ...s, nameEn: v }))}
-                  />
-                  <Field
-                    label="Код страны"
-                    value={cityForm.countryCode}
-                    onChange={(v) =>
-                      setCityForm((s) => ({
-                        ...s,
-                        countryCode: v.toUpperCase(),
-                      }))
-                    }
-                  />
-                  <Field
-                    label="Страна"
-                    value={cityForm.countryName}
-                    onChange={(v) =>
-                      setCityForm((s) => ({ ...s, countryName: v }))
-                    }
-                  />
-                </div>
-              )}
-
-              {kind === "countries" && (
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  <Field
-                    label="ISO"
-                    value={countryForm.code}
-                    onChange={(v) =>
-                      setCountryForm((s) => ({ ...s, code: v.toUpperCase() }))
-                    }
-                  />
-                  <Field
-                    label="ID"
-                    value={String(countryForm.id)}
-                    onChange={(v) =>
-                      setCountryForm((s) => ({ ...s, id: Number(v) || 0 }))
-                    }
-                  />
-                  <Field
-                    label="Название"
-                    value={countryForm.name}
-                    onChange={(v) =>
-                      setCountryForm((s) => ({ ...s, name: v }))
-                    }
-                  />
-                  <Field
-                    label="EN"
-                    value={countryForm.nameEn}
-                    onChange={(v) =>
-                      setCountryForm((s) => ({ ...s, nameEn: v }))
-                    }
-                  />
-                </div>
-              )}
-
-              {kind === "groups" && (
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  <Field
-                    label="ID"
-                    value={String(groupForm.id)}
-                    onChange={(v) =>
-                      setGroupForm((s) => ({ ...s, id: Number(v) || 0 }))
-                    }
-                  />
-                  <Field
-                    label="Название"
-                    value={groupForm.name}
-                    onChange={(v) => setGroupForm((s) => ({ ...s, name: v }))}
-                  />
-                  <Field
-                    label="EN"
-                    value={groupForm.nameEn}
-                    onChange={(v) =>
-                      setGroupForm((s) => ({ ...s, nameEn: v }))
-                    }
-                  />
-                </div>
-              )}
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void save()}
-                  className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-60"
-                >
-                  Сохранить в БД
-                </button>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => setEditing(false)}
-                  className="rounded-xl border border-line px-4 py-2 text-sm font-semibold text-ink-muted"
-                >
-                  Отмена
-                </button>
-              </div>
-            </div>
-          )}
-
           <p className="text-xs text-ink-muted">
-            Показано {visible.length}
-            {items.length > visible.length
-              ? ` из ${items.length} (уточните поиск)`
-              : items.length
-                ? ` · всего ${items.length}`
-                : ""}
+            Всего {items.length}
+            {items.length > PAGE_SIZE
+              ? ` · страница ${page} из ${Math.ceil(items.length / PAGE_SIZE)}`
+              : ""}
           </p>
 
           <div className="divide-y divide-line overflow-hidden rounded-2xl border border-line">
@@ -631,8 +450,230 @@ export function CatalogModule() {
               })
             )}
           </div>
+
+          <AdminPagination
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={items.length}
+            onPageChange={setPage}
+          />
         </div>
       </AdminSection>
+
+      <AdminDrawer
+        open={editing}
+        onClose={closeEdit}
+        title={drawerTitle}
+        widthClassName="max-w-2xl"
+      >
+        {kind === "currencies" && (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <Field
+              label="XML-код"
+              value={currencyForm.code}
+              onChange={(v) =>
+                setCurrencyForm((s) => ({ ...s, code: v.toUpperCase() }))
+              }
+            />
+            <Field
+              label="ID"
+              value={String(currencyForm.id)}
+              onChange={(v) =>
+                setCurrencyForm((s) => ({ ...s, id: Number(v) || 0 }))
+              }
+            />
+            <Field
+              label="Название"
+              value={currencyForm.name}
+              onChange={(v) =>
+                setCurrencyForm((s) => ({ ...s, name: v }))
+              }
+            />
+            <Field
+              label="EN"
+              value={currencyForm.nameEn}
+              onChange={(v) =>
+                setCurrencyForm((s) => ({ ...s, nameEn: v }))
+              }
+            />
+            <Field
+              label="Viewname"
+              value={currencyForm.viewname}
+              onChange={(v) =>
+                setCurrencyForm((s) => ({ ...s, viewname: v }))
+              }
+            />
+            <Field
+              label="Group ID"
+              value={String(currencyForm.groupId)}
+              onChange={(v) =>
+                setCurrencyForm((s) => ({
+                  ...s,
+                  groupId: Number(v) || 0,
+                }))
+              }
+            />
+            <Field
+              label="Rank"
+              value={String(currencyForm.rank)}
+              onChange={(v) =>
+                setCurrencyForm((s) => ({
+                  ...s,
+                  rank: Number(v) || 9999,
+                }))
+              }
+            />
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={currencyForm.cash}
+                onChange={(e) =>
+                  setCurrencyForm((s) => ({
+                    ...s,
+                    cash: e.target.checked,
+                  }))
+                }
+              />
+              Наличные
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={currencyForm.crypto}
+                onChange={(e) =>
+                  setCurrencyForm((s) => ({
+                    ...s,
+                    crypto: e.target.checked,
+                  }))
+                }
+              />
+              Крипта
+            </label>
+          </div>
+        )}
+
+        {kind === "cities" && (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <Field
+              label="Код"
+              value={cityForm.code}
+              onChange={(v) =>
+                setCityForm((s) => ({ ...s, code: v.toUpperCase() }))
+              }
+            />
+            <Field
+              label="ID"
+              value={String(cityForm.id)}
+              onChange={(v) =>
+                setCityForm((s) => ({ ...s, id: Number(v) || 0 }))
+              }
+            />
+            <Field
+              label="Город"
+              value={cityForm.name}
+              onChange={(v) => setCityForm((s) => ({ ...s, name: v }))}
+            />
+            <Field
+              label="EN"
+              value={cityForm.nameEn}
+              onChange={(v) => setCityForm((s) => ({ ...s, nameEn: v }))}
+            />
+            <Field
+              label="Код страны"
+              value={cityForm.countryCode}
+              onChange={(v) =>
+                setCityForm((s) => ({
+                  ...s,
+                  countryCode: v.toUpperCase(),
+                }))
+              }
+            />
+            <Field
+              label="Страна"
+              value={cityForm.countryName}
+              onChange={(v) =>
+                setCityForm((s) => ({ ...s, countryName: v }))
+              }
+            />
+          </div>
+        )}
+
+        {kind === "countries" && (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <Field
+              label="ISO"
+              value={countryForm.code}
+              onChange={(v) =>
+                setCountryForm((s) => ({ ...s, code: v.toUpperCase() }))
+              }
+            />
+            <Field
+              label="ID"
+              value={String(countryForm.id)}
+              onChange={(v) =>
+                setCountryForm((s) => ({ ...s, id: Number(v) || 0 }))
+              }
+            />
+            <Field
+              label="Название"
+              value={countryForm.name}
+              onChange={(v) =>
+                setCountryForm((s) => ({ ...s, name: v }))
+              }
+            />
+            <Field
+              label="EN"
+              value={countryForm.nameEn}
+              onChange={(v) =>
+                setCountryForm((s) => ({ ...s, nameEn: v }))
+              }
+            />
+          </div>
+        )}
+
+        {kind === "groups" && (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <Field
+              label="ID"
+              value={String(groupForm.id)}
+              onChange={(v) =>
+                setGroupForm((s) => ({ ...s, id: Number(v) || 0 }))
+              }
+            />
+            <Field
+              label="Название"
+              value={groupForm.name}
+              onChange={(v) => setGroupForm((s) => ({ ...s, name: v }))}
+            />
+            <Field
+              label="EN"
+              value={groupForm.nameEn}
+              onChange={(v) =>
+                setGroupForm((s) => ({ ...s, nameEn: v }))
+              }
+            />
+          </div>
+        )}
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void save()}
+            className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-60"
+          >
+            Сохранить в БД
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={closeEdit}
+            className="rounded-xl border border-line px-4 py-2 text-sm font-semibold text-ink-muted"
+          >
+            Отмена
+          </button>
+        </div>
+      </AdminDrawer>
     </div>
   );
 }

@@ -7,6 +7,7 @@ import {
   AdminPageHeader,
   AdminSection,
   AdminStatGrid,
+  AdminTabBar,
 } from "@/components/admin/ui";
 import type {
   BroadcastSegment,
@@ -143,33 +144,6 @@ function Toggle({
         />
       </span>
     </button>
-  );
-}
-
-function TabBar({
-  value,
-  onChange,
-}: {
-  value: TabId;
-  onChange: (id: TabId) => void;
-}) {
-  return (
-    <div className="flex flex-wrap gap-1 rounded-2xl border border-line bg-bg-soft/40 p-1">
-      {TABS.map((t) => (
-        <button
-          key={t.id}
-          type="button"
-          onClick={() => onChange(t.id)}
-          className={`rounded-xl px-3.5 py-2 text-sm font-medium transition ${
-            value === t.id
-              ? "bg-accent text-white shadow-sm"
-              : "text-ink-muted hover:bg-bg-soft hover:text-ink"
-          }`}
-        >
-          {t.label}
-        </button>
-      ))}
-    </div>
   );
 }
 
@@ -610,7 +584,7 @@ export function EmailModule() {
         description="Контакты обменников и авторов отзывов, шаблоны и рассылки"
       />
 
-      <TabBar value={tab} onChange={switchTab} />
+      <AdminTabBar value={tab} onChange={switchTab} tabs={TABS} />
 
       {error ? (
         <p className="rounded-xl border border-danger/25 bg-danger/10 px-4 py-3 text-sm text-danger">

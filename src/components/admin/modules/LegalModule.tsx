@@ -6,6 +6,7 @@ import type { LegalSettings } from "@/lib/store-types";
 import {
   AdminPageHeader,
   AdminSection,
+  AdminTabBar,
 } from "@/components/admin/ui";
 
 const emptyLegal = (): LegalSettings => ({
@@ -24,6 +25,7 @@ export function LegalModule() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+  const [tab, setTab] = useState<"banner" | "privacy" | "cookies">("banner");
 
   async function load() {
     const res = await fetch("/api/admin/legal", { cache: "no-store" });
@@ -78,8 +80,20 @@ export function LegalModule() {
       ) : null}
 
       <form onSubmit={(e) => void onSubmit(e)} className="space-y-6">
-        <AdminSection title="Плашка согласия">
+        <AdminSection title="Документы">
           <div className="space-y-4 p-5">
+            <AdminTabBar
+              tabs={[
+                { id: "banner", label: "Плашка cookies" },
+                { id: "privacy", label: "Конфиденциальность" },
+                { id: "cookies", label: "Cookies" },
+              ]}
+              value={tab}
+              onChange={setTab}
+            />
+
+            {tab === "banner" ? (
+          <div className="space-y-4">
             <label className="block space-y-1">
               <span className="text-xs text-ink-muted">Заголовок</span>
               <input
@@ -102,10 +116,10 @@ export function LegalModule() {
               />
             </label>
           </div>
-        </AdminSection>
+            ) : null}
 
-        <AdminSection title="Политика конфиденциальности (/privacy)">
-          <div className="space-y-4 p-5">
+            {tab === "privacy" ? (
+          <div className="space-y-4">
             <label className="block space-y-1">
               <span className="text-xs text-ink-muted">Заголовок</span>
               <input
@@ -133,10 +147,10 @@ export function LegalModule() {
               />
             </label>
           </div>
-        </AdminSection>
+            ) : null}
 
-        <AdminSection title="Политика cookies (/cookies)">
-          <div className="space-y-4 p-5">
+            {tab === "cookies" ? (
+          <div className="space-y-4">
             <label className="block space-y-1">
               <span className="text-xs text-ink-muted">Заголовок</span>
               <input
@@ -163,6 +177,8 @@ export function LegalModule() {
                 className="w-full rounded-2xl border border-line bg-input px-3 py-2.5 font-mono text-sm outline-none focus:border-accent"
               />
             </label>
+          </div>
+            ) : null}
           </div>
         </AdminSection>
 

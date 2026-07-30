@@ -4,9 +4,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Complaint, ComplaintStatus } from "@/lib/store-types";
 import { useAdmin } from "@/components/admin/AdminProvider";
 import {
+  AdminDrawer,
   AdminPageHeader,
+  AdminPagination,
   AdminSection,
 } from "@/components/admin/ui";
+
+const PAGE_SIZE = 20;
 
 const FILTERS: Array<{
   id: ComplaintStatus | "open" | "all";
@@ -34,6 +38,8 @@ export function ComplaintsModule() {
   const [rows, setRows] = useState<Complaint[]>([]);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [drawerId, setDrawerId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -72,6 +78,20 @@ export function ComplaintsModule() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [filter]);
+
+  const paginatedRows = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return rows.slice(start, start + PAGE_SIZE);
+  }, [rows, page]);
+
+  const drawerComplaint = useMemo(
+    () => (drawerId ? rows.find((c) => c.id === drawerId) : undefined),
+    [rows, drawerId],
+  );
+
   const pendingCount = useMemo(
     () => rows.filter((c) => c.status === "pending").length,
     [rows],
@@ -108,6 +128,7 @@ export function ComplaintsModule() {
       await fetch(`/api/admin/complaints?id=${encodeURIComponent(id)}`, {
         method: "DELETE",
       });
+      if (drawerId === id) setDrawerId(null);
       await load();
       await refresh();
     } finally {
@@ -152,96 +173,158 @@ export function ComplaintsModule() {
           {rows.length === 0 ? (
             <p className="px-5 py-6 text-sm text-ink-muted">Нет жалоб</p>
           ) : (
-            rows.map((c) => (
-              <div key={c.id} className="space-y-3 px-5 py-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-semibold text-ink">{c.exchangerName}</p>
-                  <span className="rounded-xl bg-warn/20 px-2.5 py-1 text-xs font-semibold text-warn">
-                    {STATUS_LABEL[c.status]}
-                  </span>
-                  <span className="text-xs text-ink-muted">
-                    {new Date(c.createdAt).toLocaleString("ru-RU")}
-                  </span>
+            paginatedRows.map((c) => (
+              <div
+                key={c.id}
+                className="flex flex-col gap-2 px-5 py-3 sm:flex-row sm:items-start sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-semibold text-ink">{c.exchangerName}</p>
+                    <span className="rounded-xl bg-warn/20 px-2.5 py-1 text-xs font-semibold text-warn">
+                      {STATUS_LABEL[c.status]}
+                    </span>
+                    <span className="text-xs text-ink-muted">
+                      {new Date(c.createdAt).toLocaleString("ru-RU")}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-ink-muted">
+                    {c.email}
+                    {c.orderId ? ` · заявка ${c.orderId}` : ""}
+                    {c.relatedReviewId ? ` · отзыв ${c.relatedReviewId}` : ""}
+                  </p>
+                  <p className="mt-1 line-clamp-2 text-sm text-ink">
+                    {c.body}
+                  </p>
+                  {c.adminNote ? (
+                    <p className="mt-1 text-xs text-ink-muted">
+                      Заметка: {c.adminNote}
+                    </p>
+                  ) : null}
                 </div>
-                <p className="text-xs text-ink-muted">
-                  {c.email}
-                  {c.orderId ? ` · заявка ${c.orderId}` : ""}
-                  {c.relatedReviewId ? ` · отзыв ${c.relatedReviewId}` : ""}
-                </p>
-                <p className="text-sm text-ink whitespace-pre-wrap">{c.body}</p>
-                <textarea
-                  value={notes[c.id] ?? ""}
-                  onChange={(e) =>
-                    setNotes((prev) => ({ ...prev, [c.id]: e.target.value }))
-                  }
-                  rows={2}
-                  placeholder="Заметка модератора"
-                  className="w-full rounded-xl border border-line bg-input px-3 py-2 text-sm outline-none focus:border-accent"
-                />
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() =>
-                      void patch(c.id, undefined, notes[c.id] ?? "")
-                    }
-                    className="rounded-xl border border-line px-3 py-2 text-xs font-semibold text-ink-muted"
-                  >
-                    Сохранить заметку
-                  </button>
-                  {c.status !== "in_progress" ? (
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => void patch(c.id, "in_progress")}
-                      className="rounded-xl bg-warn/20 px-3 py-2 text-xs font-semibold text-warn"
-                    >
-                      В работу
-                    </button>
-                  ) : null}
-                  {c.status !== "rejected" ? (
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => void patch(c.id, "rejected")}
-                      className="rounded-xl border border-line px-3 py-2 text-xs font-semibold text-ink-muted"
-                    >
-                      Отклонить
-                    </button>
-                  ) : null}
-                  {c.status !== "resolved_blacklist" ? (
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => {
-                        if (
-                          !confirm(
-                            `Добавить «${c.exchangerName}» в чёрный список и закрыть жалобу?`,
-                          )
-                        ) {
-                          return;
-                        }
-                        void patch(c.id, "resolved_blacklist");
-                      }}
-                      className="rounded-xl bg-danger/15 px-3 py-2 text-xs font-semibold text-danger"
-                    >
-                      В ЧС
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void remove(c.id)}
-                    className="rounded-xl bg-danger/15 px-3 py-2 text-xs font-semibold text-danger"
-                  >
-                    Удалить
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setDrawerId(c.id)}
+                  className="shrink-0 rounded-xl border border-line px-2.5 py-1.5 text-xs font-semibold text-ink-muted hover:text-ink"
+                >
+                  Обработать
+                </button>
               </div>
             ))
           )}
         </div>
+        <AdminPagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={rows.length}
+          onPageChange={setPage}
+        />
       </AdminSection>
+
+      <AdminDrawer
+        open={!!drawerComplaint}
+        onClose={() => setDrawerId(null)}
+        title={drawerComplaint?.exchangerName ?? "Жалоба"}
+        description={
+          drawerComplaint
+            ? `${STATUS_LABEL[drawerComplaint.status]} · ${new Date(drawerComplaint.createdAt).toLocaleString("ru-RU")}`
+            : undefined
+        }
+      >
+        {drawerComplaint ? (
+          <div className="space-y-4">
+            <div className="text-sm text-ink-muted">
+              <p>{drawerComplaint.email}</p>
+              {drawerComplaint.orderId ? (
+                <p className="mt-1">Заявка: {drawerComplaint.orderId}</p>
+              ) : null}
+              {drawerComplaint.relatedReviewId ? (
+                <p className="mt-1">
+                  Отзыв: {drawerComplaint.relatedReviewId}
+                </p>
+              ) : null}
+            </div>
+            <p className="whitespace-pre-wrap text-sm text-ink">
+              {drawerComplaint.body}
+            </p>
+            <textarea
+              value={notes[drawerComplaint.id] ?? ""}
+              onChange={(e) =>
+                setNotes((prev) => ({
+                  ...prev,
+                  [drawerComplaint.id]: e.target.value,
+                }))
+              }
+              rows={3}
+              placeholder="Заметка модератора"
+              className="w-full rounded-xl border border-line bg-input px-3 py-2 text-sm outline-none focus:border-accent"
+            />
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() =>
+                  void patch(
+                    drawerComplaint.id,
+                    undefined,
+                    notes[drawerComplaint.id] ?? "",
+                  )
+                }
+                className="rounded-xl border border-line px-3 py-2 text-xs font-semibold text-ink-muted"
+              >
+                Сохранить заметку
+              </button>
+              {drawerComplaint.status !== "in_progress" ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void patch(drawerComplaint.id, "in_progress")}
+                  className="rounded-xl bg-warn/20 px-3 py-2 text-xs font-semibold text-warn"
+                >
+                  В работу
+                </button>
+              ) : null}
+              {drawerComplaint.status !== "rejected" ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void patch(drawerComplaint.id, "rejected")}
+                  className="rounded-xl border border-line px-3 py-2 text-xs font-semibold text-ink-muted"
+                >
+                  Отклонить
+                </button>
+              ) : null}
+              {drawerComplaint.status !== "resolved_blacklist" ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    if (
+                      !confirm(
+                        `Добавить «${drawerComplaint.exchangerName}» в чёрный список и закрыть жалобу?`,
+                      )
+                    ) {
+                      return;
+                    }
+                    void patch(drawerComplaint.id, "resolved_blacklist");
+                  }}
+                  className="rounded-xl bg-danger/15 px-3 py-2 text-xs font-semibold text-danger"
+                >
+                  В ЧС
+                </button>
+              ) : null}
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void remove(drawerComplaint.id)}
+                className="rounded-xl bg-danger/15 px-3 py-2 text-xs font-semibold text-danger"
+              >
+                Удалить
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </AdminDrawer>
     </div>
   );
 }

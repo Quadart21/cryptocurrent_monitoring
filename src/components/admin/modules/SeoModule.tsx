@@ -7,6 +7,7 @@ import { useAdmin } from "@/components/admin/AdminProvider";
 import {
   AdminPageHeader,
   AdminSection,
+  AdminTabBar,
 } from "@/components/admin/ui";
 
 const emptySeo: SeoSettings = {
@@ -65,6 +66,9 @@ export function SeoModule() {
   const [seo, setSeo] = useState<SeoSettings>(emptySeo);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+  const [tab, setTab] = useState<
+    "meta" | "social" | "robots" | "verification" | "schema" | "analytics"
+  >("meta");
 
   const load = useCallback(async () => {
     const res = await fetch("/api/admin/seo", { cache: "no-store" });
@@ -123,8 +127,23 @@ export function SeoModule() {
       )}
 
       <form onSubmit={onSave} className="space-y-6">
-        <AdminSection title="Основные метаданные">
-          <div className="grid gap-4 p-5 lg:grid-cols-2">
+        <AdminSection title="Настройки SEO">
+          <div className="space-y-4 p-5">
+            <AdminTabBar
+              tabs={[
+                { id: "meta", label: "Метаданные" },
+                { id: "social", label: "Open Graph" },
+                { id: "robots", label: "Robots" },
+                { id: "verification", label: "Верификация" },
+                { id: "schema", label: "Schema" },
+                { id: "analytics", label: "Аналитика" },
+              ]}
+              value={tab}
+              onChange={setTab}
+            />
+
+            {tab === "meta" ? (
+          <div className="grid gap-4 lg:grid-cols-2">
             <Field label="Название сайта" hint="Бренд в title и Open Graph">
               <input
                 className={inputClass}
@@ -182,10 +201,10 @@ export function SeoModule() {
               </Field>
             </div>
           </div>
-        </AdminSection>
+            ) : null}
 
-        <AdminSection title="Open Graph и Twitter">
-          <div className="grid gap-4 p-5 lg:grid-cols-2">
+            {tab === "social" ? (
+          <div className="grid gap-4 lg:grid-cols-2">
             <Field label="OG Title" hint="Пусто = взять обычный title">
               <input
                 className={inputClass}
@@ -235,10 +254,10 @@ export function SeoModule() {
               />
             </Field>
           </div>
-        </AdminSection>
+            ) : null}
 
-        <AdminSection title="Индексация (robots)">
-          <div className="grid gap-4 p-5 lg:grid-cols-2">
+            {tab === "robots" ? (
+          <div className="grid gap-4 lg:grid-cols-2">
             <label className="flex items-center gap-3 rounded-2xl border border-line px-4 py-3 text-sm">
               <input
                 type="checkbox"
@@ -315,10 +334,10 @@ export function SeoModule() {
               </Field>
             </div>
           </div>
-        </AdminSection>
+            ) : null}
 
-        <AdminSection title="Верификация поисковиков">
-          <div className="grid gap-4 p-5 lg:grid-cols-3">
+            {tab === "verification" ? (
+          <div className="grid gap-4 lg:grid-cols-3">
             <Field label="Google" hint="content из meta google-site-verification">
               <input
                 className={inputClass}
@@ -341,10 +360,10 @@ export function SeoModule() {
               />
             </Field>
           </div>
-        </AdminSection>
+            ) : null}
 
-        <AdminSection title="JSON-LD (Organization)">
-          <div className="grid gap-4 p-5 lg:grid-cols-2">
+            {tab === "schema" ? (
+          <div className="grid gap-4 lg:grid-cols-2">
             <label className="flex items-center gap-3 rounded-2xl border border-line px-4 py-3 text-sm lg:col-span-2">
               <input
                 type="checkbox"
@@ -370,10 +389,10 @@ export function SeoModule() {
               />
             </Field>
           </div>
-        </AdminSection>
+            ) : null}
 
-        <AdminSection title="Аналитика">
-          <div className="grid gap-4 p-5 lg:grid-cols-3">
+            {tab === "analytics" ? (
+          <div className="grid gap-4 lg:grid-cols-3">
             <Field label="Google Analytics 4" hint="G-XXXXXXXX">
               <input
                 className={inputClass}
@@ -395,6 +414,8 @@ export function SeoModule() {
                 onChange={(e) => patch("gtmId", e.target.value)}
               />
             </Field>
+          </div>
+            ) : null}
           </div>
         </AdminSection>
 
