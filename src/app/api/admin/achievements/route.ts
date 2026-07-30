@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { assertAdmin } from "@/lib/admin-guard";
+import {
+  parseAchievementMode,
+  parseAchievementRule,
+  validateAchievementRule,
+} from "@/lib/achievement-rules";
 import { sanitizeAchievementSvg } from "@/lib/sanitize-svg";
 import {
   addAchievement,
@@ -25,11 +30,15 @@ export async function POST(request: Request) {
     name?: string;
     description?: string;
     svg?: string;
+    mode?: string;
+    rule?: unknown;
   };
 
   const name = body.name?.trim() ?? "";
   const description = body.description?.trim() ?? "";
   const svg = sanitizeAchievementSvg(body.svg ?? "");
+  const mode = parseAchievementMode(body.mode);
+  const rule = mode === "auto" ? parseAchievementRule(body.rule) : null;
 
   if (name.length < 2) {
     return NextResponse.json(
@@ -49,8 +58,18 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
+  const ruleErr = validateAchievementRule(mode, rule);
+  if (ruleErr) {
+    return NextResponse.json({ error: ruleErr }, { status: 400 });
+  }
 
-  const achievement = await addAchievement({ name, description, svg });
+  const achievement = await addAchievement({
+    name,
+    description,
+    svg,
+    mode,
+    rule,
+  });
   return NextResponse.json({ achievement });
 }
 
@@ -63,13 +82,21 @@ export async function PATCH(request: Request) {
     name?: string;
     description?: string;
     svg?: string;
+    mode?: string;
+    rule?: unknown;
   };
 
   if (!body.id) {
     return NextResponse.json({ error: "id required" }, { status: 400 });
   }
 
-  const patch: { name?: string; description?: string; svg?: string } = {};
+  const patch: {
+    name?: string;
+    description?: string;
+    svg?: string;
+    mode?: "manual" | "auto";
+    rule?: ReturnType<typeof parseAchievementRule>;
+  } = {};
   if (typeof body.name === "string") patch.name = body.name;
   if (typeof body.description === "string") patch.description = body.description;
   if (typeof body.svg === "string") {
@@ -81,6 +108,28 @@ export async function PATCH(request: Request) {
       );
     }
     patch.svg = svg;
+  }
+  if (body.mode !== undefined) {
+    patch.mode = parseAchievementMode(body.mode);
+  }
+  if (body.rule !== undefined || body.mode !== undefined) {
+    const mode =
+      patch.mode ??
+      (await listAchievements()).find((a) => a.id === body.id)?.mode ??
+      "manual";
+    const rule =
+      mode === "auto"
+        ? body.rule !== undefined
+          ? parseAchievementRule(body.rule)
+          : (await listAchievements()).find((a) => a.id === body.id)?.rule ??
+            null
+        : null;
+    const ruleErr = validateAchievementRule(mode, rule);
+    if (ruleErr) {
+      return NextResponse.json({ error: ruleErr }, { status: 400 });
+    }
+    patch.mode = mode;
+    patch.rule = rule;
   }
 
   const achievement = await updateAchievement(body.id, patch);

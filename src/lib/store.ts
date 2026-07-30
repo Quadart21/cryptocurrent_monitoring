@@ -40,8 +40,14 @@ import {
   emptyExchangerTraffic,
   normalizeExchangerTraffic,
 } from "@/lib/exchanger-traffic";
+import {
+  parseAchievementMode,
+  parseAchievementRule,
+} from "@/lib/achievement-rules";
 import type { ParsedRateItem } from "@/lib/xml/parse-rates";
 import type {
+  AchievementMode,
+  AchievementRule,
   AdCreative,
   AdPlacement,
   AdPricingSettings,
@@ -199,11 +205,14 @@ function mapReview(row: ReviewRow): ExchangerReview {
 }
 
 function mapAchievement(row: AchievementRow): ExchangerAchievement {
+  const mode = parseAchievementMode(row.mode);
   return {
     id: row.id,
     name: row.name,
     description: row.description,
     svg: row.svg,
+    mode,
+    rule: mode === "auto" ? parseAchievementRule(row.rule) : null,
     createdAt: row.createdAt,
   };
 }
@@ -419,6 +428,18 @@ async function recomputeExchangerReviewStats(
       rating: stats.rating,
     })
     .where(eq(exchangers.id, exchangerId));
+
+  try {
+    const { recomputeExchangerAchievements } = await import(
+      "@/lib/achievements-auto"
+    );
+    await recomputeExchangerAchievements(exchangerId);
+  } catch (error) {
+    console.error(
+      "[gapsnap] achievement recompute after reviews failed",
+      error,
+    );
+  }
 }
 
 export async function getLastGlobalSyncAt(): Promise<string | null> {
@@ -977,10 +998,22 @@ export async function updateExchanger(
   let achievementIds = patch.achievementIds;
   if (achievementIds !== undefined) {
     const ach = await db
-      .select({ id: achievements.id })
+      .select({ id: achievements.id, mode: achievements.mode })
       .from(achievements);
-    const valid = new Set(ach.map((a) => a.id));
-    achievementIds = achievementIds.filter((aid) => valid.has(aid));
+    const valid = new Map(ach.map((a) => [a.id, parseAchievementMode(a.mode)]));
+    const autoIds = new Set(
+      [...valid.entries()]
+        .filter(([, mode]) => mode === "auto")
+        .map(([id]) => id),
+    );
+    // Admin patches only control manual badges; keep current auto awards.
+    const fromPatchManual = achievementIds.filter(
+      (aid) => valid.has(aid) && !autoIds.has(aid),
+    );
+    const currentAuto = (current.achievementIds ?? []).filter((aid) =>
+      autoIds.has(aid),
+    );
+    achievementIds = [...new Set([...fromPatchManual, ...currentAuto])];
   }
 
   const becomingActive =
@@ -1459,24 +1492,58 @@ export async function addAchievement(input: {
   name: string;
   description: string;
   svg: string;
+  mode?: AchievementMode;
+  rule?: AchievementRule | null;
 }): Promise<ExchangerAchievement> {
   const db = getDb();
+  const mode = input.mode === "auto" ? "auto" : "manual";
+  const rule = mode === "auto" ? (input.rule ?? null) : null;
   const item: ExchangerAchievement = {
     id: `ach_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
     name: input.name.trim(),
     description: input.description.trim(),
     svg: input.svg,
+    mode,
+    rule,
     createdAt: new Date().toISOString(),
   };
-  await db.insert(achievements).values(item);
+  await db.insert(achievements).values({
+    id: item.id,
+    name: item.name,
+    description: item.description,
+    svg: item.svg,
+    mode: item.mode,
+    rule: item.rule,
+    createdAt: item.createdAt,
+  });
   return item;
 }
 
 export async function updateAchievement(
   id: string,
-  patch: Partial<Pick<ExchangerAchievement, "name" | "description" | "svg">>,
+  patch: Partial<
+    Pick<ExchangerAchievement, "name" | "description" | "svg" | "mode" | "rule">
+  >,
 ): Promise<ExchangerAchievement | null> {
   const db = getDb();
+  const [current] = await db
+    .select()
+    .from(achievements)
+    .where(eq(achievements.id, id))
+    .limit(1);
+  if (!current) return null;
+
+  const nextMode =
+    patch.mode !== undefined
+      ? parseAchievementMode(patch.mode)
+      : parseAchievementMode(current.mode);
+  const nextRule =
+    nextMode === "manual"
+      ? null
+      : patch.rule !== undefined
+        ? parseAchievementRule(patch.rule)
+        : parseAchievementRule(current.rule);
+
   const [row] = await db
     .update(achievements)
     .set({
@@ -1489,10 +1556,30 @@ export async function updateAchievement(
       ...(typeof patch.svg === "string" && patch.svg.trim()
         ? { svg: patch.svg }
         : {}),
+      ...(patch.mode !== undefined || patch.rule !== undefined
+        ? { mode: nextMode, rule: nextRule }
+        : {}),
     })
     .where(eq(achievements.id, id))
     .returning();
   return row ? mapAchievement(row) : null;
+}
+
+/** Write achievement IDs as-is (used by auto-assigner). Validates catalog IDs. */
+export async function replaceExchangerAchievementIds(
+  exchangerId: string,
+  achievementIds: string[],
+): Promise<boolean> {
+  const db = getDb();
+  const ach = await db.select({ id: achievements.id }).from(achievements);
+  const valid = new Set(ach.map((a) => a.id));
+  const next = [...new Set(achievementIds.filter((id) => valid.has(id)))];
+  const result = await db
+    .update(exchangers)
+    .set({ achievementIds: next })
+    .where(eq(exchangers.id, exchangerId))
+    .returning({ id: exchangers.id });
+  return result.length > 0;
 }
 
 export async function removeAchievement(id: string): Promise<boolean> {

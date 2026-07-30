@@ -113,6 +113,13 @@
       "when": 1785370000000,
       "tag": "0015_ads_image_upload",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1785400000000,
+      "tag": "0016_achievement_auto",
+      "breakpoints": true
     }
   ]
 }

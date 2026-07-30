@@ -195,13 +195,15 @@ async function main() {
 
     for (const a of data.achievements ?? []) {
       await client.query(
-        `INSERT INTO achievements (id, name, description, svg, created_at)
-         VALUES ($1,$2,$3,$4,$5)`,
+        `INSERT INTO achievements (id, name, description, svg, mode, rule, created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
         [
           a.id,
           a.name,
           a.description ?? "",
           a.svg ?? "",
+          a.mode === "auto" ? "auto" : "manual",
+          a.rule ? JSON.stringify(a.rule) : null,
           a.createdAt ?? new Date().toISOString(),
         ],
       );

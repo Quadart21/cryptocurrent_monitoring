@@ -69,12 +69,40 @@ export type FeedExchanger = {
   ownerTotpEnabled: boolean;
 };
 
+export type AchievementMode = "manual" | "auto";
+
+export type AchievementRuleKind =
+  | "verified"
+  | "rating_min"
+  | "reviews_min"
+  | "age_years_min"
+  | "pair_count_min"
+  | "not_blacklisted"
+  | "sync_fresh"
+  | "newcomer"
+  | "positive_ratio_min"
+  | "reserve_sum_min";
+
+export type AchievementRule = {
+  kind: AchievementRuleKind;
+  minRating?: number;
+  minReviews?: number;
+  minAgeYears?: number;
+  minPairs?: number;
+  maxSyncAgeHours?: number;
+  maxAgeDays?: number;
+  minPositiveRatio?: number;
+  minReserveSum?: number;
+};
+
 export type ExchangerAchievement = {
   id: string;
   name: string;
   description: string;
   /** Raw SVG markup (icon). */
   svg: string;
+  mode: AchievementMode;
+  rule: AchievementRule | null;
   createdAt: string;
 };
 

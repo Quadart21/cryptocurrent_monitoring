@@ -20,5 +20,7 @@ export async function register() {
     startBannerCheckPoller();
     const { startNewsPoller } = await import("@/lib/news/sync-news");
     startNewsPoller();
+    const { startAchievementPoller } = await import("@/lib/achievements-auto");
+    startAchievementPoller();
   }
 }

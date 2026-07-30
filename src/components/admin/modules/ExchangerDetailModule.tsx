@@ -779,30 +779,76 @@ export function ExchangerDetailModule() {
 
       {achievements.length > 0 && (
         <AdminSection title="Ачивки">
-          <div className="flex flex-wrap gap-2 p-5">
-            {achievements.map((ach) => {
-              const on = (ex.achievementIds ?? []).includes(ach.id);
-              return (
-                <button
-                  key={ach.id}
-                  type="button"
-                  disabled={busy}
-                  title={ach.description}
-                  onClick={() => void toggleAchievement(ach.id, !on)}
-                  className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold ${
-                    on
-                      ? "bg-accent/20 text-accent ring-1 ring-accent/40"
-                      : "border border-line text-ink-muted"
-                  }`}
-                >
-                  <span
-                    className="inline-flex size-4 [&_svg]:h-full [&_svg]:w-full"
-                    dangerouslySetInnerHTML={{ __html: ach.svg }}
-                  />
-                  {ach.name}
-                </button>
-              );
-            })}
+          <div className="space-y-4 p-5">
+            {achievements.some((a) => (a.mode ?? "manual") === "manual") && (
+              <div>
+                <p className="mb-2 text-xs font-medium uppercase tracking-[0.14em] text-ink-muted">
+                  Ручные — нажмите, чтобы выдать
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {achievements
+                    .filter((a) => (a.mode ?? "manual") === "manual")
+                    .map((ach) => {
+                      const on = (ex.achievementIds ?? []).includes(ach.id);
+                      return (
+                        <button
+                          key={ach.id}
+                          type="button"
+                          disabled={busy}
+                          title={ach.description}
+                          onClick={() => void toggleAchievement(ach.id, !on)}
+                          className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold ${
+                            on
+                              ? "bg-accent/20 text-accent ring-1 ring-accent/40"
+                              : "border border-line text-ink-muted"
+                          }`}
+                        >
+                          <span
+                            className="inline-flex size-4 [&_svg]:h-full [&_svg]:w-full"
+                            dangerouslySetInnerHTML={{ __html: ach.svg }}
+                          />
+                          {ach.name}
+                        </button>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+
+            {achievements.some((a) => a.mode === "auto") && (
+              <div>
+                <p className="mb-2 text-xs font-medium uppercase tracking-[0.14em] text-ink-muted">
+                  Авто — выдаёт система по правилам
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {achievements
+                    .filter((a) => a.mode === "auto")
+                    .map((ach) => {
+                      const on = (ex.achievementIds ?? []).includes(ach.id);
+                      return (
+                        <span
+                          key={ach.id}
+                          title={ach.description}
+                          className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold ${
+                            on
+                              ? "bg-accent/20 text-accent ring-1 ring-accent/40"
+                              : "border border-dashed border-line text-ink-muted opacity-70"
+                          }`}
+                        >
+                          <span
+                            className="inline-flex size-4 [&_svg]:h-full [&_svg]:w-full"
+                            dangerouslySetInnerHTML={{ __html: ach.svg }}
+                          />
+                          {ach.name}
+                          <span className="text-[10px] uppercase tracking-wide opacity-80">
+                            авто
+                          </span>
+                        </span>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
           </div>
         </AdminSection>
       )}

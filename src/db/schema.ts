@@ -164,11 +164,37 @@ export const reviews = pgTable(
   ],
 );
 
+/** Auto-assignment rule stored on an achievement (mode=auto). */
+export type AchievementRuleJson = {
+  kind:
+    | "verified"
+    | "rating_min"
+    | "reviews_min"
+    | "age_years_min"
+    | "pair_count_min"
+    | "not_blacklisted"
+    | "sync_fresh"
+    | "newcomer"
+    | "positive_ratio_min"
+    | "reserve_sum_min";
+  minRating?: number;
+  minReviews?: number;
+  minAgeYears?: number;
+  minPairs?: number;
+  maxSyncAgeHours?: number;
+  maxAgeDays?: number;
+  minPositiveRatio?: number;
+  minReserveSum?: number;
+};
+
 export const achievements = pgTable("achievements", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description").notNull().default(""),
   svg: text("svg").notNull(),
+  /** manual = admin toggle; auto = system assigns from rule */
+  mode: text("mode").notNull().default("manual"),
+  rule: jsonb("rule").$type<AchievementRuleJson | null>(),
   createdAt: text("created_at").notNull(),
 });
 
