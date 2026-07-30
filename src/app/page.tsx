@@ -67,7 +67,7 @@ export default async function HomePage({ searchParams }: Props) {
         sections={homeSeoSections(seo.siteName || "GapSnap")}
       />
 
-      <HomeNewsStrip posts={posts.slice(0, 2)} />
+      <HomeNewsStrip posts={posts.slice(0, 10)} />
     </div>
   );
 }

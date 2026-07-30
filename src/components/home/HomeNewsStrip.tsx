@@ -1,5 +1,7 @@
+"use client";
+
 import Link from "next/link";
-import type { BlogPost } from "@/lib/store";
+import type { BlogPost } from "@/lib/store-types";
 
 function formatRuDate(iso: string | null): string {
   if (!iso) return "";
@@ -9,49 +11,64 @@ function formatRuDate(iso: string | null): string {
   });
 }
 
-/** Quiet footnote-style links under homepage SEO — not a featured section. */
-export function HomeNewsStrip({ posts }: { posts: BlogPost[] }) {
+type NewsItem = Pick<BlogPost, "id" | "slug" | "title" | "publishedAt">;
+
+function NewsSegment({
+  posts,
+  keyPrefix,
+}: {
+  posts: NewsItem[];
+  keyPrefix: string;
+}) {
+  return (
+    <div className="flex shrink-0 items-center gap-8 pr-8 sm:gap-10 sm:pr-10">
+      {posts.map((post, i) => (
+        <Link
+          key={`${keyPrefix}-${post.id}-${i}`}
+          href={`/blog/${post.slug}`}
+          className="inline-flex max-w-[min(80vw,28rem)] shrink-0 items-baseline gap-2 whitespace-nowrap text-sm text-ink transition hover:text-accent sm:max-w-none sm:text-base"
+        >
+          {post.publishedAt ? (
+            <time
+              dateTime={post.publishedAt}
+              className="shrink-0 tabular-nums text-ink-muted"
+            >
+              {formatRuDate(post.publishedAt)}
+            </time>
+          ) : null}
+          <span className="truncate font-medium">{post.title}</span>
+        </Link>
+      ))}
+      <Link
+        key={`${keyPrefix}-all`}
+        href="/blog"
+        className="shrink-0 whitespace-nowrap text-sm font-semibold text-accent hover:underline sm:text-base"
+      >
+        Все новости →
+      </Link>
+    </div>
+  );
+}
+
+/** Homepage news marquee under SEO content. */
+export function HomeNewsStrip({ posts }: { posts: NewsItem[] }) {
   if (!posts.length) return null;
 
-  const items = posts.slice(0, 2);
+  const items = posts.slice(0, 10);
+  const loop =
+    items.length === 1 ? [...items, ...items, ...items] : items;
 
   return (
     <section
       aria-label="Новости"
-      className="border-t border-line/25 pt-4 text-[11px] leading-relaxed text-ink-muted/75"
+      className="relative min-h-[48px] overflow-hidden border-t border-line bg-bg-soft/40"
     >
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-        <span className="shrink-0 text-ink-muted/55">Новости</span>
-        {items.map((post) => (
-          <span key={post.id} className="inline-flex min-w-0 max-w-full items-baseline gap-1.5">
-            <span className="text-ink-muted/35" aria-hidden>
-              ·
-            </span>
-            <Link
-              href={`/blog/${post.slug}`}
-              className="min-w-0 truncate transition hover:text-ink-muted hover:underline"
-            >
-              {post.publishedAt ? (
-                <time
-                  dateTime={post.publishedAt}
-                  className="mr-1.5 tabular-nums text-ink-muted/50"
-                >
-                  {formatRuDate(post.publishedAt)}
-                </time>
-              ) : null}
-              {post.title}
-            </Link>
-          </span>
-        ))}
-        <span className="text-ink-muted/35" aria-hidden>
-          ·
-        </span>
-        <Link
-          href="/blog"
-          className="shrink-0 text-ink-muted/55 transition hover:text-ink-muted hover:underline"
-        >
-          все
-        </Link>
+      <p className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 rounded-md bg-bg-elevated px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-muted shadow-sm sm:text-[11px]">
+        Новости
+      </p>
+      <div className="ad-ticker-track py-3 pl-[4.75rem] sm:pl-24">
+        <NewsSegment posts={loop} keyPrefix="a" />
+        <NewsSegment posts={loop} keyPrefix="b" />
       </div>
     </section>
   );
