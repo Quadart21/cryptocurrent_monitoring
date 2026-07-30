@@ -390,7 +390,7 @@ export function BlogModule() {
                 void saveSettings({ enabled: e.target.checked })
               }
             />
-            <span>Автосинк раз в сутки</span>
+            <span>Автосинк раз в час</span>
           </label>
 
           <label className="grid gap-1 text-sm">

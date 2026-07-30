@@ -21,7 +21,7 @@ import {
 } from "@/lib/store";
 
 const SOURCE_PROVIDER = "rbc-crypto";
-const DEFAULT_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const DEFAULT_INTERVAL_MS = 60 * 60 * 1000;
 const START_DELAY_MS = 90_000;
 const STALE_SYNC_MS = 15 * 60 * 1000;
 
@@ -336,7 +336,7 @@ async function runNewsSyncJob(input: {
   };
 }
 
-/** Full awaitable sync (used by daily poller). */
+/** Full awaitable sync (used by hourly poller). */
 export async function syncCryptoNews(options?: {
   force?: boolean;
   maxCreate?: number;
@@ -417,7 +417,7 @@ export function startNewsPoller(): void {
     void (async () => {
       const settings = await getNewsSettings();
       if (!settings.enabled) return;
-      // Auto: process up to batchSize() new items per daily tick
+      // Auto: process up to batchSize() new items per hourly tick
       await syncCryptoNews();
     })().catch((error) => {
       console.error("[gapsnap] news sync failed", error);
