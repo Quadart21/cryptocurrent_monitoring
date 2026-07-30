@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { assertAdmin } from "@/lib/admin-guard";
+import { assertAdminResource } from "@/lib/admin-guard";
 import {
   runBannerChecks,
   unpublishForMissingBanner,
@@ -19,7 +19,7 @@ type Body = {
 };
 
 export async function POST(request: Request) {
-  const denied = await assertAdmin();
+  const denied = await assertAdminResource("banners", request.method);
   if (denied) return denied;
 
   let body: Body = {};

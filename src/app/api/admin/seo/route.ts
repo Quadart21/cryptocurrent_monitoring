@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { assertAdmin } from "@/lib/admin-guard";
+import { assertAdminResource } from "@/lib/admin-guard";
 import { getSeoSettings, updateSeoSettings } from "@/lib/store";
 import type { SeoSettings } from "@/lib/store-types";
 
@@ -7,13 +7,13 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const denied = await assertAdmin();
+  const denied = await assertAdminResource("seo", "GET");
   if (denied) return denied;
   return NextResponse.json({ seo: await getSeoSettings() });
 }
 
 export async function PUT(request: Request) {
-  const denied = await assertAdmin();
+  const denied = await assertAdminResource("seo", request.method);
   if (denied) return denied;
 
   let body: Partial<SeoSettings>;

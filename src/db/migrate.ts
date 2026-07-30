@@ -16,6 +16,8 @@ export async function runMigrations(): Promise<void> {
     await migrate(db, { migrationsFolder });
     await ensureSeeded(db);
     await ensureMissingAdTariffs(db);
+    const { ensureBootstrapAdmin } = await import("@/lib/admin-users");
+    await ensureBootstrapAdmin();
   })().catch((error) => {
     migratePromise = null;
     throw error;

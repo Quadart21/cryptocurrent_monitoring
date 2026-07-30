@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { assertAdmin } from "@/lib/admin-guard";
+import {
+  assertAdminResource,
+  getAdminSession,
+} from "@/lib/admin-guard";
+import { adminMePayload } from "@/lib/admin-users";
 import { countPendingCatalogProposals } from "@/lib/bestchange/catalog-proposals";
 import { countPendingComplaints } from "@/lib/complaints";
 import {
@@ -24,8 +28,12 @@ function maskEmail(email: string): string {
 }
 
 export async function GET() {
-  const denied = await assertAdmin();
+  const denied = await assertAdminResource("overview", "GET");
   if (denied) return denied;
+  const session = await getAdminSession();
+  if (!session) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
 
   const [
     lastGlobalSyncAt,
@@ -60,6 +68,7 @@ export async function GET() {
   }));
 
   return NextResponse.json({
+    me: adminMePayload(session.user),
     lastGlobalSyncAt,
     counts: {
       exchangers: exchangers.length,

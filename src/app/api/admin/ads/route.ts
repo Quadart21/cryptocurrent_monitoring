@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { assertAdmin } from "@/lib/admin-guard";
+import { assertAdminResource } from "@/lib/admin-guard";
 import {
   AD_TYPE_PLACEMENTS,
   normalizeAdPairs,
@@ -104,7 +104,7 @@ function parseAdBody(body: Record<string, unknown>) {
 }
 
 export async function GET(request: Request) {
-  const denied = await assertAdmin();
+  const denied = await assertAdminResource("ads", request.method);
   if (denied) return denied;
 
   const exchangerId = new URL(request.url).searchParams.get("exchangerId");
@@ -117,7 +117,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const denied = await assertAdmin();
+  const denied = await assertAdminResource("ads", request.method);
   if (denied) return denied;
 
   const body = (await request.json()) as Record<string, unknown>;
@@ -149,7 +149,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const denied = await assertAdmin();
+  const denied = await assertAdminResource("ads", request.method);
   if (denied) return denied;
 
   const body = (await request.json()) as Record<string, unknown> & {
@@ -207,7 +207,7 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const denied = await assertAdmin();
+  const denied = await assertAdminResource("ads", request.method);
   if (denied) return denied;
 
   const id = new URL(request.url).searchParams.get("id");

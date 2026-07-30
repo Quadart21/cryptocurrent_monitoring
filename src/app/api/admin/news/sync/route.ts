@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { assertAdmin } from "@/lib/admin-guard";
+import { assertAdminResource } from "@/lib/admin-guard";
 import {
   getNewsSyncStatus,
   startNewsSync,
@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const denied = await assertAdmin();
+  const denied = await assertAdminResource("blog", "GET");
   if (denied) return denied;
   try {
     const status = await getNewsSyncStatus();
@@ -21,7 +21,7 @@ export async function GET() {
 }
 
 export async function POST() {
-  const denied = await assertAdmin();
+  const denied = await assertAdminResource("blog", "POST");
   if (denied) return denied;
   try {
     const started = await startNewsSync({ force: true });

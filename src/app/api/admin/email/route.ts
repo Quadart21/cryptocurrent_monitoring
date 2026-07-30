@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { assertAdmin } from "@/lib/admin-guard";
+import { assertAdminResource } from "@/lib/admin-guard";
 import {
   contactMatchesSegment,
   listEmailContacts,
@@ -25,7 +25,7 @@ export const dynamic = "force-dynamic";
 const SEGMENTS = new Set<BroadcastSegment>(["all", "exchangers", "reviewers"]);
 
 export async function GET(request: Request) {
-  const denied = await assertAdmin();
+  const denied = await assertAdminResource("email", request.method);
   if (denied) return denied;
 
   const { searchParams } = new URL(request.url);
@@ -77,7 +77,7 @@ export async function GET(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  const denied = await assertAdmin();
+  const denied = await assertAdminResource("email", request.method);
   if (denied) return denied;
 
   const body = (await request.json()) as {
@@ -137,7 +137,7 @@ export async function PUT(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const denied = await assertAdmin();
+  const denied = await assertAdminResource("email", request.method);
   if (denied) return denied;
 
   const body = (await request.json()) as {

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { assertAdmin } from "@/lib/admin-guard";
+import { assertAdminResource } from "@/lib/admin-guard";
 import { parseAchievementRule } from "@/lib/achievement-rules";
 import {
   countAchievementRuleMatches,
@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  const denied = await assertAdmin();
+  const denied = await assertAdminResource("achievements", request.method);
   if (denied) return denied;
 
   const body = (await request.json().catch(() => ({}))) as {

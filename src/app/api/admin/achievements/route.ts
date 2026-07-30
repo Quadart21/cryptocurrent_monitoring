@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { assertAdmin } from "@/lib/admin-guard";
+import { assertAdminResource } from "@/lib/admin-guard";
 import {
   parseAchievementMode,
   parseAchievementRule,
@@ -17,13 +17,13 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const denied = await assertAdmin();
+  const denied = await assertAdminResource("achievements", "GET");
   if (denied) return denied;
   return NextResponse.json({ achievements: await listAchievements() });
 }
 
 export async function POST(request: Request) {
-  const denied = await assertAdmin();
+  const denied = await assertAdminResource("achievements", request.method);
   if (denied) return denied;
 
   const body = (await request.json()) as {
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const denied = await assertAdmin();
+  const denied = await assertAdminResource("achievements", request.method);
   if (denied) return denied;
 
   const body = (await request.json()) as {
@@ -140,7 +140,7 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const denied = await assertAdmin();
+  const denied = await assertAdminResource("achievements", request.method);
   if (denied) return denied;
 
   const id = new URL(request.url).searchParams.get("id");

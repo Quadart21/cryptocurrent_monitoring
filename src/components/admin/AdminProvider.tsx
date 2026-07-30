@@ -9,7 +9,11 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { AdminCounts, AdminOverview } from "@/components/admin/types";
+import type {
+  AdminCounts,
+  AdminMe,
+  AdminOverview,
+} from "@/components/admin/types";
 
 type AdminContextValue = {
   checking: boolean;
@@ -18,9 +22,15 @@ type AdminContextValue = {
   setBusy: (v: boolean) => void;
   overview: AdminOverview | null;
   counts: AdminCounts | null;
+  me: AdminMe | null;
   lastGlobalSyncAt: string | null;
+  can: (permission: string) => boolean;
   refresh: () => Promise<boolean>;
-  login: (login: string, password: string) => Promise<string | null>;
+  login: (
+    login: string,
+    password: string,
+    totpCode?: string,
+  ) => Promise<{ error: string | null; needsTotp?: boolean }>;
   logout: () => Promise<void>;
 };
 
@@ -68,21 +78,35 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const login = useCallback(
-    async (loginValue: string, password: string) => {
+    async (loginValue: string, password: string, totpCode?: string) => {
       setBusy(true);
       try {
         const res = await fetch("/api/admin/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ login: loginValue, password }),
+          body: JSON.stringify({
+            login: loginValue,
+            password,
+            totpCode,
+          }),
         });
-        const body = (await res.json()) as { error?: string };
-        if (!res.ok) return body.error ?? "Неверный логин или пароль";
+        const body = (await res.json()) as {
+          error?: string;
+          needsTotp?: boolean;
+        };
+        if (!res.ok) {
+          return {
+            error: body.error ?? "Неверный логин или пароль",
+            needsTotp: Boolean(body.needsTotp),
+          };
+        }
         const ok = await refresh();
-        if (!ok) return "Сессия не сохранилась, попробуйте ещё раз";
-        return null;
+        if (!ok) {
+          return { error: "Сессия не сохранилась, попробуйте ещё раз" };
+        }
+        return { error: null };
       } catch {
-        return "Сеть недоступна";
+        return { error: "Сеть недоступна" };
       } finally {
         setBusy(false);
       }
@@ -96,6 +120,17 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     setOverview(null);
   }, []);
 
+  const me = overview?.me ?? null;
+  const permSet = useMemo(
+    () => new Set(me?.permissions ?? []),
+    [me?.permissions],
+  );
+
+  const can = useCallback(
+    (permission: string) => permSet.has(permission),
+    [permSet],
+  );
+
   const value = useMemo<AdminContextValue>(
     () => ({
       checking,
@@ -104,12 +139,14 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       setBusy,
       overview,
       counts: overview?.counts ?? (authed ? emptyCounts : null),
+      me,
       lastGlobalSyncAt: overview?.lastGlobalSyncAt ?? null,
+      can,
       refresh,
       login,
       logout,
     }),
-    [checking, authed, busy, overview, refresh, login, logout],
+    [checking, authed, busy, overview, me, can, refresh, login, logout],
   );
 
   return (

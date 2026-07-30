@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { assertAdmin } from "@/lib/admin-guard";
+import { assertAdminResource } from "@/lib/admin-guard";
 import {
   DEFAULT_PROXY_HOSTS,
   formatProxyHosts,
@@ -11,7 +11,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const denied = await assertAdmin();
+  const denied = await assertAdminResource("blog", "GET");
   if (denied) return denied;
   const settings = await getNewsSettings();
   return NextResponse.json({
@@ -31,7 +31,7 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  const denied = await assertAdmin();
+  const denied = await assertAdminResource("blog", request.method);
   if (denied) return denied;
   const body = (await request.json()) as {
     model?: string;

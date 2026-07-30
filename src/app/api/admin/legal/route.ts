@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { assertAdmin } from "@/lib/admin-guard";
+import { assertAdminResource } from "@/lib/admin-guard";
 import { getLegalSettings, updateLegalSettings } from "@/lib/store";
 import type { LegalSettings } from "@/lib/store-types";
 
@@ -7,13 +7,13 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const denied = await assertAdmin();
+  const denied = await assertAdminResource("legal", "GET");
   if (denied) return denied;
   return NextResponse.json({ legal: await getLegalSettings() });
 }
 
 export async function PATCH(request: Request) {
-  const denied = await assertAdmin();
+  const denied = await assertAdminResource("legal", request.method);
   if (denied) return denied;
 
   let body: Partial<LegalSettings>;

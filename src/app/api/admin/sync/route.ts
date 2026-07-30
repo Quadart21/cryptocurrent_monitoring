@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { assertAdmin } from "@/lib/admin-guard";
+import { assertAdminResource } from "@/lib/admin-guard";
 import {
   countPendingCatalogProposals,
   listCatalogProposals,
@@ -13,7 +13,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const denied = await assertAdmin();
+  const denied = await assertAdminResource("sync", request.method);
   if (denied) return denied;
 
   const { searchParams } = new URL(request.url);
@@ -50,7 +50,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const denied = await assertAdmin();
+  const denied = await assertAdminResource("sync", request.method);
   if (denied) return denied;
 
   let action = "feeds";

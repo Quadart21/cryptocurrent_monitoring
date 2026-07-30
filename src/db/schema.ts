@@ -572,3 +572,24 @@ export const bcCatalogMeta = pgTable("bc_catalog_meta", {
   source: text("source").notNull().default("db"),
 });
 
+export const adminUsers = pgTable(
+  "admin_users",
+  {
+    id: text("id").primaryKey(),
+    login: text("login").notNull(),
+    passwordHash: text("password_hash").notNull(),
+    role: text("role").notNull().default("viewer"),
+    active: boolean("active").notNull().default(true),
+    totpSecret: text("totp_secret"),
+    totpEnabled: boolean("totp_enabled").notNull().default(false),
+    displayName: text("display_name").notNull().default(""),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+    lastLoginAt: text("last_login_at"),
+  },
+  (t) => [
+    uniqueIndex("admin_users_login_uidx").on(t.login),
+    index("admin_users_role_idx").on(t.role),
+  ],
+);
+

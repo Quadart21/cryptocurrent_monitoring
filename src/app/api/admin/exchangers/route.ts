@@ -1,5 +1,5 @@
 ﻿import { NextResponse } from "next/server";
-import { assertAdmin } from "@/lib/admin-guard";
+import { assertAdminResource } from "@/lib/admin-guard";
 import { validateExchangeUrlTemplate } from "@/lib/exchange-link";
 import { hashOwnerPassword } from "@/lib/owner-auth";
 import {
@@ -27,7 +27,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const denied = await assertAdmin();
+  const denied = await assertAdminResource("exchangers", "GET");
   if (denied) return denied;
   const list = await listExchangers();
   return NextResponse.json({
@@ -42,7 +42,7 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  const denied = await assertAdmin();
+  const denied = await assertAdminResource("exchangers", request.method);
   if (denied) return denied;
 
   const body = (await request.json()) as {
@@ -218,7 +218,7 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const denied = await assertAdmin();
+  const denied = await assertAdminResource("exchangers", request.method);
   if (denied) return denied;
 
   const { searchParams } = new URL(request.url);

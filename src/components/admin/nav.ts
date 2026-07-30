@@ -22,6 +22,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
     label: "Обзор",
     description: "Сводка и очередь",
     group: "main",
+    permission: "overview",
   },
   {
     id: "exchangers",
@@ -30,6 +31,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
     description: "Заявки и статусы",
     group: "moderation",
     badge: "pending",
+    permission: "exchangers.read",
   },
   {
     id: "reviews",
@@ -38,6 +40,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
     description: "Модерация отзывов",
     group: "moderation",
     badge: "pendingReviews",
+    permission: "reviews.read",
   },
   {
     id: "complaints",
@@ -46,6 +49,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
     description: "Очередь жалоб на обменники",
     group: "moderation",
     badge: "pendingComplaints",
+    permission: "complaints.read",
   },
   {
     id: "blacklist",
@@ -53,6 +57,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
     label: "Чёрный список",
     description: "Скам и жалобы",
     group: "moderation",
+    permission: "blacklist.read",
   },
   {
     id: "banners",
@@ -61,6 +66,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
     description: "Кнопка GapSnap на сайтах",
     group: "moderation",
     badge: "bannerMissing",
+    permission: "banners.read",
   },
   {
     id: "blog",
@@ -68,6 +74,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
     label: "Новости",
     description: "Публикации и AI-импорт",
     group: "content",
+    permission: "blog.read",
   },
   {
     id: "qualities",
@@ -75,6 +82,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
     label: "Качества",
     description: "Теги для отзывов",
     group: "content",
+    permission: "qualities.read",
   },
   {
     id: "achievements",
@@ -82,6 +90,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
     label: "Ачивки",
     description: "Иконки у обменников",
     group: "content",
+    permission: "achievements.read",
   },
   {
     id: "ads",
@@ -89,6 +98,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
     label: "Креативы",
     description: "Баннеры и закрепы",
     group: "ads",
+    permission: "ads.read",
   },
   {
     id: "ad-tariffs",
@@ -96,6 +106,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
     label: "Тарифы",
     description: "Цены на /advertise",
     group: "ads",
+    permission: "ad_tariffs.read",
   },
   {
     id: "seo",
@@ -103,6 +114,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
     label: "SEO",
     description: "Мета, robots, sitemap",
     group: "site",
+    permission: "seo.read",
   },
   {
     id: "legal",
@@ -110,6 +122,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
     label: "Правовые",
     description: "Политики и cookies",
     group: "site",
+    permission: "legal.read",
   },
   {
     id: "email",
@@ -117,6 +130,15 @@ export const ADMIN_NAV: AdminNavItem[] = [
     label: "Email",
     description: "Шаблоны и журнал",
     group: "site",
+    permission: "email.read",
+  },
+  {
+    id: "admins",
+    href: `${ADMIN_PATH}/admins`,
+    label: "Админы",
+    description: "Учётки, роли и 2FA",
+    group: "site",
+    permission: "admins.read",
   },
   {
     id: "catalog",
@@ -124,6 +146,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
     label: "Каталог",
     description: "Валюты и города",
     group: "data",
+    permission: "catalog.read",
   },
   {
     id: "sync",
@@ -132,6 +155,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
     description: "Фиды и новые коды",
     group: "data",
     badge: "syncQueue",
+    permission: "sync.read",
   },
 ];
 

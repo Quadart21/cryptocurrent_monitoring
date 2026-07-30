@@ -3,6 +3,7 @@ import {
   hmacHex,
   timingSafeEqualStr,
 } from "@/lib/security/session";
+import { getAdminLogin, getAdminPassword } from "@/lib/admin-auth-env";
 
 export const ADMIN_COOKIE = "gs_ops";
 
@@ -30,7 +31,6 @@ const RESERVED_ADMIN_PATHS = new Set([
 /**
  * Public admin URL prefix.
  * Set ADMIN_PATH in .env to a non-obvious path (e.g. /ops-k7m2).
- * Do NOT put this path into robots.txt — that advertises it.
  */
 export function normalizeAdminPath(raw: string | undefined | null): string {
   const fallback = ADMIN_INTERNAL_PATH;
@@ -60,20 +60,14 @@ export function isAdminInternalPath(pathname: string): boolean {
 
 const ADMIN_SESSION_TTL_SEC = 60 * 60 * 24 * 7; // 7 days
 
-export function getAdminLogin(): string {
-  return process.env.ADMIN_LOGIN?.trim() || "admin";
-}
-
-export function getAdminPassword(): string {
-  return process.env.ADMIN_PASSWORD?.trim() || "admin";
-}
+export { getAdminLogin, getAdminPassword };
 
 export function warnIfInsecureAdminConfig(): void {
   if (process.env.NODE_ENV !== "production") return;
   const password = getAdminPassword();
   if (password === "admin" || password.length < 10) {
     console.error(
-      "[gapsnap] Небезопасный ADMIN_PASSWORD в production. Задайте длинный пароль в .env.",
+      "[gapsnap] Небезопасный ADMIN_PASSWORD в production (используется для bootstrap owner). Задайте длинный пароль в .env.",
     );
   }
   if (!process.env.SESSION_SECRET?.trim()) {
@@ -88,25 +82,40 @@ export function warnIfInsecureAdminConfig(): void {
   }
 }
 
-async function signAdminPayload(login: string, exp: number): Promise<string> {
-  return hmacHex(getSessionSecret(), `admin-session-v2|${login}|${exp}`);
+async function signAdminPayloadV3(userId: string, exp: number): Promise<string> {
+  return hmacHex(getSessionSecret(), `admin-session-v3|${userId}|${exp}`);
 }
 
-/** Signed admin session: v2.<exp>.<hmac> */
-export async function createAdminSessionToken(login: string): Promise<string> {
+/** Signed admin session: v3.<userId>.<exp>.<hmac> */
+export async function createAdminSessionToken(userId: string): Promise<string> {
   const exp = Math.floor(Date.now() / 1000) + ADMIN_SESSION_TTL_SEC;
-  const sig = await signAdminPayload(login, exp);
-  return `v2.${exp}.${sig}`;
+  const sig = await signAdminPayloadV3(userId, exp);
+  return `v3.${userId}.${exp}.${sig}`;
 }
 
-/** @deprecated compatibility alias */
-export async function sessionTokenFromCredentials(
-  login: string,
-  _password: string,
-): Promise<string> {
-  return createAdminSessionToken(login);
+export type ParsedAdminSession = {
+  userId: string;
+  exp: number;
+};
+
+export async function parseAdminSessionToken(
+  token: string | null | undefined,
+): Promise<ParsedAdminSession | null> {
+  if (!token) return null;
+  const parts = token.split(".");
+  if (parts.length !== 4 || parts[0] !== "v3") return null;
+  const userId = parts[1] ?? "";
+  const exp = Number(parts[2]);
+  const sig = parts[3] ?? "";
+  if (!userId || !Number.isFinite(exp) || exp < Math.floor(Date.now() / 1000)) {
+    return null;
+  }
+  const expected = await signAdminPayloadV3(userId, exp);
+  if (!timingSafeEqualStr(sig, expected)) return null;
+  return { userId, exp };
 }
 
+/** @deprecated env-only check — prefer authenticateAdmin */
 export function isValidCredentials(login: string, password: string): boolean {
   return (
     timingSafeEqualStr(login, getAdminLogin()) &&
@@ -117,16 +126,7 @@ export function isValidCredentials(login: string, password: string): boolean {
 export async function isValidAdminSession(
   token: string | null | undefined,
 ): Promise<boolean> {
-  if (!token) return false;
-  const parts = token.split(".");
-  if (parts.length !== 3 || parts[0] !== "v2") return false;
-  const exp = Number(parts[1]);
-  const sig = parts[2] ?? "";
-  if (!Number.isFinite(exp) || exp < Math.floor(Date.now() / 1000)) {
-    return false;
-  }
-  const expected = await signAdminPayload(getAdminLogin(), exp);
-  return timingSafeEqualStr(sig, expected);
+  return (await parseAdminSessionToken(token)) !== null;
 }
 
 export { timingSafeEqualStr };

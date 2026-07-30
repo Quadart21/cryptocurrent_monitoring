@@ -29,6 +29,7 @@ export type AdminExchanger = Omit<FeedExchanger, "ownerPasswordHash"> & {
 };
 
 export type AdminOverview = {
+  me?: AdminMe;
   lastGlobalSyncAt: string | null;
   counts: AdminCounts;
   exchangers: AdminExchanger[];
@@ -37,6 +38,16 @@ export type AdminOverview = {
   qualityTags: ReviewQualityTag[];
   achievements: ExchangerAchievement[];
   ads: AdCreative[];
+};
+
+export type AdminMe = {
+  id: string;
+  login: string;
+  role: string;
+  active: boolean;
+  totpEnabled: boolean;
+  displayName: string;
+  permissions: string[];
 };
 
 export type AdminNavId =
@@ -55,7 +66,8 @@ export type AdminNavId =
   | "blacklist"
   | "catalog"
   | "sync"
-  | "banners";
+  | "banners"
+  | "admins";
 
 export type AdminNavGroupId =
   | "main"
@@ -80,6 +92,8 @@ export type AdminNavItem = {
   description: string;
   group: AdminNavGroupId;
   badge?: AdminNavBadge;
+  /** Read permission required to see this nav item */
+  permission?: string;
 };
 
 export type AdminNavGroup = {

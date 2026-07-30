@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { assertAdmin } from "@/lib/admin-guard";
+import { assertAdminResource } from "@/lib/admin-guard";
 import {
   addReviewReply,
   listReviewReplies,
@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const denied = await assertAdmin();
+  const denied = await assertAdminResource("reviews", request.method);
   if (denied) return denied;
   const id = new URL(request.url).searchParams.get("reviewId");
   if (!id) {
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const denied = await assertAdmin();
+  const denied = await assertAdminResource("reviews", request.method);
   if (denied) return denied;
 
   const body = (await request.json()) as {

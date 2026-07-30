@@ -9,14 +9,24 @@ export function AdminLogin() {
   const { busy, login } = useAdmin();
   const [loginValue, setLoginValue] = useState("");
   const [password, setPassword] = useState("");
+  const [totpCode, setTotpCode] = useState("");
+  const [needsTotp, setNeedsTotp] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    const err = await login(loginValue, password);
-    if (err) setError(err);
-    else setPassword("");
+    const result = await login(
+      loginValue,
+      password,
+      totpCode || undefined,
+    );
+    if (result.needsTotp) setNeedsTotp(true);
+    if (result.error) setError(result.error);
+    else {
+      setPassword("");
+      setTotpCode("");
+    }
   }
 
   return (
@@ -60,6 +70,19 @@ export function AdminLogin() {
             className="w-full rounded-xl border border-line bg-input px-3 py-2.5 text-sm outline-none focus:border-accent"
           />
         </label>
+        {needsTotp || totpCode ? (
+          <label className="block space-y-1.5">
+            <span className="text-xs font-medium text-ink-muted">Код 2FA</span>
+            <input
+              value={totpCode}
+              onChange={(e) => setTotpCode(e.target.value)}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              placeholder="6 цифр"
+              className="w-full rounded-xl border border-line bg-input px-3 py-2.5 text-sm outline-none focus:border-accent"
+            />
+          </label>
+        ) : null}
         {error ? <p className="text-sm text-danger">{error}</p> : null}
         <button
           type="submit"

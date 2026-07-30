@@ -14,7 +14,8 @@ import { ADMIN_PATH } from "@/lib/admin-auth";
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { counts, lastGlobalSyncAt, logout, refresh, busy } = useAdmin();
+  const { counts, lastGlobalSyncAt, logout, refresh, busy, can, me } =
+    useAdmin();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const pendingTotal =
@@ -28,9 +29,14 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     () =>
       ADMIN_NAV_GROUPS.map((group) => ({
         ...group,
-        items: ADMIN_NAV.filter((item) => item.group === group.id),
+        items: ADMIN_NAV.filter((item) => {
+          if (item.group !== group.id) return false;
+          if (item.id === "admins" && me && !me.totpEnabled) return true;
+          if (!item.permission) return true;
+          return can(item.permission);
+        }),
       })).filter((g) => g.items.length > 0),
-    [],
+    [can, me],
   );
 
   const current = useMemo(() => {
@@ -42,6 +48,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       ) ?? null
     );
   }, [pathname]);
+
+  const forbidden =
+    current?.permission &&
+    !(current.id === "admins" && me && !me.totpEnabled) &&
+    !can(current.permission);
 
   function closeMobile() {
     setMobileOpen(false);
@@ -120,6 +131,12 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="space-y-1.5 border-t border-line p-3">
+            {me ? (
+              <p className="px-1 pb-1 text-[11px] text-ink-muted">
+                {me.login}
+                <span className="text-ink-muted"> · {me.role}</span>
+              </p>
+            ) : null}
             <button
               type="button"
               disabled={busy}
@@ -175,7 +192,27 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             <ThemeToggle />
           </header>
 
-          <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+          <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+            {me && !me.totpEnabled ? (
+              <div className="mb-4 rounded-2xl border border-warn/40 bg-warn/10 px-4 py-3 text-sm text-warn">
+                Включите 2FA в разделе{" "}
+                <Link
+                  href={`${ADMIN_PATH}/admins`}
+                  className="font-semibold underline underline-offset-2"
+                >
+                  Админы
+                </Link>
+                .
+              </div>
+            ) : null}
+            {forbidden ? (
+              <div className="card p-6 text-sm text-ink-muted">
+                Недостаточно прав для раздела «{current?.label}».
+              </div>
+            ) : (
+              children
+            )}
+          </main>
         </div>
       </div>
     </div>

@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { assertAdmin } from "@/lib/admin-guard";
+import { assertAdminResource } from "@/lib/admin-guard";
 import { codexConfigured, listCodexModels } from "@/lib/ai/codex-client";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const denied = await assertAdmin();
+  const denied = await assertAdminResource("blog", "GET");
   if (denied) return denied;
   if (!codexConfigured()) {
     return NextResponse.json(
