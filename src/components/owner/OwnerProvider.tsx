@@ -58,7 +58,15 @@ export type OwnerReview = Pick<
   | "moderatedAt"
   | "ownerReply"
   | "ownerRepliedAt"
->;
+  | "threadClosed"
+> & {
+  replies?: Array<{
+    id: string;
+    authorRole: string;
+    body: string;
+    createdAt: string;
+  }>;
+};
 
 type OwnerContextValue = {
   checking: boolean;

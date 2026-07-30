@@ -142,11 +142,46 @@ export type ExchangerReview = {
   status: ReviewStatus;
   createdAt: string;
   moderatedAt: string | null;
-  /** Ответ владельца обменника */
+  /** Legacy / mirror of last owner reply in thread */
   ownerReply: string | null;
   ownerRepliedAt: string | null;
+  /** Admin closed discussion — no further replies */
+  threadClosed: boolean;
   /** Email автора (для подтверждения); не отдаём публично */
   email: string | null;
+  emailVerifiedAt: string | null;
+};
+
+export type ReviewReplyRole = "owner" | "reviewer" | "admin";
+
+export type ReviewReply = {
+  id: string;
+  reviewId: string;
+  authorRole: ReviewReplyRole;
+  body: string;
+  createdAt: string;
+};
+
+export type ComplaintStatus =
+  | "awaiting_email"
+  | "pending"
+  | "in_progress"
+  | "resolved_blacklist"
+  | "rejected";
+
+export type Complaint = {
+  id: string;
+  exchangerId: string;
+  exchangerSlug: string;
+  exchangerName: string;
+  email: string;
+  body: string;
+  orderId: string;
+  relatedReviewId: string | null;
+  status: ComplaintStatus;
+  adminNote: string;
+  createdAt: string;
+  moderatedAt: string | null;
   emailVerifiedAt: string | null;
 };
 

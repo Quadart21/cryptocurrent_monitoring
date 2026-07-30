@@ -20,6 +20,11 @@ export function ReviewsModule() {
   const { overview, busy, setBusy, refresh } = useAdmin();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("pending");
   const [q, setQ] = useState("");
+  const [threadId, setThreadId] = useState<string | null>(null);
+  const [replies, setReplies] = useState<
+    Array<{ id: string; authorRole: string; body: string; createdAt: string }>
+  >([]);
+  const [adminReply, setAdminReply] = useState("");
 
   const rows = useMemo(() => {
     let list = overview?.reviews ?? [];
@@ -71,6 +76,70 @@ export function ReviewsModule() {
     }
   }
 
+  async function loadThread(reviewId: string) {
+    setBusy(true);
+    try {
+      const res = await fetch(
+        `/api/admin/reviews/thread?reviewId=${encodeURIComponent(reviewId)}`,
+      );
+      const body = (await res.json()) as {
+        replies?: Array<{
+          id: string;
+          authorRole: string;
+          body: string;
+          createdAt: string;
+        }>;
+      };
+      setThreadId(reviewId);
+      setReplies(body.replies ?? []);
+      setAdminReply("");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function postAdminReply(reviewId: string) {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/admin/reviews/thread", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviewId, reply: adminReply }),
+      });
+      const body = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        window.alert(body.error ?? "Ошибка");
+        return;
+      }
+      await loadThread(reviewId);
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggleClose(reviewId: string, close: boolean) {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/admin/reviews/thread", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reviewId,
+          action: close ? "close" : "open",
+        }),
+      });
+      if (!res.ok) {
+        const body = (await res.json()) as { error?: string };
+        window.alert(body.error ?? "Ошибка");
+        return;
+      }
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const pendingCount =
     overview?.reviews.filter((r) => r.status === "pending").length ?? 0;
 
@@ -78,7 +147,7 @@ export function ReviewsModule() {
     <div className="space-y-6">
       <AdminPageHeader
         title="Отзывы"
-        description="Клиент отправляет отзыв со страницы обменника — здесь можно одобрить или отклонить."
+        description="Модерация, ответы в треде и закрытие обсуждения."
       />
 
       {pendingCount > 0 && (
@@ -120,65 +189,144 @@ export function ReviewsModule() {
             <p className="px-5 py-6 text-sm text-ink-muted">Нет отзывов</p>
           ) : (
             rows.map((r) => (
-              <div
-                key={r.id}
-                className="flex flex-col gap-3 px-5 py-4 lg:flex-row lg:items-start lg:justify-between"
-              >
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-semibold text-ink">{r.exchangerName}</p>
-                    <StatusPill status={r.status} />
-                    <span
-                      className={`rounded-xl px-2.5 py-1 text-xs font-semibold ${
-                        r.sentiment === "positive"
-                          ? "bg-ok/20 text-ok"
-                          : "bg-danger/15 text-danger"
-                      }`}
-                    >
-                      {r.sentiment === "positive" ? "плюс" : "минус"}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-xs text-ink-muted">
-                    заявка {r.orderId} ·{" "}
-                    {new Date(r.createdAt).toLocaleString("ru-RU")}
-                  </p>
-                  <p className="mt-2 text-sm text-ink">{r.text}</p>
-                  {r.qualityLabels.length > 0 && (
-                    <p className="mt-2 text-xs text-ink-muted">
-                      {r.qualityLabels.join(" · ")}
+              <div key={r.id} className="space-y-3 px-5 py-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold text-ink">{r.exchangerName}</p>
+                      <StatusPill status={r.status} />
+                      {r.threadClosed ? (
+                        <span className="rounded-xl bg-ink-muted/15 px-2.5 py-1 text-xs font-semibold text-ink-muted">
+                          Топик закрыт
+                        </span>
+                      ) : null}
+                      <span
+                        className={`rounded-xl px-2.5 py-1 text-xs font-semibold ${
+                          r.sentiment === "positive"
+                            ? "bg-ok/20 text-ok"
+                            : "bg-danger/15 text-danger"
+                        }`}
+                      >
+                        {r.sentiment === "positive" ? "плюс" : "минус"}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-ink-muted">
+                      заявка {r.orderId} ·{" "}
+                      {new Date(r.createdAt).toLocaleString("ru-RU")}
                     </p>
-                  )}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {r.status !== "approved" && (
+                    <p className="mt-2 text-sm text-ink">{r.text}</p>
+                    {r.qualityLabels.length > 0 && (
+                      <p className="mt-2 text-xs text-ink-muted">
+                        {r.qualityLabels.join(" · ")}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {r.status !== "approved" && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void moderate(r.id, "approved")}
+                        className="rounded-xl bg-ok/20 px-3 py-2 text-xs font-semibold text-ok"
+                      >
+                        Одобрить
+                      </button>
+                    )}
+                    {r.status !== "rejected" && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void moderate(r.id, "rejected")}
+                        className="rounded-xl bg-warn/20 px-3 py-2 text-xs font-semibold text-warn"
+                      >
+                        Отклонить
+                      </button>
+                    )}
+                    {r.status === "approved" ? (
+                      <>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void loadThread(r.id)}
+                          className="rounded-xl border border-line px-3 py-2 text-xs font-semibold text-ink-muted"
+                        >
+                          Тред
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() =>
+                            void toggleClose(r.id, !r.threadClosed)
+                          }
+                          className="rounded-xl border border-line px-3 py-2 text-xs font-semibold text-ink-muted"
+                        >
+                          {r.threadClosed ? "Открыть топик" : "Закрыть топик"}
+                        </button>
+                      </>
+                    ) : null}
                     <button
                       type="button"
                       disabled={busy}
-                      onClick={() => void moderate(r.id, "approved")}
-                      className="rounded-xl bg-ok/20 px-3 py-2 text-xs font-semibold text-ok"
+                      onClick={() => void remove(r.id)}
+                      className="rounded-xl bg-danger/15 px-3 py-2 text-xs font-semibold text-danger"
                     >
-                      Одобрить
+                      Удалить
                     </button>
-                  )}
-                  {r.status !== "rejected" && (
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => void moderate(r.id, "rejected")}
-                      className="rounded-xl bg-warn/20 px-3 py-2 text-xs font-semibold text-warn"
-                    >
-                      Отклонить
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void remove(r.id)}
-                    className="rounded-xl bg-danger/15 px-3 py-2 text-xs font-semibold text-danger"
-                  >
-                    Удалить
-                  </button>
+                  </div>
                 </div>
+
+                {threadId === r.id ? (
+                  <div className="rounded-2xl border border-line bg-bg-soft/40 p-4">
+                    <div className="space-y-2">
+                      {replies.length === 0 ? (
+                        <p className="text-xs text-ink-muted">Пока пусто</p>
+                      ) : (
+                        replies.map((msg) => (
+                          <div
+                            key={msg.id}
+                            className="rounded-xl border border-line bg-bg-elevated px-3 py-2"
+                          >
+                            <p className="text-[11px] font-semibold text-accent-deep">
+                              {msg.authorRole === "owner"
+                                ? "Обменник"
+                                : msg.authorRole === "admin"
+                                  ? "Модератор"
+                                  : "Автор"}
+                              <span className="ml-2 font-normal text-ink-muted">
+                                {new Date(msg.createdAt).toLocaleString("ru-RU")}
+                              </span>
+                            </p>
+                            <p className="mt-1 text-sm text-ink">{msg.body}</p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                    {!r.threadClosed ? (
+                      <div className="mt-3 space-y-2">
+                        <textarea
+                          value={adminReply}
+                          onChange={(e) => setAdminReply(e.target.value)}
+                          rows={3}
+                          maxLength={2000}
+                          placeholder="Ответ модератора (уйдёт автору на email)"
+                          className="w-full rounded-xl border border-line bg-input px-3 py-2 text-sm outline-none focus:border-accent"
+                        />
+                        <button
+                          type="button"
+                          disabled={busy || adminReply.trim().length < 2}
+                          onClick={() => void postAdminReply(r.id)}
+                          className="btn-primary rounded-xl px-3 py-2 text-xs font-semibold disabled:opacity-60"
+                        >
+                          Ответить как модератор
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-xs text-ink-muted">
+                        Топик закрыт — ответы отключены
+                      </p>
+                    )}
+                  </div>
+                ) : null}
               </div>
             ))
           )}

@@ -15,6 +15,8 @@ export async function GET() {
   const ex = auth.exchanger;
 
   const reviews = await listReviews({ exchangerId: ex.id });
+  const { listReviewRepliesForReviews } = await import("@/lib/review-threads");
+  const repliesMap = await listReviewRepliesForReviews(reviews.map((r) => r.id));
   const traffic = ex.traffic ?? {
     pageViews: 0,
     siteClicks: 0,
@@ -76,6 +78,8 @@ export async function GET() {
       moderatedAt: r.moderatedAt,
       ownerReply: r.ownerReply,
       ownerRepliedAt: r.ownerRepliedAt,
+      threadClosed: r.threadClosed,
+      replies: repliesMap.get(r.id) ?? [],
     })),
     readOnlyProfile: true,
   });

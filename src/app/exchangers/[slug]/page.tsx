@@ -9,6 +9,7 @@ import {
   ExchangerPageViewBeacon,
 } from "@/components/ExchangerOutboundLink";
 import { ExchangerReviews } from "@/components/ExchangerReviews";
+import { ComplaintForm } from "@/components/ComplaintForm";
 import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { ShareButtons } from "@/components/seo/ShareButtons";
@@ -224,6 +225,8 @@ export default async function ExchangerPage({ params }: Props) {
         exchangerName={ex.name}
         logo={ex.logo}
       />
+
+      <ComplaintForm exchangerId={ex.id} exchangerName={ex.name} />
     </div>
   );
 }

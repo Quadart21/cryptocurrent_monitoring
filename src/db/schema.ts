@@ -152,6 +152,8 @@ export const reviews = pgTable(
     moderatedAt: text("moderated_at"),
     ownerReply: text("owner_reply"),
     ownerRepliedAt: text("owner_replied_at"),
+    /** Admin closed the discussion — no further replies. */
+    threadClosed: boolean("thread_closed").notNull().default(false),
     email: text("email"),
     emailVerifiedAt: text("email_verified_at"),
     confirmTokenHash: text("confirm_token_hash"),
@@ -161,6 +163,76 @@ export const reviews = pgTable(
     index("reviews_exchanger_id_idx").on(t.exchangerId),
     index("reviews_status_idx").on(t.status),
     index("reviews_confirm_token_hash_idx").on(t.confirmTokenHash),
+  ],
+);
+
+export type ReviewReplyRole = "owner" | "reviewer" | "admin";
+
+export const reviewReplies = pgTable(
+  "review_replies",
+  {
+    id: text("id").primaryKey(),
+    reviewId: text("review_id")
+      .notNull()
+      .references(() => reviews.id, { onDelete: "cascade" }),
+    authorRole: text("author_role").notNull(),
+    body: text("body").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (t) => [index("review_replies_review_id_idx").on(t.reviewId)],
+);
+
+/** Magic-link tokens for review authors to continue a thread. */
+export const reviewReplyTokens = pgTable(
+  "review_reply_tokens",
+  {
+    id: text("id").primaryKey(),
+    reviewId: text("review_id")
+      .notNull()
+      .references(() => reviews.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    email: text("email").notNull(),
+    expiresAt: text("expires_at").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (t) => [
+    index("review_reply_tokens_hash_idx").on(t.tokenHash),
+    index("review_reply_tokens_review_id_idx").on(t.reviewId),
+  ],
+);
+
+export type ComplaintStatus =
+  | "awaiting_email"
+  | "pending"
+  | "in_progress"
+  | "resolved_blacklist"
+  | "rejected";
+
+export const complaints = pgTable(
+  "complaints",
+  {
+    id: text("id").primaryKey(),
+    exchangerId: text("exchanger_id")
+      .notNull()
+      .references(() => exchangers.id, { onDelete: "cascade" }),
+    exchangerSlug: text("exchanger_slug").notNull(),
+    exchangerName: text("exchanger_name").notNull(),
+    email: text("email").notNull(),
+    body: text("body").notNull(),
+    orderId: text("order_id").notNull().default(""),
+    relatedReviewId: text("related_review_id"),
+    status: text("status").notNull().default("awaiting_email"),
+    adminNote: text("admin_note").notNull().default(""),
+    createdAt: text("created_at").notNull(),
+    moderatedAt: text("moderated_at"),
+    emailVerifiedAt: text("email_verified_at"),
+    confirmTokenHash: text("confirm_token_hash"),
+    confirmExpiresAt: text("confirm_expires_at"),
+  },
+  (t) => [
+    index("complaints_exchanger_id_idx").on(t.exchangerId),
+    index("complaints_status_idx").on(t.status),
+    index("complaints_confirm_token_hash_idx").on(t.confirmTokenHash),
   ],
 );
 
@@ -356,6 +428,15 @@ export const emailSettings = pgTable("email_settings", {
     .notNull()
     .default(true),
   notifyOwnerReviewApproved: boolean("notify_owner_review_approved")
+    .notNull()
+    .default(true),
+  notifyReviewThreadAuthor: boolean("notify_review_thread_author")
+    .notNull()
+    .default(true),
+  notifyReviewThreadOwner: boolean("notify_review_thread_owner")
+    .notNull()
+    .default(true),
+  notifyComplaintConfirm: boolean("notify_complaint_confirm")
     .notNull()
     .default(true),
   updatedAt: text("updated_at").notNull(),

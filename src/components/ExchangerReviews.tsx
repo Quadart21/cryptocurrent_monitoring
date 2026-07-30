@@ -18,6 +18,13 @@ type ApprovedReview = {
   createdAt: string;
   ownerReply: string | null;
   ownerRepliedAt: string | null;
+  threadClosed?: boolean;
+  replies?: Array<{
+    id: string;
+    authorRole: string;
+    body: string;
+    createdAt: string;
+  }>;
 };
 
 type Props = {
@@ -288,61 +295,82 @@ export function ExchangerReviews({
                   ))}
                 </div>
               )}
-              {r.ownerReply ? (
-                <div className="relative mt-4 overflow-hidden rounded-2xl border border-accent/25 bg-gradient-to-br from-accent-soft/80 to-bg-soft/40 pl-1 shadow-[inset_0_1px_0_0_color-mix(in_srgb,var(--accent)_18%,transparent)]">
-                  <div className="absolute inset-y-3 left-0 w-1 rounded-full bg-gradient-to-b from-[var(--accent)] to-[var(--accent-2)]" />
-                  <div className="px-4 py-3.5 pl-5 sm:px-5 sm:pl-6">
-                    <div className="flex items-start gap-3">
-                      <ExchangerLogoMark
-                        name={exchangerName}
-                        exchangerId={exchangerId}
-                        logo={logo}
-                        size={36}
-                        className="shrink-0 ring-1 ring-accent/20"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                          <p className="font-display text-sm font-semibold text-ink">
-                            {exchangerName}
-                          </p>
-                          <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-accent-deep">
-                            <svg
-                              viewBox="0 0 16 16"
-                              className="size-3"
-                              aria-hidden
-                            >
-                              <path
-                                fill="currentColor"
-                                d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13Zm3.03 4.72-3.5 3.5a.75.75 0 0 1-1.06 0l-1.5-1.5a.75.75 0 1 1 1.06-1.06l.97.97 2.97-2.97a.75.75 0 0 1 1.06 1.06Z"
-                              />
-                            </svg>
-                            Представитель
-                          </span>
-                          {r.ownerRepliedAt ? (
-                            <span className="text-xs text-ink-muted">
-                              ·{" "}
-                              {new Date(r.ownerRepliedAt).toLocaleDateString(
-                                "ru-RU",
-                                {
-                                  day: "numeric",
-                                  month: "long",
-                                  year: "numeric",
-                                },
-                              )}
-                            </span>
-                          ) : null}
+              {(() => {
+                const thread =
+                  r.replies && r.replies.length > 0
+                    ? r.replies
+                    : r.ownerReply
+                      ? [
+                          {
+                            id: `${r.id}-legacy`,
+                            authorRole: "owner",
+                            body: r.ownerReply,
+                            createdAt: r.ownerRepliedAt ?? r.createdAt,
+                          },
+                        ]
+                      : [];
+                if (!thread.length && !r.threadClosed) return null;
+                return (
+                  <div className="mt-4 space-y-2">
+                    {thread.map((msg) => {
+                      const isOwner = msg.authorRole === "owner";
+                      const isAdmin = msg.authorRole === "admin";
+                      const label = isAdmin
+                        ? "Модератор GapSnap"
+                        : isOwner
+                          ? "Представитель"
+                          : "Автор отзыва";
+                      return (
+                        <div
+                          key={msg.id}
+                          className={`relative overflow-hidden rounded-2xl border pl-1 ${
+                            isOwner || isAdmin
+                              ? "border-accent/25 bg-gradient-to-br from-accent-soft/80 to-bg-soft/40"
+                              : "border-line bg-bg-soft/40"
+                          }`}
+                        >
+                          {(isOwner || isAdmin) && (
+                            <div className="absolute inset-y-3 left-0 w-1 rounded-full bg-gradient-to-b from-[var(--accent)] to-[var(--accent-2)]" />
+                          )}
+                          <div className="px-4 py-3 pl-5">
+                            <div className="flex flex-wrap items-center gap-2">
+                              {isOwner ? (
+                                <ExchangerLogoMark
+                                  name={exchangerName}
+                                  exchangerId={exchangerId}
+                                  logo={logo}
+                                  size={28}
+                                  className="shrink-0 ring-1 ring-accent/20"
+                                />
+                              ) : null}
+                              <p className="text-xs font-semibold text-accent-deep">
+                                {isOwner ? exchangerName : label}
+                              </p>
+                              <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-muted">
+                                {label}
+                              </span>
+                              <span className="text-xs text-ink-muted">
+                                ·{" "}
+                                {new Date(msg.createdAt).toLocaleDateString(
+                                  "ru-RU",
+                                )}
+                              </span>
+                            </div>
+                            <p className="mt-2 text-sm leading-relaxed text-ink">
+                              {msg.body}
+                            </p>
+                          </div>
                         </div>
-                        <p className="mt-0.5 text-xs text-ink-muted">
-                          Официальный ответ на отзыв
-                        </p>
-                        <p className="mt-2.5 text-sm leading-relaxed text-ink">
-                          {r.ownerReply}
-                        </p>
-                      </div>
-                    </div>
+                      );
+                    })}
+                    {r.threadClosed ? (
+                      <p className="text-xs font-medium text-ink-muted">
+                        Обсуждение закрыто модератором
+                      </p>
+                    ) : null}
                   </div>
-                </div>
-              ) : null}
+                );
+              })()}
             </article>
           ))
         )}

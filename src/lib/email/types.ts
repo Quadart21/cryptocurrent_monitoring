@@ -3,7 +3,10 @@ export type EmailTemplateId =
   | "owner_approved"
   | "owner_new_review"
   | "owner_banner_missing"
-  | "owner_banner_unpublished";
+  | "owner_banner_unpublished"
+  | "review_owner_replied"
+  | "review_author_replied"
+  | "complaint_confirm";
 
 export type EmailContactSource = "exchanger" | "review" | "manual";
 
@@ -26,6 +29,9 @@ export type EmailSettings = {
   notifyReviewConfirm: boolean;
   notifyOwnerExchangerApproved: boolean;
   notifyOwnerReviewApproved: boolean;
+  notifyReviewThreadAuthor: boolean;
+  notifyReviewThreadOwner: boolean;
+  notifyComplaintConfirm: boolean;
   updatedAt: string;
 };
 
@@ -92,5 +98,25 @@ export const EMAIL_TEMPLATE_VARS: Record<string, string[]> = {
     "website",
     "cabinetUrl",
     "bannerHtml",
+  ],
+  review_owner_replied: [
+    "siteName",
+    "exchangerName",
+    "replyText",
+    "replyUrl",
+    "publicUrl",
+    "roleLabel",
+  ],
+  review_author_replied: [
+    "siteName",
+    "exchangerName",
+    "replyText",
+    "cabinetUrl",
+    "publicUrl",
+  ],
+  complaint_confirm: [
+    "siteName",
+    "exchangerName",
+    "confirmUrl",
   ],
 };

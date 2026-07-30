@@ -33,10 +33,12 @@ function ReviewReplyCard({
   canReply: boolean;
   onSaved: () => Promise<boolean>;
 }) {
-  const [reply, setReply] = useState(review.ownerReply ?? "");
+  const [reply, setReply] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
+  const thread = review.replies ?? [];
+  const closed = Boolean(review.threadClosed);
 
   async function save() {
     setBusy(true);
@@ -54,6 +56,7 @@ function ReviewReplyCard({
         return;
       }
       setOk(true);
+      setReply("");
       await onSaved();
     } catch {
       setError("Сеть недоступна");
@@ -89,6 +92,11 @@ function ReviewReplyCard({
               ? "Отклонён"
               : "На модерации"}
         </span>
+        {closed ? (
+          <span className="rounded-xl bg-ink-muted/15 px-2.5 py-1 text-xs font-semibold text-ink-muted">
+            Топик закрыт
+          </span>
+        ) : null}
         <span className="text-xs text-ink-muted">заявка {review.orderId}</span>
         <span className="text-xs text-ink-muted">
           · {new Date(review.createdAt).toLocaleString("ru-RU")}
@@ -96,44 +104,63 @@ function ReviewReplyCard({
       </div>
       <p className="text-sm leading-relaxed text-ink">{review.text}</p>
 
+      {thread.length > 0 ? (
+        <div className="space-y-2 border-t border-line pt-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">
+            Переписка
+          </p>
+          {thread.map((msg) => (
+            <div
+              key={msg.id}
+              className="rounded-xl border border-line bg-bg-soft/50 px-3 py-2"
+            >
+              <p className="text-[11px] font-semibold text-accent-deep">
+                {msg.authorRole === "owner"
+                  ? "Вы"
+                  : msg.authorRole === "admin"
+                    ? "Модератор"
+                    : "Автор отзыва"}
+                <span className="ml-2 font-normal text-ink-muted">
+                  {new Date(msg.createdAt).toLocaleString("ru-RU")}
+                </span>
+              </p>
+              <p className="mt-1 text-sm text-ink">{msg.body}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       {review.status === "approved" ? (
-        canReply ? (
+        canReply && !closed ? (
           <div className="space-y-2 border-t border-line pt-3">
             <label className="block space-y-1">
               <span className="text-xs font-medium uppercase tracking-[0.14em] text-ink-muted">
-                Ваш ответ
+                Добавить ответ
               </span>
               <textarea
                 value={reply}
                 onChange={(e) => setReply(e.target.value)}
                 rows={3}
                 maxLength={2000}
-                placeholder="Ответ появится на публичной странице обменника"
+                placeholder="Автор отзыва получит письмо со ссылкой ответить"
                 className="min-h-24 w-full rounded-2xl border border-line bg-input px-3 py-3 text-base outline-none focus:border-accent sm:text-sm"
               />
             </label>
             {error && <p className="text-sm text-danger">{error}</p>}
-            {ok && <p className="text-sm text-ok">Ответ сохранён</p>}
+            {ok && <p className="text-sm text-ok">Ответ отправлен</p>}
             <button
               type="button"
               disabled={busy || reply.trim().length < 2}
               onClick={() => void save()}
               className="btn-primary rounded-2xl px-4 py-2.5 text-sm font-semibold disabled:opacity-60"
             >
-              {busy
-                ? "Сохраняем…"
-                : review.ownerReply
-                  ? "Обновить ответ"
-                  : "Ответить"}
+              {busy ? "Отправляем…" : "Ответить"}
             </button>
           </div>
-        ) : review.ownerReply ? (
-          <div className="rounded-2xl border border-line bg-bg-soft/60 px-4 py-3">
-            <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">
-              Ваш ответ
-            </p>
-            <p className="mt-1 text-sm text-ink">{review.ownerReply}</p>
-          </div>
+        ) : closed ? (
+          <p className="text-xs text-ink-muted">
+            Обсуждение закрыто модератором GapSnap
+          </p>
         ) : null
       ) : null}
     </article>

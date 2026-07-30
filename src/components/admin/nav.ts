@@ -40,6 +40,14 @@ export const ADMIN_NAV: AdminNavItem[] = [
     badge: "pendingReviews",
   },
   {
+    id: "complaints",
+    href: `${ADMIN_PATH}/complaints`,
+    label: "Жалобы",
+    description: "Очередь жалоб на обменники",
+    group: "moderation",
+    badge: "pendingComplaints",
+  },
+  {
     id: "blacklist",
     href: `${ADMIN_PATH}/blacklist`,
     label: "Чёрный список",
@@ -134,6 +142,7 @@ export function adminNavBadgeCount(
   if (!badge || !counts) return 0;
   if (badge === "pending") return counts.pending;
   if (badge === "pendingReviews") return counts.pendingReviews;
+  if (badge === "pendingComplaints") return counts.pendingComplaints ?? 0;
   if (badge === "pendingCatalog") return counts.pendingCatalog;
   if (badge === "bannerMissing") return counts.bannerMissing;
   if (badge === "syncQueue") {

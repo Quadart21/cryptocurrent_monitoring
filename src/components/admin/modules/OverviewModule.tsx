@@ -61,6 +61,11 @@ export function OverviewModule() {
             tone: counts.pendingReviews ? "warn" : undefined,
           },
           {
+            label: "Жалобы",
+            value: counts.pendingComplaints ?? 0,
+            tone: counts.pendingComplaints ? "warn" : undefined,
+          },
+          {
             label: "Без баннера",
             value: counts.bannerMissing ?? 0,
             tone: counts.bannerMissing ? "warn" : undefined,
@@ -143,6 +148,25 @@ export function OverviewModule() {
           </div>
         </AdminSection>
       </div>
+
+      <AdminSection
+        title="Жалобы"
+        description="Новые жалобы после подтверждения email"
+      >
+        <div className="px-5 py-4 text-sm text-ink-muted">
+          {(counts.pendingComplaints ?? 0) === 0
+            ? "Очередь пуста"
+            : `Ждут решения: ${counts.pendingComplaints}`}
+        </div>
+        <div className="border-t border-line px-5 py-3">
+          <Link
+            href={`${ADMIN_PATH}/complaints`}
+            className="text-sm font-semibold text-accent hover:underline"
+          >
+            Открыть модуль жалоб →
+          </Link>
+        </div>
+      </AdminSection>
 
       <AdminSection
         title="Баннер GapSnap не найден"

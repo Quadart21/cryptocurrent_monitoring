@@ -54,6 +54,10 @@ async function ensureEmailDefaults(): Promise<void> {
         DEFAULT_EMAIL_SETTINGS.notifyOwnerExchangerApproved,
       notifyOwnerReviewApproved:
         DEFAULT_EMAIL_SETTINGS.notifyOwnerReviewApproved,
+      notifyReviewThreadAuthor:
+        DEFAULT_EMAIL_SETTINGS.notifyReviewThreadAuthor,
+      notifyReviewThreadOwner: DEFAULT_EMAIL_SETTINGS.notifyReviewThreadOwner,
+      notifyComplaintConfirm: DEFAULT_EMAIL_SETTINGS.notifyComplaintConfirm,
       updatedAt: new Date().toISOString(),
     });
   }
@@ -86,6 +90,9 @@ function mapSettings(
     notifyReviewConfirm: row.notifyReviewConfirm,
     notifyOwnerExchangerApproved: row.notifyOwnerExchangerApproved,
     notifyOwnerReviewApproved: row.notifyOwnerReviewApproved,
+    notifyReviewThreadAuthor: row.notifyReviewThreadAuthor ?? true,
+    notifyReviewThreadOwner: row.notifyReviewThreadOwner ?? true,
+    notifyComplaintConfirm: row.notifyComplaintConfirm ?? true,
     updatedAt: row.updatedAt,
   };
 }
@@ -156,6 +163,18 @@ export async function updateEmailSettings(
       typeof patch.notifyOwnerReviewApproved === "boolean"
         ? patch.notifyOwnerReviewApproved
         : current.notifyOwnerReviewApproved,
+    notifyReviewThreadAuthor:
+      typeof patch.notifyReviewThreadAuthor === "boolean"
+        ? patch.notifyReviewThreadAuthor
+        : current.notifyReviewThreadAuthor,
+    notifyReviewThreadOwner:
+      typeof patch.notifyReviewThreadOwner === "boolean"
+        ? patch.notifyReviewThreadOwner
+        : current.notifyReviewThreadOwner,
+    notifyComplaintConfirm:
+      typeof patch.notifyComplaintConfirm === "boolean"
+        ? patch.notifyComplaintConfirm
+        : current.notifyComplaintConfirm,
     updatedAt: new Date().toISOString(),
   };
   const db = getDb();
@@ -290,7 +309,10 @@ export type SendTemplatedInput = {
   gate?:
     | "notifyReviewConfirm"
     | "notifyOwnerExchangerApproved"
-    | "notifyOwnerReviewApproved";
+    | "notifyOwnerReviewApproved"
+    | "notifyReviewThreadAuthor"
+    | "notifyReviewThreadOwner"
+    | "notifyComplaintConfirm";
 };
 
 export async function sendTemplatedEmail(

@@ -43,6 +43,9 @@ export async function GET(request: Request) {
     listQualityTags({ activeOnly: true }),
   ]);
 
+  const { listReviewRepliesForReviews } = await import("@/lib/review-threads");
+  const repliesMap = await listReviewRepliesForReviews(reviews.map((r) => r.id));
+
   const tagMap = Object.fromEntries(tags.map((t) => [t.id, t.label]));
   const mapped = reviews.map((r) => ({
     id: r.id,
@@ -54,6 +57,8 @@ export async function GET(request: Request) {
     createdAt: r.createdAt,
     ownerReply: r.ownerReply,
     ownerRepliedAt: r.ownerRepliedAt,
+    threadClosed: r.threadClosed,
+    replies: repliesMap.get(r.id) ?? [],
     qualityLabels: r.qualityTagIds
       .map((tid) => tagMap[tid])
       .filter(Boolean),

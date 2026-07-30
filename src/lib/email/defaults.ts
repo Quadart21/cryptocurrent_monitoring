@@ -9,6 +9,9 @@ export const DEFAULT_EMAIL_SETTINGS: EmailSettings = {
   notifyReviewConfirm: true,
   notifyOwnerExchangerApproved: true,
   notifyOwnerReviewApproved: true,
+  notifyReviewThreadAuthor: true,
+  notifyReviewThreadOwner: true,
+  notifyComplaintConfirm: true,
   updatedAt: NOW,
 };
 
@@ -143,6 +146,66 @@ HTML для вставки:
   <p><a href="{{cabinetUrl}}" style="display:inline-block;padding:12px 18px;background:#0f766e;color:#fff;border-radius:10px;text-decoration:none;font-weight:600">Открыть кабинет</a></p>
   <h3 style="margin:24px 0 8px;font-size:16px">HTML для вставки</h3>
   <pre style="padding:12px;background:#f8fafc;border-radius:10px;overflow:auto;font-size:12px;white-space:pre-wrap">{{bannerHtml}}</pre>
+</div>`,
+    enabled: true,
+    updatedAt: NOW,
+  },
+  {
+    id: "review_owner_replied",
+    name: "Ответ на ваш отзыв",
+    description: "Автору отзыва: реакция обменника/модератора + ссылка ответить",
+    subject: "{{siteName}}: ответ по отзыву на «{{exchangerName}}»",
+    text: `По вашему отзыву на «{{exchangerName}}» пришёл ответ ({{roleLabel}}).
+
+{{replyText}}
+
+Ответить: {{replyUrl}}
+Страница: {{publicUrl}}
+
+Ссылка для ответа действует 14 дней.`,
+    html: `<div style="font-family:system-ui,sans-serif;line-height:1.5;color:#111;max-width:560px">
+  <p>По вашему отзыву на <strong>{{exchangerName}}</strong> пришёл ответ (<strong>{{roleLabel}}</strong>).</p>
+  <blockquote style="margin:16px 0;padding:12px 16px;border-left:3px solid #6d28d9;background:#f8fafc">{{replyText}}</blockquote>
+  <p><a href="{{replyUrl}}" style="display:inline-block;padding:12px 18px;background:#6d28d9;color:#fff;border-radius:10px;text-decoration:none;font-weight:600">Ответить на реакцию</a></p>
+  <p style="font-size:13px;color:#555">Ссылка действует 14 дней. Страница обменника: <a href="{{publicUrl}}">{{publicUrl}}</a></p>
+</div>`,
+    enabled: true,
+    updatedAt: NOW,
+  },
+  {
+    id: "review_author_replied",
+    name: "Автор отзыва ответил",
+    description: "Владельцу: продолжение переписки по отзыву",
+    subject: "{{siteName}}: автор отзыва ответил — «{{exchangerName}}»",
+    text: `Автор отзыва продолжил переписку по «{{exchangerName}}».
+
+{{replyText}}
+
+Ответить в кабинете: {{cabinetUrl}}
+Страница: {{publicUrl}}`,
+    html: `<div style="font-family:system-ui,sans-serif;line-height:1.5;color:#111;max-width:560px">
+  <p>Автор отзыва ответил по обменнику <strong>{{exchangerName}}</strong>.</p>
+  <blockquote style="margin:16px 0;padding:12px 16px;border-left:3px solid #0f766e;background:#f8fafc">{{replyText}}</blockquote>
+  <p><a href="{{cabinetUrl}}" style="display:inline-block;padding:12px 18px;background:#0f766e;color:#fff;border-radius:10px;text-decoration:none;font-weight:600">Ответить в кабинете</a></p>
+  <p style="font-size:13px;color:#555"><a href="{{publicUrl}}">{{publicUrl}}</a></p>
+</div>`,
+    enabled: true,
+    updatedAt: NOW,
+  },
+  {
+    id: "complaint_confirm",
+    name: "Подтверждение жалобы",
+    description: "Автору жалобы: подтвердите email",
+    subject: "{{siteName}}: подтвердите жалобу на «{{exchangerName}}»",
+    text: `Вы отправили жалобу на «{{exchangerName}}» на {{siteName}}.
+
+Подтвердите email: {{confirmUrl}}
+
+Ссылка действует 24 часа.`,
+    html: `<div style="font-family:system-ui,sans-serif;line-height:1.5;color:#111;max-width:560px">
+  <p>Вы отправили жалобу на обменник <strong>{{exchangerName}}</strong> на {{siteName}}.</p>
+  <p><a href="{{confirmUrl}}" style="display:inline-block;padding:12px 18px;background:#dc2626;color:#fff;border-radius:10px;text-decoration:none;font-weight:600">Подтвердить жалобу</a></p>
+  <p style="font-size:13px;color:#555">Ссылка действует 24 часа.</p>
 </div>`,
     enabled: true,
     updatedAt: NOW,

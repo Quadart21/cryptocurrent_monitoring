@@ -199,6 +199,7 @@ function mapReview(row: ReviewRow): ExchangerReview {
     moderatedAt: row.moderatedAt,
     ownerReply: row.ownerReply,
     ownerRepliedAt: row.ownerRepliedAt,
+    threadClosed: Boolean(row.threadClosed),
     email: row.email ?? null,
     emailVerifiedAt: row.emailVerifiedAt ?? null,
   };
@@ -1278,6 +1279,7 @@ export async function addReview(input: {
       moderatedAt: null,
       ownerReply: null,
       ownerRepliedAt: null,
+      threadClosed: false,
       email,
       emailVerifiedAt: null,
       confirmTokenHash: input.confirmTokenHash,
@@ -1353,26 +1355,19 @@ export async function replyToReview(
   exchangerId: string,
   reply: string,
 ): Promise<ExchangerReview | null> {
-  const text = reply.trim();
-  if (text.length < 2 || text.length > 2000) {
-    throw new Error("Ответ должен быть от 2 до 2000 символов");
-  }
-
+  const { addReviewReply } = await import("@/lib/review-threads");
+  await addReviewReply({
+    reviewId,
+    role: "owner",
+    body: reply,
+    exchangerId,
+  });
   const db = getDb();
   const [row] = await db
-    .update(reviews)
-    .set({
-      ownerReply: text,
-      ownerRepliedAt: new Date().toISOString(),
-    })
-    .where(
-      and(
-        eq(reviews.id, reviewId),
-        eq(reviews.exchangerId, exchangerId),
-        eq(reviews.status, "approved"),
-      ),
-    )
-    .returning();
+    .select()
+    .from(reviews)
+    .where(eq(reviews.id, reviewId))
+    .limit(1);
   return row ? mapReview(row) : null;
 }
 

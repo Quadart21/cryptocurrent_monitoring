@@ -665,6 +665,18 @@ export function EmailModule() {
                   "Новый отзыв → владельцу",
                   settings.notifyOwnerReviewApproved,
                 ],
+                [
+                  "Ответ в треде → автору",
+                  settings.notifyReviewThreadAuthor,
+                ],
+                [
+                  "Ответ автора → владельцу",
+                  settings.notifyReviewThreadOwner,
+                ],
+                [
+                  "Подтверждение жалобы",
+                  settings.notifyComplaintConfirm,
+                ],
               ].map(([label, on]) => (
                 <li
                   key={String(label)}
@@ -945,6 +957,30 @@ export function EmailModule() {
                 checked={settings.notifyOwnerReviewApproved}
                 onChange={(v) =>
                   setSettings({ ...settings, notifyOwnerReviewApproved: v })
+                }
+              />
+              <Toggle
+                label="Ответ в треде → автору"
+                hint="Автору отзыва — письмо со ссылкой «Ответить»"
+                checked={settings.notifyReviewThreadAuthor}
+                onChange={(v) =>
+                  setSettings({ ...settings, notifyReviewThreadAuthor: v })
+                }
+              />
+              <Toggle
+                label="Ответ автора → владельцу"
+                hint="Владельцу — когда автор ответил в треде"
+                checked={settings.notifyReviewThreadOwner}
+                onChange={(v) =>
+                  setSettings({ ...settings, notifyReviewThreadOwner: v })
+                }
+              />
+              <Toggle
+                label="Подтверждение жалобы"
+                hint="Автору жалобы — ссылка для подтверждения email"
+                checked={settings.notifyComplaintConfirm}
+                onChange={(v) =>
+                  setSettings({ ...settings, notifyComplaintConfirm: v })
                 }
               />
             </div>

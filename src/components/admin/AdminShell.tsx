@@ -20,6 +20,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const pendingTotal =
     (counts?.pending ?? 0) +
     (counts?.pendingReviews ?? 0) +
+    (counts?.pendingComplaints ?? 0) +
     (counts?.pendingCatalog ?? 0) +
     (counts?.bannerMissing ?? 0);
 

@@ -17,6 +17,7 @@ export type AdminCounts = {
   rates: number;
   blacklist: number;
   pendingReviews: number;
+  pendingComplaints: number;
   pendingCatalog: number;
   achievements: number;
   ads: number;
@@ -42,6 +43,7 @@ export type AdminNavId =
   | "overview"
   | "exchangers"
   | "reviews"
+  | "complaints"
   | "qualities"
   | "achievements"
   | "ads"
@@ -66,6 +68,7 @@ export type AdminNavGroupId =
 export type AdminNavBadge =
   | "pending"
   | "pendingReviews"
+  | "pendingComplaints"
   | "pendingCatalog"
   | "bannerMissing"
   | "syncQueue";

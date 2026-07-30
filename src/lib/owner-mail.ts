@@ -129,3 +129,75 @@ export async function sendReviewConfirmEmail(input: {
     },
   });
 }
+
+export async function sendReviewerThreadNotify(input: {
+  to: string;
+  exchangerName: string;
+  exchangerSlug: string;
+  replyText: string;
+  replyUrl: string;
+  roleLabel: string;
+}): Promise<void> {
+  const seo = await getSeoSettings();
+  const base = siteBaseUrl(seo.siteUrl);
+  const preview =
+    input.replyText.length > 280
+      ? `${input.replyText.slice(0, 277)}…`
+      : input.replyText;
+  await sendTemplatedEmail({
+    templateId: "review_owner_replied",
+    to: input.to,
+    tag: "review-thread-author",
+    gate: "notifyReviewThreadAuthor",
+    vars: {
+      exchangerName: input.exchangerName,
+      replyText: preview,
+      replyUrl: input.replyUrl,
+      publicUrl: `${base}/exchangers/${input.exchangerSlug}`,
+      roleLabel: input.roleLabel,
+    },
+  });
+}
+
+export async function sendOwnerThreadNotify(input: {
+  to: string;
+  exchangerName: string;
+  exchangerSlug: string;
+  replyText: string;
+}): Promise<void> {
+  const seo = await getSeoSettings();
+  const base = siteBaseUrl(seo.siteUrl);
+  const preview =
+    input.replyText.length > 280
+      ? `${input.replyText.slice(0, 277)}…`
+      : input.replyText;
+  await sendTemplatedEmail({
+    templateId: "review_author_replied",
+    to: input.to,
+    tag: "review-thread-owner",
+    gate: "notifyReviewThreadOwner",
+    vars: {
+      exchangerName: input.exchangerName,
+      replyText: preview,
+      cabinetUrl: `${base}/cabinet`,
+      publicUrl: `${base}/exchangers/${input.exchangerSlug}`,
+    },
+  });
+}
+
+export async function sendComplaintConfirmEmail(input: {
+  to: string;
+  exchangerName: string;
+  confirmUrl: string;
+}): Promise<void> {
+  await sendTemplatedEmail({
+    templateId: "complaint_confirm",
+    to: input.to,
+    tag: "complaint-confirm",
+    gate: "notifyComplaintConfirm",
+    vars: {
+      exchangerName: input.exchangerName,
+      confirmUrl: input.confirmUrl,
+    },
+  });
+}
