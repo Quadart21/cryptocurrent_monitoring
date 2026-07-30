@@ -12,7 +12,7 @@ export function SeoContentBlocks({
   return (
     <div className={`space-y-10 ${className}`.trim()}>
       {sections.map((section) => (
-        <section key={section.title} className="max-w-3xl space-y-4">
+        <section key={section.title} className="w-full space-y-4">
           <h2 className="font-display text-2xl font-semibold tracking-tight text-ink sm:text-[1.65rem]">
             {section.title}
           </h2>
