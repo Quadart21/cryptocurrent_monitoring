@@ -144,6 +144,21 @@ export async function validateAndPrepareAdImage(
     );
   }
 
+  // Re-encode JPEG/PNG to WebP on upload (smaller LCP payloads).
+  if (format === "jpeg" || format === "png") {
+    try {
+      const sharp = (await import("sharp")).default;
+      const webp = await sharp(buf)
+        .rotate()
+        .resize({ width: 2400, withoutEnlargement: true })
+        .webp({ quality: 82 })
+        .toBuffer();
+      return { format: "webp", bytes: webp };
+    } catch {
+      // Fall through with original bytes if sharp fails.
+    }
+  }
+
   return { format, bytes: buf };
 }
 

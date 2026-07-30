@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useState } from "react";
 import type { PublicAd } from "@/components/ads/useAds";
 import { trackAdClick, trackAdImpression } from "@/components/ads/track";
 import { shuffleArray } from "@/lib/ads";
@@ -45,11 +45,13 @@ function TickerSegment({
 
 export function AdTicker({ ads }: { ads: PublicAd[] }) {
   const key = ads.map((a) => a.id).join("|");
-  const shuffled = useMemo(
-    () => shuffleArray(ads),
+  // Stable order for SSR/hydration; shuffle after mount.
+  const [shuffled, setShuffled] = useState(ads);
+
+  useEffect(() => {
+    setShuffled(shuffleArray(ads));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [key],
-  );
+  }, [key]);
 
   useEffect(() => {
     for (const ad of shuffled) trackAdImpression(ad.id);
@@ -61,7 +63,7 @@ export function AdTicker({ ads }: { ads: PublicAd[] }) {
     shuffled.length === 1 ? [...shuffled, ...shuffled, ...shuffled] : shuffled;
 
   return (
-    <div className="relative overflow-hidden border-b border-line bg-accent-soft/30">
+    <div className="relative min-h-[44px] overflow-hidden border-b border-line bg-accent-soft/30">
       <p className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 rounded-md bg-bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-muted shadow-sm">
         Реклама
       </p>

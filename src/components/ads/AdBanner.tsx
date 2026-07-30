@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BANNER_SPECS, pickWeightedRandom } from "@/lib/ads";
 import { adMediaIsVideo } from "@/lib/ad-image-url";
 import type { PublicAd } from "@/components/ads/useAds";
@@ -14,11 +14,21 @@ function AdLabel() {
   );
 }
 
-function AdMedia({ ad }: { ad: PublicAd }) {
+const ABOVE_FOLD = new Set(["header", "dashboard", "ticker"]);
+
+function AdMedia({
+  ad,
+  priority = false,
+}: {
+  ad: PublicAd;
+  priority?: boolean;
+}) {
   const isVideo = adMediaIsVideo({
     format: ad.image?.format,
     url: ad.imageUrl,
   });
+  const spec = BANNER_SPECS[ad.placement];
+  const eager = priority || ABOVE_FOLD.has(ad.placement);
 
   if (isVideo) {
     return (
@@ -29,8 +39,10 @@ function AdMedia({ ad }: { ad: PublicAd }) {
         muted
         loop
         playsInline
-        preload="metadata"
+        preload={eager ? "auto" : "metadata"}
         aria-label={ad.title}
+        width={spec?.width}
+        height={spec?.height}
       />
     );
   }
@@ -40,12 +52,23 @@ function AdMedia({ ad }: { ad: PublicAd }) {
     <img
       src={ad.imageUrl}
       alt={ad.title}
+      width={spec?.width ?? 1200}
+      height={spec?.height ?? 120}
       className="h-full w-full object-cover object-center"
+      decoding="async"
+      loading={eager ? "eager" : "lazy"}
+      fetchPriority={eager ? "high" : "auto"}
     />
   );
 }
 
-export function AdBanner({ ad }: { ad: PublicAd }) {
+export function AdBanner({
+  ad,
+  priority = false,
+}: {
+  ad: PublicAd;
+  priority?: boolean;
+}) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const spec = BANNER_SPECS[ad.placement];
   const href = ad.href.trim() || null;
@@ -74,10 +97,10 @@ export function AdBanner({ ad }: { ad: PublicAd }) {
     const frame = (
       <div
         ref={rootRef}
-        className={`relative w-full overflow-hidden rounded-2xl border border-line bg-bg-soft ${spec?.aspectClass ?? "aspect-[6/1]"}`}
+        className={`relative w-full overflow-hidden rounded-2xl border border-line bg-bg-soft ${spec?.aspectClass ?? "aspect-[6/1]"} ${spec?.maxHeightClass ?? ""}`}
       >
         <AdLabel />
-        <AdMedia ad={ad} />
+        <AdMedia ad={ad} priority={priority} />
       </div>
     );
 
@@ -138,18 +161,26 @@ export function AdBanner({ ad }: { ad: PublicAd }) {
   return <div className={className}>{inner}</div>;
 }
 
-export function AdBannerSlot({ ads }: { ads: PublicAd[] }) {
+export function AdBannerSlot({
+  ads,
+  priority = false,
+}: {
+  ads: PublicAd[];
+  priority?: boolean;
+}) {
   const key = ads.map((a) => `${a.id}:${a.priority}`).join("|");
-  const selected = useMemo(
-    () => pickWeightedRandom(ads),
+  // Deterministic first pick for SSR/hydration; re-roll once mounted.
+  const [selected, setSelected] = useState<PublicAd | null>(() => ads[0] ?? null);
+
+  useEffect(() => {
+    setSelected(pickWeightedRandom(ads));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- re-roll when set of ads changes
-    [key],
-  );
+  }, [key]);
 
   if (!selected) return null;
   return (
     <div className="space-y-3">
-      <AdBanner key={selected.id} ad={selected} />
+      <AdBanner key={selected.id} ad={selected} priority={priority} />
     </div>
   );
 }

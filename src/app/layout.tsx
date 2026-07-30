@@ -9,6 +9,7 @@ import { CookieBanner } from "@/components/consent/CookieBanner";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { getOrganizationJsonLd, getRootMetadata } from "@/lib/seo";
 import { buildWebSiteJsonLd } from "@/lib/seo-jsonld";
+import { getPublicAds } from "@/lib/public-ads";
 import { getSeoSettings } from "@/lib/store";
 import "./globals.css";
 
@@ -49,6 +50,7 @@ export default async function RootLayout({
   const seo = await getSeoSettings();
   const org = await getOrganizationJsonLd();
   const website = buildWebSiteJsonLd(seo);
+  const initialAds = await getPublicAds();
 
   return (
     <html
@@ -68,7 +70,7 @@ export default async function RootLayout({
               yandexMetricaId={seo.yandexMetricaId}
               gtmId={seo.gtmId}
             />
-            <ConditionalShell>{children}</ConditionalShell>
+            <ConditionalShell initialAds={initialAds}>{children}</ConditionalShell>
             <CookieBanner />
           </ConsentProvider>
         </ThemeProvider>

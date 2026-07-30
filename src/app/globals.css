@@ -214,6 +214,18 @@ a,
   animation-play-state: paused;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise,
+  .animate-rise-delay-1,
+  .animate-rise-delay-2 {
+    animation: none;
+  }
+
+  .ad-ticker-track {
+    animation: none;
+  }
+}
+
 .prose-gap h2 {
   color: var(--ink);
 }
