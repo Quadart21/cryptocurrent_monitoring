@@ -1,11 +1,15 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AchievementBadges } from "@/components/AchievementBadges";
 import { useAds } from "@/components/ads/useAds";
 import { trackAdClick, trackAdImpression } from "@/components/ads/track";
 import type { LiveOffer } from "@/components/RateTable";
+import {
+  amountPresetsFor,
+  offerFitsAmount,
+} from "@/lib/bestchange/catalog-client-amount";
 import { pairPath } from "@/lib/bestchange/pair-slug";
 import { adMatchesPair, pickWeightedRandom } from "@/lib/ads";
 import { buildExchangeUrl } from "@/lib/exchange-link";
@@ -41,6 +45,8 @@ export function RatesBoard({
   sortBy = "rate",
   onSortChange,
   recentReviews = [],
+  /** When true, amount input is shown here (pair pages). Homepage uses FastAction. */
+  showAmountControl = true,
 }: {
   offers: LiveOffer[];
   from: string;
@@ -54,9 +60,11 @@ export function RatesBoard({
   sortBy?: RatesSortBy;
   onSortChange?: (s: RatesSortBy) => void;
   recentReviews?: RatesBoardReview[];
+  showAmountControl?: boolean;
 }) {
   const fromName = currencyOptionLabel(from, currencies);
   const toName = currencyOptionLabel(to, currencies);
+  const [onlyFit, setOnlyFit] = useState(false);
   const pinAds = useAds("rates");
   const scopedPinAds = useMemo(
     () => pinAds.filter((ad) => adMatchesPair(ad, from, to)),
@@ -70,10 +78,19 @@ export function RatesBoard({
   );
   const pinnedId = chosenPin?.exchangerId ?? null;
   const pinnedAdId = chosenPin?.id ?? null;
+  const presets = useMemo(() => amountPresetsFor(from), [from]);
 
   const sorted = useMemo(() => {
     const list = [...offers];
     list.sort((a, b) => {
+      if (amount > 0) {
+        const fitA = offerFitsAmount(amount, a).ok ? 1 : 0;
+        const fitB = offerFitsAmount(amount, b).ok ? 1 : 0;
+        if (fitB !== fitA) return fitB - fitA;
+        const recvA = amount * a.rate;
+        const recvB = amount * b.rate;
+        if (recvB !== recvA) return recvB - recvA;
+      }
       if (sortBy === "volume") {
         const maxA = Number.isFinite(a.maxAmount) ? a.maxAmount : 0;
         const maxB = Number.isFinite(b.maxAmount) ? b.maxAmount : 0;
@@ -90,7 +107,7 @@ export function RatesBoard({
       );
     });
     return list;
-  }, [offers, sortBy]);
+  }, [offers, sortBy, amount]);
 
   useEffect(() => {
     if (pinnedAdId && pinnedId && sorted.some((o) => o.exchanger?.id === pinnedId)) {
@@ -99,16 +116,25 @@ export function RatesBoard({
   }, [pinnedAdId, pinnedId, sorted]);
 
   const ordered = useMemo(() => {
+    const base =
+      amount > 0 && onlyFit
+        ? sorted.filter((o) => offerFitsAmount(amount, o).ok)
+        : sorted;
     if (!pinnedId) {
-      return sorted.map((offer, index) => ({ ...offer, rank: index + 1 }));
+      return base.map((offer, index) => ({ ...offer, rank: index + 1 }));
     }
-    const pinned = sorted.filter((o) => o.exchanger?.id === pinnedId);
-    const rest = sorted.filter((o) => o.exchanger?.id !== pinnedId);
+    const pinned = base.filter((o) => o.exchanger?.id === pinnedId);
+    const rest = base.filter((o) => o.exchanger?.id !== pinnedId);
     return [...pinned, ...rest].map((offer, index) => ({
       ...offer,
       rank: index + 1,
     }));
-  }, [sorted, pinnedId]);
+  }, [sorted, pinnedId, amount, onlyFit]);
+
+  const fitCount = useMemo(() => {
+    if (!(amount > 0)) return offers.length;
+    return offers.filter((o) => offerFitsAmount(amount, o).ok).length;
+  }, [offers, amount]);
 
   const pairLabel = cityLabel
     ? `${fromName} → ${toName} · ${cityLabel}`
@@ -138,12 +164,20 @@ export function RatesBoard({
     return formatReserve(offer.reserve, toName);
   }
 
-  function isOutOfRange(offer: LiveOffer) {
-    return (
-      amount > 0 &&
-      (amount < offer.minAmount ||
-        (Number.isFinite(offer.maxAmount) && amount > offer.maxAmount))
-    );
+  function fitMeta(offer: LiveOffer) {
+    return offerFitsAmount(amount, offer);
+  }
+
+  function fitHint(offer: LiveOffer): string | null {
+    const { ok, reason } = fitMeta(offer);
+    if (ok || !reason) return null;
+    if (reason === "min") {
+      return `Мин. ${formatCurrencyAmount(offer.minAmount, from)} ${fromName}`;
+    }
+    if (reason === "max") {
+      return `Макс. ${formatCurrencyAmount(offer.maxAmount, from)} ${fromName}`;
+    }
+    return "Мало резерва";
   }
 
   function isWarned(offer: LiveOffer) {
@@ -170,7 +204,9 @@ export function RatesBoard({
             {loading
               ? "Загрузка…"
               : ordered.length
-                ? `${pairLabel} · ${ordered.length} обменников`
+                ? amount > 0
+                  ? `${pairLabel} · ${fitCount} из ${offers.length} подходят под сумму`
+                  : `${pairLabel} · ${ordered.length} обменников`
                 : `${pairLabel} · нет в мониторинге`}
           </p>
           <div className="flex flex-wrap items-center gap-2">
@@ -184,27 +220,56 @@ export function RatesBoard({
         </div>
 
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
-          {onAmountChange ? (
-            <label className="flex w-full flex-col gap-1.5 text-xs text-ink-muted sm:w-auto sm:flex-row sm:items-center sm:gap-2">
-              Сумма ({fromName})
+          {showAmountControl && onAmountChange ? (
+            <div className="w-full space-y-2 sm:w-72">
+              <label className="flex w-full flex-col gap-1.5 text-xs text-ink-muted">
+                Калькулятор · отдаёте ({fromName})
+                <input
+                  type="number"
+                  min={0}
+                  step="any"
+                  inputMode="decimal"
+                  value={amount || ""}
+                  onChange={(e) =>
+                    onAmountChange(Number(e.target.value) || 0)
+                  }
+                  className="min-h-11 w-full rounded-xl border border-line bg-input px-3 py-2 text-base text-ink outline-none focus:border-accent sm:text-sm"
+                />
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {presets.map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => onAmountChange(preset)}
+                    className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                      amount === preset
+                        ? "bg-accent text-white"
+                        : "border border-line text-ink-muted"
+                    }`}
+                  >
+                    {formatCurrencyAmount(preset, from)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {amount > 0 ? (
+            <label className="flex min-h-10 cursor-pointer items-center gap-2 text-xs font-semibold text-ink-muted">
               <input
-                type="number"
-                min={0}
-                step="any"
-                inputMode="decimal"
-                value={amount || ""}
-                onChange={(e) =>
-                  onAmountChange(Number(e.target.value) || 0)
-                }
-                className="min-h-11 w-full rounded-xl border border-line bg-input px-3 py-2 text-base text-ink outline-none focus:border-accent sm:w-36 sm:text-sm"
+                type="checkbox"
+                checked={onlyFit}
+                onChange={(e) => setOnlyFit(e.target.checked)}
+                className="size-4 rounded border-line accent-[var(--accent)]"
               />
+              Только подходящие ({fitCount})
             </label>
           ) : null}
           {onSortChange ? (
             <div className="grid w-full grid-cols-3 gap-1 sm:flex sm:w-auto sm:flex-wrap">
               {(
                 [
-                  ["rate", "Курс"],
+                  ["rate", amount > 0 ? "Сумма" : "Курс"],
                   ["volume", "Объём"],
                   ["rating", "Рейтинг"],
                 ] as const
@@ -231,6 +296,23 @@ export function RatesBoard({
         <div className="px-4 py-14 text-center text-sm text-ink-muted sm:px-5">
           Ищем обменники по направлению {pairLabel}…
         </div>
+      ) : !ordered.length && offers.length > 0 && onlyFit ? (
+        <div className="px-4 py-12 text-center sm:px-5">
+          <p className="text-sm text-ink-muted">
+            Нет предложений под сумму{" "}
+            <span className="font-medium text-ink">
+              {formatCurrencyAmount(amount, from)} {fromName}
+            </span>
+            . Снимите фильтр или измените сумму.
+          </p>
+          <button
+            type="button"
+            onClick={() => setOnlyFit(false)}
+            className="mt-4 inline-flex min-h-10 items-center rounded-2xl border border-line px-4 py-2 text-sm font-semibold text-ink-muted hover:text-ink"
+          >
+            Показать все
+          </button>
+        </div>
       ) : !ordered.length ? (
         <div className="mx-auto max-w-lg px-4 py-12 text-center sm:px-5 sm:py-14">
           <p className="text-sm leading-relaxed text-ink-muted">
@@ -256,6 +338,8 @@ export function RatesBoard({
             const sponsored = offer.exchanger?.id === pinnedId;
             const volume = volumeFor(offer);
             const href = exchangeHref(offer);
+            const fit = fitMeta(offer);
+            const hint = fitHint(offer);
             return (
               <article
                 key={offer.id}
@@ -263,7 +347,7 @@ export function RatesBoard({
                   sponsored
                     ? "border-accent/25 bg-accent-soft/25 shadow-[inset_0_1px_0_0_color-mix(in_srgb,var(--accent)_12%,transparent)]"
                     : "border-line/70 bg-bg-elevated/50"
-                }`}
+                } ${amount > 0 && !fit.ok ? "opacity-60" : ""}`}
               >
                 <div className="flex items-center gap-3 px-3.5 pt-3.5 pb-2 md:w-[min(300px,34%)] md:shrink-0 md:border-r md:border-line/50 md:px-4 md:py-4">
                   {offer.exchanger.logoUrl ? (
@@ -299,6 +383,11 @@ export function RatesBoard({
                           Реклама
                         </span>
                       ) : null}
+                      {hint ? (
+                        <span className="rounded-md bg-[color-mix(in_srgb,var(--warn)_18%,transparent)] px-1.5 py-0.5 text-[9px] font-semibold text-[var(--warn)]">
+                          {hint}
+                        </span>
+                      ) : null}
                     </div>
                     <p className="mt-0.5 text-xs text-ink-muted">
                       ★{" "}
@@ -331,8 +420,8 @@ export function RatesBoard({
                       <p className="mt-0.5 text-xs font-medium tabular-nums leading-snug text-ink md:text-sm">
                         {giveLabel(offer)}
                       </p>
-                      {isOutOfRange(offer) && volume ? (
-                        <p className="mt-1 text-[9px] leading-tight text-[var(--warn)] md:text-[11px]">
+                      {volume ? (
+                        <p className="mt-1 text-[9px] leading-tight text-ink-muted md:text-[11px]">
                           {volume.from}–{volume.to}
                         </p>
                       ) : null}

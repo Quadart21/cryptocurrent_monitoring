@@ -6,10 +6,16 @@ import {
   type CityOption,
 } from "@/components/dashboard/CityAutocomplete";
 import {
+  amountPresetsFor,
+} from "@/lib/bestchange/catalog-client-amount";
+import {
   currencyOptionLabel,
   groupCurrencyOptions,
 } from "@/lib/currency-display";
-import { formatRate } from "@/lib/format";
+import {
+  formatCurrencyAmount,
+  formatRate,
+} from "@/lib/format";
 
 export type ExchangeMode = "online" | "cash";
 
@@ -30,6 +36,8 @@ type Props = {
   popularPairs: [string, string][];
   bestRate?: number;
   offerCount: number;
+  amount?: number;
+  onAmountChange?: (n: number) => void;
   onModeChange: (mode: ExchangeMode) => void;
   onCityChange: (code: string) => void;
   onFromChange: (code: string) => void;
@@ -94,6 +102,8 @@ export function FastAction({
   popularPairs,
   bestRate,
   offerCount,
+  amount = 0,
+  onAmountChange,
   onModeChange,
   onCityChange,
   onFromChange,
@@ -113,6 +123,11 @@ export function FastAction({
   const cityName = cities.find((c) => c.code === city)?.name ?? city;
   const fromName = currencyOptionLabel(from, options);
   const toName = currencyOptionLabel(to, options);
+  const presets = amountPresetsFor(from);
+  const estimate =
+    amount > 0 && bestRate != null && Number.isFinite(bestRate)
+      ? amount * bestRate
+      : null;
 
   return (
     <section className="animate-rise overflow-hidden rounded-2xl border border-line bg-bg-elevated shadow-[var(--card-shadow)]">
@@ -157,14 +172,20 @@ export function FastAction({
             <div className="flex items-end justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-[11px] text-ink-muted">
-                  Лучший курс
+                  {estimate != null ? "Ориентир к получению" : "Лучший курс"}
                   {mode === "cash" && city ? ` · ${cityName}` : ""}
                 </p>
                 <p className="mt-0.5 font-display text-xl font-semibold tabular-nums text-accent-deep sm:text-2xl">
-                  {bestRate != null ? formatRate(bestRate) : "—"}
+                  {estimate != null
+                    ? formatCurrencyAmount(estimate, to)
+                    : bestRate != null
+                      ? formatRate(bestRate)
+                      : "—"}
                 </p>
                 <p className="mt-0.5 truncate text-[11px] text-ink-muted">
-                  {toName} за 1 {fromName}
+                  {estimate != null
+                    ? `${toName} за ${formatCurrencyAmount(amount, from)} ${fromName}`
+                    : `${toName} за 1 ${fromName}`}
                 </p>
               </div>
               <p className="shrink-0 rounded-xl bg-bg-elevated px-2.5 py-1.5 text-xs font-semibold tabular-nums text-ink">
@@ -218,6 +239,71 @@ export function FastAction({
             onChange={onToChange}
           />
         </div>
+
+        {onAmountChange ? (
+          <div className="space-y-2 rounded-2xl border border-line bg-bg-soft/60 p-3 sm:p-3.5">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <label className="block min-w-0 flex-1 space-y-1.5">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-muted">
+                  Калькулятор · сколько отдаёте
+                </span>
+                <div className="flex min-h-12 items-stretch overflow-hidden rounded-2xl border border-line bg-input focus-within:border-accent">
+                  <input
+                    type="number"
+                    min={0}
+                    step="any"
+                    inputMode="decimal"
+                    placeholder="0"
+                    value={amount || ""}
+                    onChange={(e) =>
+                      onAmountChange(Number(e.target.value) || 0)
+                    }
+                    className="min-w-0 flex-1 bg-transparent px-3 py-3 text-base font-semibold tabular-nums text-ink outline-none sm:text-sm"
+                  />
+                  <span className="flex shrink-0 items-center border-l border-line px-3 text-xs font-semibold text-ink-muted">
+                    {fromName}
+                  </span>
+                </div>
+              </label>
+              {estimate != null ? (
+                <div className="rounded-xl border border-accent/20 bg-accent-soft/50 px-3 py-2 sm:min-w-[11rem]">
+                  <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-ink-muted">
+                    Лучший получите ≈
+                  </p>
+                  <p className="mt-0.5 font-display text-lg font-semibold tabular-nums text-accent-deep">
+                    {formatCurrencyAmount(estimate, to)}
+                  </p>
+                  <p className="truncate text-[11px] text-ink-muted">{toName}</p>
+                </div>
+              ) : null}
+            </div>
+            <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden">
+              {presets.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => onAmountChange(preset)}
+                  className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                    amount === preset
+                      ? "bg-accent text-white"
+                      : "border border-line bg-bg-elevated text-ink-muted hover:text-ink"
+                  }`}
+                >
+                  {formatCurrencyAmount(preset, from)}
+                </button>
+              ))}
+              {amount > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => onAmountChange(0)}
+                  className="shrink-0 rounded-full border border-line px-3 py-1.5 text-xs font-semibold text-ink-muted hover:text-ink"
+                >
+                  Сбросить
+                </button>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
 
         <div className="space-y-3">
           <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden">

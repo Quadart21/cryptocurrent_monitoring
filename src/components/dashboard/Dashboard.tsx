@@ -17,6 +17,10 @@ import {
   type ExchangeMode,
 } from "@/components/dashboard/FastAction";
 import { DashboardAdSlot } from "@/components/ads/SiteAds";
+import {
+  defaultAmountFor,
+  offerFitsAmount,
+} from "@/lib/bestchange/catalog-client-amount";
 
 type Props = {
   catalog: DashboardCatalog;
@@ -42,8 +46,7 @@ export function Dashboard({
   const [to, setTo] = useState(initialTo);
   const [offers, setOffers] = useState<LiveOffer[]>(initialOffers);
   const [loading, setLoading] = useState(false);
-  /** 0 = show rate per 1 unit */
-  const [amount, setAmount] = useState(0);
+  const [amount, setAmount] = useState(() => defaultAmountFor(initialFrom));
   const [sortBy, setSortBy] = useState<RatesSortBy>("rate");
   const [recentReviews, setRecentReviews] = useState<
     Array<{
@@ -72,6 +75,18 @@ export function Dashboard({
     if (!city) return undefined;
     return cities.find((c) => c.code === city)?.name ?? city;
   }, [city, cities]);
+
+  const bestRate = useMemo(() => {
+    if (!offers.length) return undefined;
+    if (!(amount > 0)) return offers[0]?.rate;
+    const suitable = offers.filter((o) => offerFitsAmount(amount, o).ok);
+    const pool = suitable.length ? suitable : offers;
+    let top = pool[0]?.rate;
+    for (const o of pool) {
+      if (top == null || o.rate > top) top = o.rate;
+    }
+    return top;
+  }, [offers, amount]);
 
   function defaultsForMode(next: ExchangeMode): {
     from: string;
@@ -239,6 +254,7 @@ export function Dashboard({
     setFrom(defaults.from);
     setTo(defaults.to);
     setCity(defaults.city);
+    setAmount(defaultAmountFor(defaults.from));
     setOffers([]);
   }
 
@@ -249,6 +265,7 @@ export function Dashboard({
 
   function onFromChange(code: string) {
     setFrom(code);
+    setAmount(defaultAmountFor(code));
     setOffers([]);
   }
 
@@ -260,12 +277,14 @@ export function Dashboard({
   function onPairChange(nextFrom: string, nextTo: string) {
     setFrom(nextFrom);
     setTo(nextTo);
+    setAmount(defaultAmountFor(nextFrom));
     setOffers([]);
   }
 
   function onSwap() {
     setFrom(to);
     setTo(from);
+    setAmount(defaultAmountFor(to));
     setOffers([]);
   }
 
@@ -283,8 +302,10 @@ export function Dashboard({
             ? catalog.popularCashPairs
             : catalog.popularOnlinePairs
         }
-        bestRate={offers[0]?.rate}
+        bestRate={bestRate}
         offerCount={offers.length}
+        amount={amount}
+        onAmountChange={setAmount}
         onModeChange={onModeChange}
         onCityChange={onCityChange}
         onFromChange={onFromChange}
@@ -307,6 +328,7 @@ export function Dashboard({
           sortBy={sortBy}
           onSortChange={setSortBy}
           recentReviews={recentReviews}
+          showAmountControl={false}
         />
       </div>
     </div>
