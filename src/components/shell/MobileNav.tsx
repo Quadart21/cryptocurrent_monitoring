@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { BrandMark } from "@/components/BrandMark";
 import { SITE_NAV, isNavActive } from "@/components/shell/nav";
 import { NavIcon } from "@/components/shell/NavIcon";
 
@@ -52,11 +53,14 @@ export function MobileNav() {
               className="absolute inset-y-0 left-0 flex w-[min(100%,20rem)] flex-col border-r border-line bg-sidebar pt-[env(safe-area-inset-top)] shadow-[var(--card-shadow)]"
             >
               <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-4">
-                <div className="min-w-0">
-                  <p className="font-display text-lg font-semibold text-ink">
-                    GapSnap
-                  </p>
-                  <p className="text-xs text-ink-muted">Разделы сайта</p>
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <BrandMark size={36} className="size-9" />
+                  <div className="min-w-0">
+                    <p className="font-display text-lg font-semibold text-ink">
+                      GapSnap
+                    </p>
+                    <p className="text-xs text-ink-muted">Разделы сайта</p>
+                  </div>
                 </div>
                 <button
                   type="button"

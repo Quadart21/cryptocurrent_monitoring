@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BrandMark } from "@/components/BrandMark";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { GlobalSearch } from "@/components/shell/GlobalSearch";
 import { IconSpreadNav } from "@/components/shell/IconSpreadNav";
@@ -17,9 +18,11 @@ export function Topbar() {
               href="/"
               className="flex min-w-0 shrink items-center gap-2 sm:gap-2.5"
             >
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent text-sm font-bold text-white sm:size-9">
-                G
-              </span>
+              <BrandMark
+                size={36}
+                className="size-8 sm:size-9"
+                priority
+              />
               <span className="truncate font-display text-base font-semibold tracking-tight text-ink sm:text-lg">
                 GapSnap
               </span>
