@@ -232,8 +232,21 @@ export function RatesBoard({
           Ищем обменники по направлению {pairLabel}…
         </div>
       ) : !ordered.length ? (
-        <div className="px-4 py-14 text-center text-sm text-ink-muted sm:px-5">
-          Ни один обменник пока не отдаёт направление {pairLabel}.
+        <div className="mx-auto max-w-lg px-4 py-12 text-center sm:px-5 sm:py-14">
+          <p className="text-sm leading-relaxed text-ink-muted">
+            Пока никто не отдаёт направление{" "}
+            <span className="font-medium text-ink">{pairLabel}</span>.
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-ink-muted">
+            Есть обменник с этим направлением? Станьте первым в мониторинге —
+            заявки заметят раньше остальных.
+          </p>
+          <Link
+            href="/apply"
+            className="btn-primary mt-5 inline-flex min-h-10 items-center justify-center rounded-2xl px-5 py-2.5 text-sm font-semibold"
+          >
+            Добавить обменник
+          </Link>
         </div>
       ) : (
         <div className="space-y-2.5 px-3 py-3 md:px-5 md:py-4">
