@@ -20,6 +20,7 @@ import {
   AdminTabBar,
   StatusPill,
 } from "@/components/admin/ui";
+import { TrafficEventsPanel } from "@/components/TrafficEventsPanel";
 
 type DetailTab =
   | "overview"
@@ -896,42 +897,54 @@ export function ExchangerDetailModule() {
       ) : null}
 
       {tab === "traffic" ? (
-      <AdminSection title="Трафик страницы">
-        <div className="overflow-x-auto p-5">
-          <table className="min-w-full text-left text-xs">
-            <thead className="bg-bg-soft text-ink-muted">
-              <tr>
-                <th className="px-3 py-2 font-medium">День (UTC)</th>
-                <th className="px-3 py-2 font-medium">Просмотры</th>
-                <th className="px-3 py-2 font-medium">Переходы</th>
-                <th className="px-3 py-2 font-medium">Конверсия</th>
-              </tr>
-            </thead>
-            <tbody>
-              {daily.length === 0 ? (
+      <AdminSection
+        title="Трафик страницы"
+        description="Сводка по дням и подробный журнал с IP."
+      >
+        <div className="space-y-6 p-5">
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left text-xs">
+              <thead className="bg-bg-soft text-ink-muted">
                 <tr>
-                  <td colSpan={4} className="px-3 py-3 text-ink-muted">
-                    Пока нет данных — откройте публичную страницу обменника.
-                  </td>
+                  <th className="px-3 py-2 font-medium">День (UTC)</th>
+                  <th className="px-3 py-2 font-medium">Просмотры</th>
+                  <th className="px-3 py-2 font-medium">Переходы</th>
+                  <th className="px-3 py-2 font-medium">Конверсия</th>
                 </tr>
-              ) : (
-                daily.map((d) => (
-                  <tr key={d.date} className="border-t border-line">
-                    <td className="px-3 py-2 tabular-nums text-ink">{d.date}</td>
-                    <td className="px-3 py-2 tabular-nums text-ink">
-                      {d.pageViews}
-                    </td>
-                    <td className="px-3 py-2 tabular-nums text-ink">
-                      {d.siteClicks}
-                    </td>
-                    <td className="px-3 py-2 tabular-nums text-ink">
-                      {formatOutboundCtr(d)}
+              </thead>
+              <tbody>
+                {daily.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-3 py-3 text-ink-muted">
+                      Пока нет данных — откройте публичную страницу обменника.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  daily.map((d) => (
+                    <tr key={d.date} className="border-t border-line">
+                      <td className="px-3 py-2 tabular-nums text-ink">{d.date}</td>
+                      <td className="px-3 py-2 tabular-nums text-ink">
+                        {d.pageViews}
+                      </td>
+                      <td className="px-3 py-2 tabular-nums text-ink">
+                        {d.siteClicks}
+                      </td>
+                      <td className="px-3 py-2 tabular-nums text-ink">
+                        {formatOutboundCtr(d)}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div>
+            <h3 className="mb-3 text-sm font-semibold text-ink">Журнал визитов</h3>
+            <TrafficEventsPanel
+              endpoint={`/api/admin/exchangers/traffic?exchangerId=${encodeURIComponent(id)}`}
+            />
+          </div>
         </div>
       </AdminSection>
       ) : null}

@@ -3,7 +3,14 @@
 import { useEffect, useRef } from "react";
 
 function sendTrafficEvent(id: string, event: "view" | "click") {
-  const payload = JSON.stringify({ id, event });
+  const payload = JSON.stringify({
+    id,
+    event,
+    path:
+      typeof window !== "undefined" ? window.location.pathname : undefined,
+    referrer:
+      typeof document !== "undefined" ? document.referrer || undefined : undefined,
+  });
   try {
     if (typeof navigator !== "undefined" && navigator.sendBeacon) {
       const ok = navigator.sendBeacon(

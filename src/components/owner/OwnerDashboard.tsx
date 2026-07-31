@@ -7,6 +7,7 @@ import {
   useOwner,
   type OwnerReview,
 } from "@/components/owner/OwnerProvider";
+import { TrafficEventsPanel } from "@/components/TrafficEventsPanel";
 import { logoPublicUrl } from "@/lib/logo-url";
 
 function statusLabel(status: string) {
@@ -394,6 +395,18 @@ export function OwnerDashboard() {
               </table>
             </div>
           )}
+
+          <div className="mt-6 border-t border-line pt-5">
+            <h3 className="font-display text-base font-semibold text-ink">
+              Журнал визитов
+            </h3>
+            <p className="mt-1 text-sm text-ink-muted">
+              Каждый просмотр карточки и клик «Перейти на сайт» — с временем и IP.
+            </p>
+            <div className="mt-4">
+              <TrafficEventsPanel endpoint="/api/owner/traffic" />
+            </div>
+          </div>
         </section>
 
         <section className="space-y-4">

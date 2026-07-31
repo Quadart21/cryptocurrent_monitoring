@@ -594,3 +594,27 @@ export const adminUsers = pgTable(
   ],
 );
 
+export const exchangerTrafficEvents = pgTable(
+  "exchanger_traffic_events",
+  {
+    id: text("id").primaryKey(),
+    exchangerId: text("exchanger_id")
+      .notNull()
+      .references(() => exchangers.id, { onDelete: "cascade" }),
+    event: text("event").notNull(),
+    ip: text("ip").notNull().default(""),
+    userAgent: text("user_agent").notNull().default(""),
+    path: text("path").notNull().default(""),
+    referrer: text("referrer").notNull().default(""),
+    createdAt: text("created_at").notNull(),
+  },
+  (t) => [
+    index("exchanger_traffic_events_exchanger_created_idx").on(
+      t.exchangerId,
+      t.createdAt,
+    ),
+    index("exchanger_traffic_events_created_idx").on(t.createdAt),
+    index("exchanger_traffic_events_event_idx").on(t.event),
+  ],
+);
+
