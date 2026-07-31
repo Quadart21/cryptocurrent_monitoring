@@ -7,6 +7,7 @@ import {
 } from "@/lib/ads";
 import {
   addAd,
+  getExchangerById,
   listAds,
   listExchangerRatePairs,
   removeAd,
@@ -29,10 +30,47 @@ function parseAdBody(body: Record<string, unknown>) {
 
   const name = String(body.name ?? "").trim();
   const title = String(body.title ?? "").trim();
-  const href = String(body.href ?? "").trim();
   if (name.length < 2) return { error: "Укажите название в админке" } as const;
   if (title.length < 2) return { error: "Укажите заголовок" } as const;
-  if (href) {
+
+  const rawExchangerId = String(body.exchangerId ?? "").trim();
+  const linkToExchanger =
+    (type === "banner" || type === "ticker") && Boolean(rawExchangerId);
+
+  let href = String(body.href ?? "").trim();
+  let exchangerId: string | null = null;
+
+  if (type === "highlight" || type === "rates_pin") {
+    if (!rawExchangerId) {
+      return { error: "Выберите обменник для этого формата" } as const;
+    }
+    exchangerId = rawExchangerId;
+    // External click URL optional for these formats.
+    if (href) {
+      try {
+        const u = new URL(href);
+        if (u.protocol !== "https:" && u.protocol !== "http:") {
+          return { error: "Ссылка рекламы: только http(s)" } as const;
+        }
+      } catch {
+        return { error: "Некорректная ссылка рекламы" } as const;
+      }
+    }
+  } else if (type === "banner" || type === "ticker") {
+    if (linkToExchanger) {
+      exchangerId = rawExchangerId;
+      href = "";
+    } else if (href) {
+      try {
+        const u = new URL(href);
+        if (u.protocol !== "https:" && u.protocol !== "http:") {
+          return { error: "Ссылка рекламы: только http(s)" } as const;
+        }
+      } catch {
+        return { error: "Некорректная ссылка рекламы" } as const;
+      }
+    }
+  } else if (href) {
     try {
       const u = new URL(href);
       if (u.protocol !== "https:" && u.protocol !== "http:") {
@@ -40,13 +78,6 @@ function parseAdBody(body: Record<string, unknown>) {
       }
     } catch {
       return { error: "Некорректная ссылка рекламы" } as const;
-    }
-  }
-
-  if (type === "highlight" || type === "rates_pin") {
-    const exchangerId = String(body.exchangerId ?? "").trim();
-    if (!exchangerId) {
-      return { error: "Выберите обменник для этого формата" } as const;
     }
   }
 
@@ -90,10 +121,7 @@ function parseAdBody(body: Record<string, unknown>) {
       body: String(body.body ?? "").trim(),
       href,
       imageUrl,
-      exchangerId:
-        type === "highlight" || type === "rates_pin"
-          ? String(body.exchangerId ?? "").trim() || null
-          : null,
+      exchangerId,
       pairs,
       active: body.active !== false,
       priority: Number(body.priority) || 0,
@@ -124,6 +152,16 @@ export async function POST(request: Request) {
   const parsed = parseAdBody(body);
   if ("error" in parsed) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
+  }
+
+  if (parsed.data.exchangerId) {
+    const ex = await getExchangerById(parsed.data.exchangerId);
+    if (!ex) {
+      return NextResponse.json(
+        { error: "Обменник не найден" },
+        { status: 400 },
+      );
+    }
   }
 
   if (
@@ -181,6 +219,16 @@ export async function PATCH(request: Request) {
   const parsed = parseAdBody(body);
   if ("error" in parsed) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
+  }
+
+  if (parsed.data.exchangerId) {
+    const ex = await getExchangerById(parsed.data.exchangerId);
+    if (!ex) {
+      return NextResponse.json(
+        { error: "Обменник не найден" },
+        { status: 400 },
+      );
+    }
   }
 
   if (

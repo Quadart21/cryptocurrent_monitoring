@@ -46,6 +46,8 @@ type FormState = {
   href: string;
   imageUrl: string;
   imageFormat: string | null;
+  /** banner/ticker click target; highlight/rates_pin always use exchanger */
+  linkMode: "url" | "exchanger";
   exchangerId: string;
   /** empty = everywhere; otherwise selected FROM:TO keys */
   pairs: string[];
@@ -67,6 +69,7 @@ const emptyForm = (): FormState => ({
   href: "",
   imageUrl: "",
   imageFormat: null,
+  linkMode: "url",
   exchangerId: "",
   pairs: [],
   pairScope: "everywhere",
@@ -78,6 +81,10 @@ const emptyForm = (): FormState => ({
 
 function formFromAd(ad: AdCreative): FormState {
   const pairs = ad.pairs ?? [];
+  const linkMode: FormState["linkMode"] =
+    (ad.type === "banner" || ad.type === "ticker") && ad.exchangerId
+      ? "exchanger"
+      : "url";
   return {
     name: ad.name,
     type: ad.type,
@@ -87,6 +94,7 @@ function formFromAd(ad: AdCreative): FormState {
     href: ad.href,
     imageUrl: ad.imageUrl,
     imageFormat: ad.image?.format ?? null,
+    linkMode,
     exchangerId: ad.exchangerId ?? "",
     pairs,
     pairScope: pairs.length ? "pairs" : "everywhere",
@@ -115,7 +123,11 @@ export function AdsModule() {
   const placements = AD_TYPE_PLACEMENTS[form.type];
   const needsExchanger =
     form.type === "highlight" || form.type === "rates_pin";
+  const showClickTarget =
+    form.type === "banner" || form.type === "ticker";
   const showPairScope = form.type === "rates_pin";
+  const linkToExchanger =
+    needsExchanger || (showClickTarget && form.linkMode === "exchanger");
 
   useEffect(() => {
     if (!showPairScope || !form.exchangerId) {
@@ -153,22 +165,29 @@ export function AdsModule() {
   }, [showPairScope, form.exchangerId]);
 
   const payload = useMemo(
-    () => ({
-      name: form.name,
-      type: form.type,
-      placement: form.placement,
-      title: form.title,
-      body: form.body,
-      href: form.href,
-      imageUrl: form.imageUrl,
-      exchangerId: form.exchangerId || null,
-      pairs:
-        showPairScope && form.pairScope === "pairs" ? form.pairs : [],
-      active: form.active,
-      priority: Number(form.priority) || 0,
-      startsAt: form.startsAt ? new Date(form.startsAt).toISOString() : null,
-      endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : null,
-    }),
+    () => {
+      const toExchanger =
+        form.type === "highlight" ||
+        form.type === "rates_pin" ||
+        ((form.type === "banner" || form.type === "ticker") &&
+          form.linkMode === "exchanger");
+      return {
+        name: form.name,
+        type: form.type,
+        placement: form.placement,
+        title: form.title,
+        body: form.body,
+        href: toExchanger ? "" : form.href,
+        imageUrl: form.imageUrl,
+        exchangerId: toExchanger ? form.exchangerId || null : null,
+        pairs:
+          showPairScope && form.pairScope === "pairs" ? form.pairs : [],
+        active: form.active,
+        priority: Number(form.priority) || 0,
+        startsAt: form.startsAt ? new Date(form.startsAt).toISOString() : null,
+        endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : null,
+      };
+    },
     [form, showPairScope],
   );
 
@@ -180,6 +199,8 @@ export function AdsModule() {
       placement: nextPlacement,
       pairs: type === "rates_pin" ? f.pairs : [],
       pairScope: type === "rates_pin" ? f.pairScope : "everywhere",
+      linkMode:
+        type === "banner" || type === "ticker" ? f.linkMode : "url",
     }));
   }
 
@@ -530,8 +551,54 @@ export function AdsModule() {
                 className="w-full rounded-2xl border border-line bg-input px-3 py-2.5 text-sm outline-none focus:border-accent"
               />
             </label>
+            {showClickTarget ? (
+              <fieldset className="space-y-2">
+                <legend className="text-xs text-ink-muted">Клик ведёт на</legend>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm({ ...form, linkMode: "url", exchangerId: "" })
+                    }
+                    className={`rounded-xl px-3 py-2 text-xs font-semibold ${
+                      form.linkMode === "url"
+                        ? "bg-accent/15 text-accent"
+                        : "border border-line text-ink-muted"
+                    }`}
+                  >
+                    Внешний URL
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm({ ...form, linkMode: "exchanger", href: "" })
+                    }
+                    className={`rounded-xl px-3 py-2 text-xs font-semibold ${
+                      form.linkMode === "exchanger"
+                        ? "bg-accent/15 text-accent"
+                        : "border border-line text-ink-muted"
+                    }`}
+                  >
+                    Обменник на GapSnap
+                  </button>
+                </div>
+              </fieldset>
+            ) : (
+              <label className="block space-y-1">
+                <span className="text-xs text-ink-muted">Ссылка (опц.)</span>
+                <input
+                  value={form.href}
+                  onChange={(e) => setForm({ ...form, href: e.target.value })}
+                  placeholder="https://"
+                  className="w-full rounded-2xl border border-line bg-input px-3 py-2.5 text-sm outline-none focus:border-accent"
+                />
+              </label>
+            )}
+          </div>
+
+          {showClickTarget && form.linkMode === "url" ? (
             <label className="block space-y-1">
-              <span className="text-xs text-ink-muted">Ссылка</span>
+              <span className="text-xs text-ink-muted">Внешняя ссылка</span>
               <input
                 value={form.href}
                 onChange={(e) => setForm({ ...form, href: e.target.value })}
@@ -539,7 +606,7 @@ export function AdsModule() {
                 className="w-full rounded-2xl border border-line bg-input px-3 py-2.5 text-sm outline-none focus:border-accent"
               />
             </label>
-          </div>
+          ) : null}
 
           {form.type !== "banner" ? (
             <label className="block space-y-1">
@@ -637,9 +704,13 @@ export function AdsModule() {
             </div>
           ) : null}
 
-          {needsExchanger ? (
+          {linkToExchanger ? (
             <label className="block space-y-1">
-              <span className="text-xs text-ink-muted">Обменник</span>
+              <span className="text-xs text-ink-muted">
+                {needsExchanger
+                  ? "Обменник"
+                  : "Обменник (страница /exchangers/…)"}
+              </span>
               <select
                 value={form.exchangerId}
                 onChange={(e) =>
@@ -863,7 +934,15 @@ export function AdsModule() {
                       <p className="mt-1 text-sm text-ink">{ad.title}</p>
                       <p className="mt-1 text-xs text-ink-muted">
                         приоритет {ad.priority}
-                        {exName ? ` · ${exName}` : ""}
+                        {ad.type === "banner" || ad.type === "ticker"
+                          ? ad.exchangerId
+                            ? ` · клик → ${exName || "обменник"}`
+                            : ad.href
+                              ? ` · клик → ${ad.href}`
+                              : " · без ссылки"
+                          : exName
+                            ? ` · ${exName}`
+                            : ""}
                         {pairLabel ? ` · ${pairLabel}` : ""}
                       </p>
                       {(ad.pairs ?? []).length > 0 ? (

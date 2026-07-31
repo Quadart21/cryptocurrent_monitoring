@@ -310,6 +310,27 @@ export function formatAdPrice(price: number, currency: "RUB" = "RUB") {
   }).format(price);
 }
 
+/** External http(s) ads open in a new tab; site paths stay in-app. */
+export function isExternalAdHref(href: string | null | undefined): boolean {
+  const value = (href ?? "").trim().toLowerCase();
+  return value.startsWith("http://") || value.startsWith("https://");
+}
+
+export function adClickLinkProps(href: string): {
+  href: string;
+  target?: "_blank";
+  rel?: string;
+} {
+  if (isExternalAdHref(href)) {
+    return {
+      href,
+      target: "_blank",
+      rel: "noopener noreferrer sponsored",
+    };
+  }
+  return { href };
+}
+
 export function utcDayKey(d = new Date()): string {
   return d.toISOString().slice(0, 10);
 }

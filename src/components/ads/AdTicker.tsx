@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { PublicAd } from "@/components/ads/useAds";
 import { trackAdClick, trackAdImpression } from "@/components/ads/track";
-import { shuffleArray } from "@/lib/ads";
+import { adClickLinkProps, shuffleArray } from "@/lib/ads";
 
 function TickerSegment({
   ads,
@@ -19,13 +19,13 @@ function TickerSegment({
         const className =
           "whitespace-nowrap text-sm text-ink hover:text-accent";
         const key = `${keyPrefix}-${ad.id}-${i}`;
-        if (ad.href) {
+        const href = ad.href.trim();
+        if (href) {
+          const linkProps = adClickLinkProps(href);
           return (
             <a
               key={key}
-              href={ad.href}
-              target="_blank"
-              rel="noopener noreferrer sponsored"
+              {...linkProps}
               className={className}
               onClick={() => trackAdClick(ad.id)}
             >

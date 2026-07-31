@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BANNER_SPECS, pickWeightedRandom } from "@/lib/ads";
+import { adClickLinkProps, BANNER_SPECS, pickWeightedRandom } from "@/lib/ads";
 import { adMediaIsVideo } from "@/lib/ad-image-url";
 import type { PublicAd } from "@/components/ads/useAds";
 import { trackAdClick, trackAdImpression } from "@/components/ads/track";
@@ -72,6 +72,7 @@ export function AdBanner({
   const rootRef = useRef<HTMLDivElement | null>(null);
   const spec = BANNER_SPECS[ad.placement];
   const href = ad.href.trim() || null;
+  const linkProps = href ? adClickLinkProps(href) : null;
 
   useEffect(() => {
     const node = rootRef.current;
@@ -104,12 +105,10 @@ export function AdBanner({
       </div>
     );
 
-    if (href) {
+    if (linkProps) {
       return (
         <a
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer sponsored"
+          {...linkProps}
           className="block transition hover:opacity-95"
           title={ad.title}
           onClick={onClick}
@@ -133,7 +132,7 @@ export function AdBanner({
           <p className="mt-1 text-sm text-ink-muted">{ad.body}</p>
         ) : null}
       </div>
-      {href ? (
+      {linkProps ? (
         <span className="btn-primary inline-flex shrink-0 rounded-xl px-4 py-2 text-xs font-semibold">
           Подробнее
         </span>
@@ -144,15 +143,9 @@ export function AdBanner({
   const className =
     "block rounded-2xl border border-accent/25 bg-accent-soft/40 transition hover:border-accent/50";
 
-  if (href) {
+  if (linkProps) {
     return (
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer sponsored"
-        className={className}
-        onClick={onClick}
-      >
+      <a {...linkProps} className={className} onClick={onClick}>
         {inner}
       </a>
     );

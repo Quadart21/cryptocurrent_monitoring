@@ -614,6 +614,44 @@ export async function getExchangerById(
   return row ? mapExchanger(row) : undefined;
 }
 
+/** Public path `/exchangers/{slug}` for ad click targets (active/error, not blacklisted). */
+export async function listExchangerAdPathsByIds(
+  ids: string[],
+): Promise<Map<string, string>> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  const out = new Map<string, string>();
+  if (!unique.length) return out;
+
+  const db = getDb();
+  const [rows, blRows] = await Promise.all([
+    db
+      .select({
+        id: exchangers.id,
+        slug: exchangers.slug,
+        status: exchangers.status,
+        name: exchangers.name,
+      })
+      .from(exchangers)
+      .where(inArray(exchangers.id, unique)),
+    db.select().from(blacklist),
+  ]);
+
+  for (const row of rows) {
+    if (row.status !== "active" && row.status !== "error") continue;
+    if (
+      isExchangerBlacklisted(
+        { id: row.id, name: row.name, slug: row.slug },
+        blRows,
+      )
+    ) {
+      continue;
+    }
+    if (!row.slug) continue;
+    out.set(row.id, `/exchangers/${row.slug}`);
+  }
+  return out;
+}
+
 export async function getExchangerLogoBytes(
   id: string,
 ): Promise<{ format: "svg" | "png"; bytes: Buffer } | null> {
