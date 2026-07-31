@@ -10,7 +10,7 @@ import { JsonLd } from "@/components/seo/JsonLd";
 import { getOrganizationJsonLd, getRootMetadata } from "@/lib/seo";
 import { buildWebSiteJsonLd } from "@/lib/seo-jsonld";
 import { getPublicAds } from "@/lib/public-ads";
-import { getSeoSettings } from "@/lib/store";
+import { getBrandLogoUrl, getSeoSettings } from "@/lib/store";
 import "./globals.css";
 
 export const dynamic = "force-dynamic";
@@ -51,6 +51,7 @@ export default async function RootLayout({
   const org = await getOrganizationJsonLd();
   const website = buildWebSiteJsonLd(seo);
   const initialAds = await getPublicAds();
+  const brandLogoUrl = await getBrandLogoUrl();
 
   return (
     <html
@@ -70,7 +71,12 @@ export default async function RootLayout({
               yandexMetricaId={seo.yandexMetricaId}
               gtmId={seo.gtmId}
             />
-            <ConditionalShell initialAds={initialAds}>{children}</ConditionalShell>
+            <ConditionalShell
+              initialAds={initialAds}
+              brandLogoUrl={brandLogoUrl}
+            >
+              {children}
+            </ConditionalShell>
             <CookieBanner />
           </ConsentProvider>
         </ThemeProvider>

@@ -8,7 +8,11 @@ import { BrandMark } from "@/components/BrandMark";
 import { SITE_NAV, isNavActive } from "@/components/shell/nav";
 import { NavIcon } from "@/components/shell/NavIcon";
 
-export function MobileNav() {
+export function MobileNav({
+  brandLogoUrl,
+}: {
+  brandLogoUrl?: string | null;
+}) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -54,7 +58,7 @@ export function MobileNav() {
             >
               <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-4">
                 <div className="flex min-w-0 items-center gap-2.5">
-                  <BrandMark size={36} className="size-9" />
+                  <BrandMark size={36} className="size-9" src={brandLogoUrl} />
                   <div className="min-w-0">
                     <p className="font-display text-lg font-semibold text-ink">
                       GapSnap

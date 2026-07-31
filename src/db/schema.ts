@@ -618,3 +618,11 @@ export const exchangerTrafficEvents = pgTable(
   ],
 );
 
+/** Site branding binaries (logo, favicons, OG) — one row per kind. */
+export const siteAssets = pgTable("site_assets", {
+  kind: text("kind").primaryKey(),
+  format: text("format").notNull(),
+  updatedAt: text("updated_at").notNull(),
+  data: bytea("data").notNull(),
+});
+

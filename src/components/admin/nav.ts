@@ -117,6 +117,14 @@ export const ADMIN_NAV: AdminNavItem[] = [
     permission: "seo.read",
   },
   {
+    id: "branding",
+    href: `${ADMIN_PATH}/branding`,
+    label: "Брендинг",
+    description: "Лого, фавиконы, OG",
+    group: "site",
+    permission: "branding.read",
+  },
+  {
     id: "legal",
     href: `${ADMIN_PATH}/legal`,
     label: "Правовые",

@@ -17,6 +17,7 @@ import {
   rates,
   reviews,
   seo,
+  siteAssets,
   type AdStatsJson,
   type BannerCheckJson,
   type ExchangerTrafficJson,
@@ -31,6 +32,14 @@ import {
 import { emptyAdStats, normalizeAdStats, utcDayKey } from "@/lib/ads";
 import { isAdImageFormat } from "@/lib/ad-image-url";
 import type { AdImageFormat } from "@/lib/ad-image-url";
+import {
+  brandingPublicUrl,
+  isSiteAssetFormat,
+  SITE_ASSET_KINDS,
+  type SiteAssetFormat,
+  type SiteAssetKind,
+  type SiteAssetMeta,
+} from "@/lib/branding-url";
 import {
   emptyBannerCheck,
   newBannerToken,
@@ -761,6 +770,138 @@ export async function clearAdImageData(id: string): Promise<void> {
       imageUrl: "",
     })
     .where(eq(ads.id, id));
+}
+
+export async function listSiteAssetMeta(): Promise<SiteAssetMeta[]> {
+  const db = getDb();
+  const rows = await db
+    .select({
+      kind: siteAssets.kind,
+      format: siteAssets.format,
+      updatedAt: siteAssets.updatedAt,
+    })
+    .from(siteAssets);
+  const out: SiteAssetMeta[] = [];
+  for (const row of rows) {
+    if (!isSiteAssetFormat(row.format)) continue;
+    if (!(SITE_ASSET_KINDS as readonly string[]).includes(row.kind)) continue;
+    out.push({
+      kind: row.kind as SiteAssetKind,
+      format: row.format,
+      updatedAt: row.updatedAt,
+    });
+  }
+  return out;
+}
+
+export async function getSiteAssetMeta(
+  kind: SiteAssetKind,
+): Promise<SiteAssetMeta | null> {
+  const db = getDb();
+  const [row] = await db
+    .select({
+      kind: siteAssets.kind,
+      format: siteAssets.format,
+      updatedAt: siteAssets.updatedAt,
+    })
+    .from(siteAssets)
+    .where(eq(siteAssets.kind, kind))
+    .limit(1);
+  if (!row || !isSiteAssetFormat(row.format)) return null;
+  return {
+    kind,
+    format: row.format,
+    updatedAt: row.updatedAt,
+  };
+}
+
+export async function getSiteAssetBytes(
+  kind: SiteAssetKind,
+): Promise<{ format: SiteAssetFormat; bytes: Buffer; updatedAt: string } | null> {
+  const db = getDb();
+  const [row] = await db
+    .select({
+      format: siteAssets.format,
+      data: siteAssets.data,
+      updatedAt: siteAssets.updatedAt,
+    })
+    .from(siteAssets)
+    .where(eq(siteAssets.kind, kind))
+    .limit(1);
+  if (!row?.data || !isSiteAssetFormat(row.format)) return null;
+  return { format: row.format, bytes: row.data, updatedAt: row.updatedAt };
+}
+
+export async function setSiteAssetData(
+  kind: SiteAssetKind,
+  prepared: { format: SiteAssetFormat; bytes: Buffer },
+): Promise<SiteAssetMeta> {
+  const db = getDb();
+  const updatedAt = new Date().toISOString();
+  await db
+    .insert(siteAssets)
+    .values({
+      kind,
+      format: prepared.format,
+      updatedAt,
+      data: prepared.bytes,
+    })
+    .onConflictDoUpdate({
+      target: siteAssets.kind,
+      set: {
+        format: prepared.format,
+        updatedAt,
+        data: prepared.bytes,
+      },
+    });
+  return { kind, format: prepared.format, updatedAt };
+}
+
+export async function clearSiteAssetData(kind: SiteAssetKind): Promise<void> {
+  const db = getDb();
+  await db.delete(siteAssets).where(eq(siteAssets.kind, kind));
+}
+
+/**
+ * Keep SEO OG / org logo URLs pointing at uploaded branding assets when
+ * those fields are empty or already managed via /api/branding/*.
+ */
+export async function syncSeoUrlsFromBranding(): Promise<void> {
+  const [assets, current] = await Promise.all([
+    listSiteAssetMeta(),
+    getSeoSettings(),
+  ]);
+  const byKind = new Map(assets.map((a) => [a.kind, a]));
+  const logoUrl = brandingPublicUrl("logo", byKind.get("logo") ?? null);
+  const ogUrl = brandingPublicUrl("og_image", byKind.get("og_image") ?? null);
+
+  const patch: Partial<{
+    organizationLogoUrl: string;
+    ogImageUrl: string;
+  }> = {};
+
+  const orgIsManaged =
+    !current.organizationLogoUrl.trim() ||
+    current.organizationLogoUrl.startsWith("/api/branding/");
+  if (orgIsManaged) {
+    patch.organizationLogoUrl = logoUrl ?? "";
+  }
+
+  const ogIsManaged =
+    !current.ogImageUrl.trim() ||
+    current.ogImageUrl.startsWith("/api/branding/");
+  if (ogIsManaged) {
+    patch.ogImageUrl = ogUrl ?? "";
+  }
+
+  if (Object.keys(patch).length) {
+    await updateSeoSettings(patch);
+  }
+}
+
+export async function getBrandLogoUrl(): Promise<string> {
+  const meta = await getSiteAssetMeta("logo");
+  return brandingPublicUrl("logo", meta) ?? "/gapsnap-mark.png";
 }
 
 export async function getActiveRates(): Promise<StoredRate[]> {

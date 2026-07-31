@@ -238,7 +238,7 @@ export function SeoModule() {
             </div>
             <Field
               label="OG Image URL"
-              hint="Полный URL или путь от корня сайта, напр. /og.png"
+              hint="Или загрузите файл в разделе «Брендинг». Полный URL или путь, напр. /api/branding/og_image"
             >
               <input
                 className={inputClass}
@@ -381,7 +381,10 @@ export function SeoModule() {
                 onChange={(e) => patch("organizationName", e.target.value)}
               />
             </Field>
-            <Field label="URL логотипа">
+            <Field
+              label="URL логотипа"
+              hint="Или загрузите логотип в разделе «Брендинг» — URL подставится сам"
+            >
               <input
                 className={inputClass}
                 value={seo.organizationLogoUrl}

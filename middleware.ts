@@ -27,6 +27,7 @@ function uploadBodyMaxBytes(pathname: string): number {
   if (
     pathname === "/api/admin/ads/image" ||
     pathname === "/api/admin/exchangers/logo" ||
+    pathname === "/api/admin/branding" ||
     pathname === "/api/apply"
   ) {
     return API_UPLOAD_MAX_BYTES;

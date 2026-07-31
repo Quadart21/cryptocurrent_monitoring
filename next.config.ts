@@ -63,6 +63,20 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        source: "/api/branding/:path*",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+          },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, stale-while-revalidate=604800",
+          },
+        ],
+      },
+      {
         source: "/api/news-covers/:path*",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },

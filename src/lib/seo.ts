@@ -5,7 +5,8 @@ import {
   ADMIN_INTERNAL_PATH,
   ADMIN_PATH,
 } from "@/lib/admin-auth";
-import { getSeoSettings } from "@/lib/store";
+import { brandingPublicUrl } from "@/lib/branding-url";
+import { getSeoSettings, listSiteAssetMeta } from "@/lib/store";
 import type { SeoSettings } from "@/lib/store-types";
 
 export function normalizeSiteUrl(url: string): string {
@@ -158,7 +159,36 @@ export function buildRootMetadata(seo: SeoSettings): Metadata {
 }
 
 export async function getRootMetadata(): Promise<Metadata> {
-  return buildRootMetadata(await getSeoSettings());
+  const [seo, assets] = await Promise.all([
+    getSeoSettings(),
+    listSiteAssetMeta(),
+  ]);
+  const base = buildRootMetadata(seo);
+  const byKind = new Map(assets.map((a) => [a.kind, a]));
+
+  const iconMeta = byKind.get("icon");
+  const appleMeta = byKind.get("apple_icon");
+  const faviconMeta = byKind.get("favicon");
+
+  const iconUrl =
+    brandingPublicUrl("icon", iconMeta) ?? "/api/branding/icon";
+  const appleUrl =
+    brandingPublicUrl("apple_icon", appleMeta) ?? "/api/branding/apple_icon";
+  const icoUrl = brandingPublicUrl("favicon", faviconMeta);
+
+  const iconEntries: Array<{ url: string; type?: string }> = [];
+  if (icoUrl) {
+    iconEntries.push({ url: icoUrl, type: "image/x-icon" });
+  }
+  iconEntries.push({ url: iconUrl, type: "image/png" });
+
+  return {
+    ...base,
+    icons: {
+      icon: iconEntries,
+      apple: [{ url: appleUrl, type: "image/png" }],
+    },
+  };
 }
 
 export function buildOrganizationJsonLd(seo: SeoSettings): object | null {

@@ -29,6 +29,8 @@ export type AdminPermission =
   | "ad_tariffs.write"
   | "seo.read"
   | "seo.write"
+  | "branding.read"
+  | "branding.write"
   | "legal.read"
   | "legal.write"
   | "email.read"
@@ -53,6 +55,7 @@ export type AdminResource =
   | "ads"
   | "ad_tariffs"
   | "seo"
+  | "branding"
   | "legal"
   | "email"
   | "catalog"
@@ -107,6 +110,8 @@ const ALL_PERMISSIONS: AdminPermission[] = [
   "ad_tariffs.write",
   "seo.read",
   "seo.write",
+  "branding.read",
+  "branding.write",
   "legal.read",
   "legal.write",
   "email.read",
@@ -165,6 +170,7 @@ const ROLE_PERMISSIONS: Record<AdminRole, AdminPermission[] | "*"> = {
     "ads.read",
     "ad_tariffs.read",
     "seo.read",
+    "branding.read",
     "legal.read",
     "email.read",
     "catalog.read",

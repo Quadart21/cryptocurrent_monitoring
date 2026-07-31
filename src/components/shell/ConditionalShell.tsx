@@ -7,9 +7,11 @@ import type { PublicAd } from "@/components/ads/ads-context";
 export function ConditionalShell({
   children,
   initialAds = [],
+  brandLogoUrl,
 }: {
   children: React.ReactNode;
   initialAds?: PublicAd[];
+  brandLogoUrl?: string | null;
 }) {
   const pathname = usePathname();
   if (
@@ -20,5 +22,9 @@ export function ConditionalShell({
   ) {
     return <>{children}</>;
   }
-  return <AppShell initialAds={initialAds}>{children}</AppShell>;
+  return (
+    <AppShell initialAds={initialAds} brandLogoUrl={brandLogoUrl}>
+      {children}
+    </AppShell>
+  );
 }

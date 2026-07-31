@@ -61,6 +61,7 @@ export type AdminNavId =
   | "ads"
   | "ad-tariffs"
   | "seo"
+  | "branding"
   | "legal"
   | "email"
   | "blog"

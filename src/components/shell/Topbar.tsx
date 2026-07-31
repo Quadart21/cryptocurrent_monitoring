@@ -7,13 +7,13 @@ import { GlobalSearch } from "@/components/shell/GlobalSearch";
 import { IconSpreadNav } from "@/components/shell/IconSpreadNav";
 import { MobileNav } from "@/components/shell/MobileNav";
 
-export function Topbar() {
+export function Topbar({ brandLogoUrl }: { brandLogoUrl?: string | null }) {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-bg-elevated/95 pt-[env(safe-area-inset-top,0px)] backdrop-blur-md">
       <div className="mx-auto flex max-w-[1400px] flex-col">
         <div className="grid h-14 min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-3 sm:h-16 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-2 justify-self-start">
-            <MobileNav />
+            <MobileNav brandLogoUrl={brandLogoUrl} />
             <Link
               href="/"
               className="flex min-w-0 shrink items-center gap-2 sm:gap-2.5"
@@ -22,6 +22,7 @@ export function Topbar() {
                 size={36}
                 className="size-8 sm:size-9"
                 priority
+                src={brandLogoUrl}
               />
               <span className="truncate font-display text-base font-semibold tracking-tight text-ink sm:text-lg">
                 GapSnap

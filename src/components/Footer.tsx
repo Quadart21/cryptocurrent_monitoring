@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { BrandMark } from "@/components/BrandMark";
 
-export function Footer() {
+export function Footer({ brandLogoUrl }: { brandLogoUrl?: string | null }) {
   return (
     <footer className="mt-auto border-t border-line bg-bg-elevated">
       <div className="mx-auto flex max-w-[1400px] flex-col gap-8 px-3 py-8 sm:px-6 sm:py-10 lg:flex-row lg:items-start lg:justify-between lg:px-8">
         <div className="min-w-0 max-w-md">
           <div className="flex items-center gap-2.5">
-            <BrandMark size={36} className="size-9" />
+            <BrandMark size={36} className="size-9" src={brandLogoUrl} />
             <p className="font-display text-lg font-semibold text-ink">GapSnap</p>
           </div>
           <p className="mt-2 text-sm leading-relaxed text-ink-muted">
