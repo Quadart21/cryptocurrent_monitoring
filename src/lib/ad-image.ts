@@ -4,7 +4,10 @@ import {
 } from "@/lib/store";
 import type { AdImageFormat, AdImageMeta } from "@/lib/ad-image-url";
 import { isAdVideoFormat } from "@/lib/ad-image-url";
-import { sanitizeAchievementSvg } from "@/lib/sanitize-svg";
+import {
+  sanitizeSvgDetailed,
+  svgSanitizeErrorMessage,
+} from "@/lib/sanitize-svg";
 
 /** Static / animated images */
 export const AD_IMAGE_MAX_BYTES = 3 * 1024 * 1024;
@@ -12,8 +15,8 @@ export const AD_IMAGE_MAX_BYTES = 3 * 1024 * 1024;
 export const AD_VIDEO_MAX_BYTES = 8 * 1024 * 1024;
 /** Multipart upload ceiling (middleware + route); must cover video. */
 export const AD_UPLOAD_MAX_BYTES = AD_VIDEO_MAX_BYTES;
-/** Sanitized SVG text before sharp rasterizes to WebP */
-const AD_SVG_MAX_CHARS = 1_000_000;
+/** Sanitized SVG text before sharp rasterizes to WebP (Figma embeds are large). */
+const AD_SVG_MAX_CHARS = 3_500_000;
 
 export type { AdImageFormat, AdImageMeta };
 
@@ -93,24 +96,23 @@ function maxBytesFor(format: AdImageFormat): number {
 }
 
 async function rasterizeSvgToWebp(buf: Buffer): Promise<Buffer> {
-  const svg = sanitizeAchievementSvg(buf.toString("utf8"), {
+  const result = sanitizeSvgDetailed(buf.toString("utf8"), {
     maxLength: AD_SVG_MAX_CHARS,
     allowStyle: true,
+    allowDataImages: true,
   });
-  if (!svg) {
-    throw new Error(
-      "Некорректный SVG (нужен валидный <svg>…</svg>, без script)",
-    );
+  if (!result.ok) {
+    throw new Error(svgSanitizeErrorMessage(result.reason));
   }
   try {
     const sharp = (await import("sharp")).default;
-    return await sharp(Buffer.from(svg, "utf8"), { density: 150 })
+    return await sharp(Buffer.from(result.svg, "utf8"), { density: 150 })
       .resize({ width: 2400, withoutEnlargement: true })
       .webp({ quality: 82 })
       .toBuffer();
   } catch {
     throw new Error(
-      "Не удалось обработать SVG. Добавьте width/height или viewBox",
+      "Не удалось обработать SVG. Экспортируйте PNG/WebP или добавьте viewBox",
     );
   }
 }
