@@ -10,6 +10,7 @@ import {
   listCities,
   listOnlineCurrencies,
 } from "@/lib/bestchange/catalog";
+import { ensureCatalogsHydrated } from "@/lib/bestchange/catalog-store";
 import { resolveCurrencyGroup } from "@/lib/bestchange/currency-groups";
 import { mergePopularPairs } from "@/lib/bestchange/popular-pairs";
 import { getTopDemandPairs } from "@/lib/store";
@@ -36,6 +37,8 @@ function toOption(c: BcCurrency): {
 }
 
 export async function getDashboardCatalog(): Promise<DashboardCatalog> {
+  await ensureCatalogsHydrated();
+
   const onlineRaw = listOnlineCurrencies();
   const onlineCurrencies = onlineRaw.map(toOption);
   const cashCurrencies = listCashCurrencies().map(toOption);

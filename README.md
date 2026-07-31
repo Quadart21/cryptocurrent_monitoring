@@ -15,7 +15,7 @@
   <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-16+-4169E1?style=flat-square&logo=postgresql&logoColor=white" />
   <img alt="Drizzle" src="https://img.shields.io/badge/ORM-Drizzle-C5F74F?style=flat-square" />
   <img alt="Node" src="https://img.shields.io/badge/Node.js-22+-339933?style=flat-square&logo=nodedotjs&logoColor=white" />
-  <img alt="Version" src="https://img.shields.io/badge/version-2.25.0-0ea5e9?style=flat-square" />
+  <img alt="Version" src="https://img.shields.io/badge/version-2.25.1-0ea5e9?style=flat-square" />
 </p>
 
 ---
