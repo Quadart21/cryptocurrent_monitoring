@@ -1,107 +1,133 @@
 # GapSnap
 
-Мониторинг обменников: курсы из публичных XML-фидов, опрос раз в минуту.
+Мониторинг криптообменников: актуальные курсы из публичных XML-фидов, отзывы, жалобы, кабинет владельца и админ-панель.
 
-**Хранилище:** PostgreSQL. Миграции Drizzle применяются автоматически при старте приложения (`src/instrumentation.ts`). Логотипы и SVG ачивок лежат в БД.
+> Репозиторий рассчитан на самостоятельный деплой. В документации ниже — **плейсхолдеры** (`YOUR_DOMAIN`, `YOUR_SERVER_IP`). Подставьте свои значения; чужие домены и IP в README не указываются намеренно.
+
+---
+
+## Возможности
+
+| Область | Что есть |
+|--------|----------|
+| **Курсы** | Парсинг XML-фидов, синхронизация, каталог валют/городов |
+| **Обменники** | Заявки, модерация, логотипы, баннер GapSnap на сайтах партнёров |
+| **Отзывы** | Модерация, треды ответов, magic-link по email |
+| **Жалобы** | Очередь в админке, ЧС только после решения модератора |
+| **Кабинет** | Статистика, ответы на отзывы, 2FA для владельца |
+| **Трафик** | Просмотры/клики: сводка по дням + журнал (время, IP, устройство) |
+| **Реклама** | Баннеры, тикер, закрепы, тарифы |
+| **Контент** | Новости, ачивки, SEO, правовые страницы |
+| **Админы** | Роли (Owner / Moderator / Editor / Ads / Viewer), 2FA, временные пароли |
+
+Стек: **Next.js**, **React**, **PostgreSQL**, **Drizzle ORM**, **PM2** (типичный прод).
 
 ---
 
 ## Требования
 
-- Node.js 22+
-- PostgreSQL 16+ (локально через Docker или системный пакет)
+- Node.js **22+**
+- PostgreSQL **16+** (Docker или системный пакет)
+- Для продакшена: Nginx (или аналог), HTTPS, желательно edge/WAF (например Cloudflare)
 
 ---
 
-## Локальный запуск
+## Быстрый старт (локально)
 
 ```bash
-# 1. Postgres
+# 1. База
 docker compose up -d
 
 # 2. Приложение
 npm install
 cp .env.example .env
-```
+# отредактируйте .env — минимум DATABASE_URL, ADMIN_*, SESSION_SECRET
 
-В `.env` минимум:
-
-```env
-DATABASE_URL=postgresql://gapsnap:gapsnap@localhost:5432/gapsnap
-ADMIN_LOGIN=admin
-ADMIN_PASSWORD=change-me-to-a-long-random-password
-SESSION_SECRET=change-me-to-at-least-24-random-chars
-```
-
-```bash
-npm run sync:catalogs
+npm run sync:catalogs   # опционально: обновить seed-JSON справочников
 npm run dev
 ```
 
-`sync:catalogs` обновляет seed-JSON в `src/data/bestchange/` (для репозитория). Живой каталог сайта — в PostgreSQL и правится в админке.
+Откройте [http://localhost:3000](http://localhost:3000).
 
-Справочники валют (коды, города, страны):
-- живой каталог: таблицы PostgreSQL (`bc_currencies`, `bc_cities`, `bc_countries`, `bc_groups`)
-- seed при первом старте из `src/data/bestchange/*.json` (если таблицы пустые)
-- правка в админке: **/trulala/catalog**
-- новые коды с внешнего API: очередь на модерацию → **Синхронизация** (поллер раз в 12ч); после одобрения пишутся в БД
+Админ-панель доступна по пути из `ADMIN_PATH` в `.env` (см. `.env.example`). Не публикуйте этот путь в robots.txt и публичных материалах.
 
-Сайт: http://localhost:3000  
-Админка: http://localhost:3000/trulala
+При первом старте миграции Drizzle применяются автоматически (`src/instrumentation.ts`), создаются таблицы и базовые сиды.
 
-При первом старте создаются таблицы и сиды (Kubex, blacklist, тарифы, SEO).
+### Минимальный `.env`
 
-### Импорт старых данных из JSON
+```env
+DATABASE_URL=postgresql://gapsnap:gapsnap@localhost:5432/gapsnap
 
-Если есть `.data/store.json` и `.data/logos/`:
+ADMIN_LOGIN=admin
+ADMIN_PASSWORD=change-me-to-a-long-random-password
+SESSION_SECRET=change-me-to-at-least-24-random-chars
 
-```bash
-npm run db:import
+# Рекомендуется в проде: нестандартный префикс админки
+# ADMIN_PATH=/ops-xxxx
 ```
 
-### Скрипты БД
-
-| Команда | Назначение |
-|---------|------------|
-| `npm run db:generate` | Сгенерировать SQL-миграцию из схемы |
-| `npm run db:migrate` | Применить миграции вручную |
-| `npm run db:studio` | Drizzle Studio |
-| `npm run db:import` | Импорт `.data/store.json` + логотипов в Postgres |
+Полный список переменных — в `.env.example`.
 
 ---
 
-## Развёртка на чистом сервере (Ubuntu)
+## Скрипты
 
-**Пример:** домен `gapsnap.org`, IP `2.26.89.254`, репозиторий `https://github.com/Quadart21/cryptocurrent_monitoring.git`.
+| Команда | Назначение |
+|---------|------------|
+| `npm run dev` | Разработка |
+| `npm run build` / `npm start` | Сборка и прод-режим |
+| `npm run sync:catalogs` | Обновить seed-JSON справочников валют |
+| `npm run db:generate` | SQL-миграция из схемы Drizzle |
+| `npm run db:migrate` | Применить миграции вручную |
+| `npm run db:studio` | Drizzle Studio |
+| `npm run db:import` | Импорт legacy `.data/store.json` + логотипов |
+| `npm run db:seed-achievements` | Сид ачивок |
+
+---
+
+## Данные и каталог
+
+- Живой каталог валют/городов/стран — в PostgreSQL (`bc_*`).
+- Seed при пустых таблицах — из `src/data/bestchange/*.json`.
+- Правка — в админке (раздел каталога).
+- Новые коды с внешнего API — очередь модерации в разделе синхронизации.
+
+Хранилище приложения — **только PostgreSQL** (в т.ч. логотипы и SVG ачивок).
+
+---
+
+## Развёртка на сервере (Ubuntu)
+
+Ниже — типовой сценарий. Замените плейсхолдеры:
+
+| Плейсхолдер | Пример смысла |
+|-------------|----------------|
+| `YOUR_SERVER_IP` | IP VPS |
+| `YOUR_DOMAIN` | ваш домен |
+| `YOUR_REPO_URL` | URL git-клона |
+| `CHANGE_ME_DB_PASSWORD` | пароль роли БД |
 
 ### 0. DNS
 
 | Тип | Имя | Значение |
 |-----|-----|----------|
-| A | `@` | `2.26.89.254` |
-| A | `www` | `2.26.89.254` |
+| A | `@` | `YOUR_SERVER_IP` |
+| A | `www` | `YOUR_SERVER_IP` |
 
-### 1. Подключение
-
-```bash
-ssh root@2.26.89.254
-```
-
-### 2. Система + Node 22 + Nginx + PM2 + Certbot + PostgreSQL
+### 1. Система
 
 ```bash
+ssh root@YOUR_SERVER_IP
+
 apt update && apt upgrade -y && \
 apt install -y curl git ufw nginx certbot python3-certbot-nginx postgresql postgresql-contrib && \
 curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
 apt install -y nodejs && \
 npm install -g pm2 && \
-node -v && npm -v && \
 ufw allow OpenSSH && ufw allow 80/tcp && ufw allow 443/tcp && ufw --force enable
 ```
 
-### 3. База PostgreSQL
-
-Задай свой пароль вместо `CHANGE_ME_DB_PASSWORD`:
+### 2. PostgreSQL
 
 ```bash
 sudo -u postgres psql -c "CREATE USER gapsnap WITH PASSWORD 'CHANGE_ME_DB_PASSWORD';" && \
@@ -110,86 +136,57 @@ sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE gapsnap TO gapsnap;" 
 sudo -u postgres psql -d gapsnap -c "GRANT ALL ON SCHEMA public TO gapsnap;"
 ```
 
-Проверка:
+### 3. Код и зависимости
 
 ```bash
-psql "postgresql://gapsnap:CHANGE_ME_DB_PASSWORD@127.0.0.1:5432/gapsnap" -c "SELECT version();"
+mkdir -p /var/www && cd /var/www && \
+git clone YOUR_REPO_URL gapsnap && \
+cd /var/www/gapsnap && npm install
 ```
 
-### 4. Клон и зависимости
+### 4. Окружение
 
 ```bash
-mkdir -p /var/www && \
-cd /var/www && \
-git clone https://github.com/Quadart21/cryptocurrent_monitoring.git gapsnap && \
-cd /var/www/gapsnap && \
-npm install
+cd /var/www/gapsnap && cp .env.example .env && nano .env
 ```
 
-### 5. `.env`
-
-```bash
-cd /var/www/gapsnap && \
-cp .env.example .env && \
-nano .env
-```
-
-Обязательно:
+Обязательно задайте:
 
 ```env
 DATABASE_URL=postgresql://gapsnap:CHANGE_ME_DB_PASSWORD@127.0.0.1:5432/gapsnap
-
-ADMIN_LOGIN=admin
-ADMIN_PASSWORD=длинный-случайный-пароль
-SESSION_SECRET=ещё-один-секрет-не-короче-24-символов
-
-# опционально — ключ внешнего каталога валют
-BESTCHANGE_API_KEY=
-BESTCHANGE_API_BASE=https://bestchange.app
+ADMIN_LOGIN=...
+ADMIN_PASSWORD=...          # длинный случайный
+SESSION_SECRET=...          # ≥ 24 символов
+ADMIN_PATH=/ops-xxxx        # свой секретный путь
+SITE_URL=https://YOUR_DOMAIN
 ```
 
-Сохрани файл (`Ctrl+O`, Enter, `Ctrl+X`).
+Не коммитьте `.env` в git.
 
-### 6. Каталоги валют + сборка
+### 5. Сборка и PM2
 
 ```bash
 cd /var/www/gapsnap && \
 npm run sync:catalogs && \
-npm run build
-```
-
-Таблицы создадутся при первом запуске PM2 (автомиграция). Если нужно применить миграции заранее:
-
-```bash
-cd /var/www/gapsnap && npm run db:migrate
-```
-
-### 7. PM2
-
-```bash
-cd /var/www/gapsnap && \
+npm run build && \
 pm2 start npm --name gapsnap -- start && \
 pm2 save && \
 pm2 startup systemd -u root --hp /root
 ```
 
-Выполни команду, которую выведет `pm2 startup`, если попросит.
-
-Проверка:
+Миграции применятся при старте. При необходимости заранее: `npm run db:migrate`.
 
 ```bash
 pm2 status && pm2 logs gapsnap --lines 50
 ```
 
-В логах не должно быть ошибок `DATABASE_URL` / connection refused. После старта видны применённые миграции и seed.
-
-### 8. Nginx
+### 6. Nginx
 
 ```bash
 cat > /etc/nginx/sites-available/gapsnap <<'EOF'
 server {
     listen 80;
-    server_name gapsnap.org www.gapsnap.org;
+    server_name YOUR_DOMAIN www.YOUR_DOMAIN;
 
     client_max_body_size 2m;
 
@@ -212,103 +209,111 @@ rm -f /etc/nginx/sites-enabled/default && \
 nginx -t && systemctl reload nginx
 ```
 
-Проверка по IP: http://2.26.89.254
-
-### 9. HTTPS
+### 7. HTTPS
 
 Когда DNS уже указывает на сервер:
 
 ```bash
-certbot --nginx -d gapsnap.org -d www.gapsnap.org --redirect -m admin@gapsnap.org --agree-tos -n
+certbot --nginx -d YOUR_DOMAIN -d www.YOUR_DOMAIN --redirect \
+  -m admin@YOUR_DOMAIN --agree-tos -n
 ```
-
-Сайт: https://gapsnap.org
 
 ---
 
-## Обновление на сервере
+## Обновление
 
 ```bash
 cd /var/www/gapsnap && \
-git pull && \
+cp .env .env.bak && \
+git fetch origin && \
+git reset --hard origin/main && \
+cp .env.bak .env && \
 npm install && \
 npm run build && \
 pm2 restart gapsnap
 ```
 
-Новые SQL-миграции из папки `drizzle/` применятся сами при рестарте.
+Новые файлы в `drizzle/` подхватятся при рестарте (автомиграция).
 
-Если переносишь данные с другой машины (JSON):
+Legacy-импорт JSON:
 
 ```bash
-# скопируй .data/store.json и .data/logos на сервер, затем:
+# положите .data/store.json и .data/logos на сервер, затем:
 cd /var/www/gapsnap && npm run db:import && pm2 restart gapsnap
 ```
 
 ---
 
-## Бэкап Postgres
+## Бэкап PostgreSQL
 
 ```bash
-# дамп
-pg_dump "postgresql://gapsnap:CHANGE_ME_DB_PASSWORD@127.0.0.1:5432/gapsnap" -Fc -f /root/gapsnap-$(date +%F).dump
+pg_dump "postgresql://gapsnap:CHANGE_ME_DB_PASSWORD@127.0.0.1:5432/gapsnap" \
+  -Fc -f /root/gapsnap-$(date +%F).dump
 
-# восстановление
-pg_restore -d "postgresql://gapsnap:CHANGE_ME_DB_PASSWORD@127.0.0.1:5432/gapsnap" --clean --if-exists /root/gapsnap-YYYY-MM-DD.dump
+pg_restore -d "postgresql://gapsnap:CHANGE_ME_DB_PASSWORD@127.0.0.1:5432/gapsnap" \
+  --clean --if-exists /root/gapsnap-YYYY-MM-DD.dump
 ```
 
 ---
 
-## Админка
+## Админка и роли
 
-Скрытый адрес: `/trulala`
+Путь задаётся через **`ADMIN_PATH`**. После деплоя войдите учёткой из env (bootstrap Owner) и:
 
-- `/trulala` — обзор
-- `/trulala/exchangers` — обменники
-- `/trulala/reviews` — отзывы
-- `/trulala/qualities` — теги качеств
-- `/trulala/achievements` — ачивки (SVG)
-- `/trulala/ads` — реклама
-- `/trulala/seo` — SEO
-- `/trulala/email` — email (шаблоны, smtp.bz, журнал)
-- `/trulala/blacklist` — чёрный список
-- `/trulala/sync` — синхронизация фидов
+1. Включите **2FA** (QR / Authenticator).
+2. Создавайте остальных админов — им выдаётся **временный пароль** (смена при первом входе) и онбординг 2FA.
 
-Логин/пароль: `ADMIN_LOGIN` / `ADMIN_PASSWORD` в `.env`.  
-В production обязательны длинный `ADMIN_PASSWORD` и `SESSION_SECRET` (≥24 символов).
+| Роль | Кратко |
+|------|--------|
+| **Owner** | Всё + управление админами, SEO, email, sync |
+| **Moderator** | Обменники, отзывы, жалобы, ЧС, баннеры |
+| **Editor** | Новости, качества, ачивки |
+| **Ads** | Креативы и тарифы |
+| **Viewer** | Только просмотр |
 
-### Email (smtp.bz)
-
-Подтверждение отзывов и письмо владельцу при одобрении обменника:
-
-```env
-SITE_URL=https://gapsnap.org
-SMTPBZ_API_KEY=ваш_ключ_из_кабинета
-SMTPBZ_FROM=noreply@ваш-домен   # верифицированный отправитель в smtp.bz
-SMTPBZ_FROM_NAME=GapSnap
-```
-
-Отправитель должен быть подтверждён в кабинете smtp.bz.
-
-При **Одобрить** в админке на `ownerEmail` уходят: логин, временный пароль, секрет 2FA (TOTP). Вход в `/cabinet` — пароль + код из Authenticator.
-
-При **одобрении отзыва** владельцу уходит письмо «новый отзыв — ответьте в кабинете».
+Кабинет владельца обменника: `/cabinet` (отдельная учётка, 2FA при одобрении заявки).
 
 ---
 
-## Защита от DoS / DDoS
+## Почта
 
-Объёмный DDoS приложение само не отразит — нужен edge (Cloudflare):
+Подтверждение отзывов, жалоб, писем владельцам — через SMTP API (см. переменные `SMTPBZ_*` / аналоги в `.env.example`).
 
-1. Сайт за Cloudflare (базовый DDoS + WAF).
-2. Under Attack Mode при инциденте, Bot Fight Mode, rate limit на `/api/*`.
-3. Origin закрыт от прямого доступа (firewall: только IP Cloudflare).
+Задайте `SITE_URL=https://YOUR_DOMAIN` — ссылки в письмах строятся от него. Отправитель должен быть верифицирован у провайдера.
 
-На уровне GapSnap:
+---
 
-- лимиты по IP на `/api/*` (`RATE_LIMIT_*` в `.env`);
-- лимит размера тела;
-- один sync фидов одновременно;
-- SSRF-фильтр исходящих запросов к XML.
+## Безопасность
 
-При 429 клиент получает `Retry-After`.
+**Инфраструктура**
+
+- Edge/WAF перед origin (Cloudflare и т.п.).
+- Origin не светить в DNS без прокси; firewall — только доверенные IP edge.
+- Длинные `ADMIN_PASSWORD`, `SESSION_SECRET`; уникальный `ADMIN_PATH`.
+
+**В приложении**
+
+- Rate limit по IP на `/api/*` (`RATE_LIMIT_*`).
+- Лимит размера тела запросов.
+- Один sync фидов за раз; SSRF-фильтр исходящих XML.
+- При 429 — заголовок `Retry-After`.
+
+Не храните секреты в README, issues и скриншотах.
+
+---
+
+## Структура (кратко)
+
+```
+src/app/          # страницы и API routes
+src/components/   # UI (публичный, кабинет, админка)
+src/lib/          # домен, RBAC, email, sync, security
+src/db/           # schema Drizzle, seed
+drizzle/          # SQL-миграции
+```
+
+---
+
+## Лицензия и вклад
+
+Приватный/внутренний проект мониторинга. Перед публикацией форков уберите `.env`, дампы БД и любые прод-домены/IP из документации.
