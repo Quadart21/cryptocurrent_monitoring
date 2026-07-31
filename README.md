@@ -314,7 +314,7 @@ server {
     listen 80;
     server_name YOUR_DOMAIN www.YOUR_DOMAIN;
 
-    client_max_body_size 2m;
+    client_max_body_size 10m;
 
     location / {
         proxy_pass http://127.0.0.1:3000;
@@ -367,6 +367,13 @@ pm2 restart gapsnap
 ```
 
 Новые файлы в `drizzle/` подхватятся при рестарте.
+
+Если загрузка баннеров/видео отдаёт **413**, поднимите лимит nginx (нужно для файлов до 8 МБ):
+
+```bash
+sed -i 's/client_max_body_size.*/client_max_body_size 10m;/' /etc/nginx/sites-available/gapsnap && \
+nginx -t && systemctl reload nginx
+```
 
 <details>
 <summary>Legacy-импорт JSON</summary>

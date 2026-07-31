@@ -198,6 +198,11 @@ export function AdsModule() {
     try {
       return JSON.parse(text) as { error?: string };
     } catch {
+      if (res.status === 413) {
+        throw new Error(
+          "Файл слишком большой для прокси (nginx). Нужен client_max_body_size 10m",
+        );
+      }
       throw new Error(
         res.status
           ? `Ошибка сервера (${res.status})`

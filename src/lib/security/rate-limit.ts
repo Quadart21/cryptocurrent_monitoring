@@ -146,10 +146,15 @@ export function assertContentLength(
   const n = Number(raw);
   if (!Number.isFinite(n) || n < 0) return null;
   if (n > maxBytes) {
-    return new Response(JSON.stringify({ error: "payload too large" }), {
-      status: 413,
-      headers: { "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        error: "Файл слишком большой (лимит тела запроса)",
+      }),
+      {
+        status: 413,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
   return null;
 }
