@@ -279,7 +279,7 @@ export const ads = pgTable("ads", {
   body: text("body").notNull().default(""),
   href: text("href").notNull().default(""),
   imageUrl: text("image_url").notNull().default(""),
-  /** Uploaded banner bytes (JPG/PNG/WebP); public URL is `/api/ad-images/:id`. */
+  /** Uploaded banner bytes (JPG/PNG/WebP/…; SVG rasterized); public URL `/api/ad-images/:id`. */
   imageFormat: text("image_format"),
   imageUpdatedAt: text("image_updated_at"),
   imageData: bytea("image_data"),

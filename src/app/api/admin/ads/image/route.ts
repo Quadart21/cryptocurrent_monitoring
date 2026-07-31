@@ -52,12 +52,18 @@ export async function POST(request: Request) {
 
   if (!prepared) {
     return NextResponse.json(
-      { error: "Выберите JPG, PNG, WebP, AVIF, GIF или MP4/WebM" },
+      { error: "Выберите JPG, PNG, WebP, AVIF, GIF, SVG или MP4/WebM" },
       { status: 400 },
     );
   }
 
-  await saveAdImage(id, prepared);
+  try {
+    await saveAdImage(id, prepared);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Не удалось сохранить картинку";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
   const ad = await getAdById(id);
   return NextResponse.json({ ad });
 }

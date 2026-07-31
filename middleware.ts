@@ -18,6 +18,22 @@ import {
 } from "@/lib/security/rate-limit";
 import { assertSameOrigin } from "@/lib/security/request";
 
+/** Default JSON API body cap. Upload routes use a higher ceiling. */
+const API_BODY_MAX_BYTES = 1_000_000;
+/** Ad banners/videos + logos + apply form (must cover AD_VIDEO_MAX_BYTES). */
+const API_UPLOAD_MAX_BYTES = 8 * 1024 * 1024;
+
+function uploadBodyMaxBytes(pathname: string): number {
+  if (
+    pathname === "/api/admin/ads/image" ||
+    pathname === "/api/admin/exchangers/logo" ||
+    pathname === "/api/apply"
+  ) {
+    return API_UPLOAD_MAX_BYTES;
+  }
+  return API_BODY_MAX_BYTES;
+}
+
 function rateLimited(retryAfterSec: number) {
   return NextResponse.json(
     { error: "Слишком много запросов. Подождите и попробуйте снова." },
@@ -66,7 +82,10 @@ export async function middleware(request: NextRequest) {
 
   // Application-layer DoS shield for all APIs
   if (pathname.startsWith("/api/")) {
-    const tooBig = assertContentLength(request, 1_000_000);
+    const tooBig = assertContentLength(
+      request,
+      uploadBodyMaxBytes(pathname),
+    );
     if (tooBig) return tooBig;
 
     const limited = checkApiRateLimit(request, pathname);

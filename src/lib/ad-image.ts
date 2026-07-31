@@ -4,11 +4,16 @@ import {
 } from "@/lib/store";
 import type { AdImageFormat, AdImageMeta } from "@/lib/ad-image-url";
 import { isAdVideoFormat } from "@/lib/ad-image-url";
+import { sanitizeAchievementSvg } from "@/lib/sanitize-svg";
 
 /** Static / animated images */
 export const AD_IMAGE_MAX_BYTES = 3 * 1024 * 1024;
 /** Short MP4 / WebM loops */
 export const AD_VIDEO_MAX_BYTES = 8 * 1024 * 1024;
+/** Multipart upload ceiling (middleware + route); must cover video. */
+export const AD_UPLOAD_MAX_BYTES = AD_VIDEO_MAX_BYTES;
+/** Sanitized SVG text before sharp rasterizes to WebP */
+const AD_SVG_MAX_CHARS = 1_000_000;
 
 export type { AdImageFormat, AdImageMeta };
 
@@ -74,8 +79,40 @@ function isWebm(buf: Buffer): boolean {
   return WEBM_SIG.every((b, i) => buf[i] === b);
 }
 
+function looksLikeSvg(buf: Buffer, name: string, type: string): boolean {
+  if (type.includes("svg") || name.endsWith(".svg")) return true;
+  const head = buf.toString("utf8", 0, Math.min(buf.length, 512)).trimStart();
+  return (
+    head.startsWith("<svg") ||
+    (head.startsWith("<?xml") && head.toLowerCase().includes("<svg"))
+  );
+}
+
 function maxBytesFor(format: AdImageFormat): number {
   return isAdVideoFormat(format) ? AD_VIDEO_MAX_BYTES : AD_IMAGE_MAX_BYTES;
+}
+
+async function rasterizeSvgToWebp(buf: Buffer): Promise<Buffer> {
+  const svg = sanitizeAchievementSvg(buf.toString("utf8"), {
+    maxLength: AD_SVG_MAX_CHARS,
+    allowStyle: true,
+  });
+  if (!svg) {
+    throw new Error(
+      "Некорректный SVG (нужен валидный <svg>…</svg>, без script)",
+    );
+  }
+  try {
+    const sharp = (await import("sharp")).default;
+    return await sharp(Buffer.from(svg, "utf8"), { density: 150 })
+      .resize({ width: 2400, withoutEnlargement: true })
+      .webp({ quality: 82 })
+      .toBuffer();
+  } catch {
+    throw new Error(
+      "Не удалось обработать SVG. Добавьте width/height или viewBox",
+    );
+  }
 }
 
 export async function validateAndPrepareAdImage(
@@ -86,6 +123,15 @@ export async function validateAndPrepareAdImage(
   const name = (file.name || "").toLowerCase();
   const type = (file.type || "").toLowerCase();
   const buf = Buffer.from(await file.arrayBuffer());
+
+  // SVG → WebP (same pipeline as JPEG/PNG; avoids serving raw SVG in ads).
+  if (looksLikeSvg(buf, name, type)) {
+    if (file.size > AD_IMAGE_MAX_BYTES) {
+      throw new Error("Файл слишком большой (макс. 3 МБ)");
+    }
+    const webp = await rasterizeSvgToWebp(buf);
+    return { format: "webp", bytes: webp };
+  }
 
   let format: AdImageFormat | null = null;
 
@@ -130,7 +176,7 @@ export async function validateAndPrepareAdImage(
 
   if (!format) {
     throw new Error(
-      "Баннер: JPG, PNG, WebP, AVIF, GIF или короткое видео MP4/WebM",
+      "Баннер: JPG, PNG, WebP, AVIF, GIF, SVG или короткое видео MP4/WebM",
     );
   }
 

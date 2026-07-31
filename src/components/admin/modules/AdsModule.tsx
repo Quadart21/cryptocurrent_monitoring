@@ -193,6 +193,19 @@ export function AdsModule() {
     });
   }
 
+  async function readApiJson(res: Response): Promise<{ error?: string }> {
+    const text = await res.text();
+    try {
+      return JSON.parse(text) as { error?: string };
+    } catch {
+      throw new Error(
+        res.status
+          ? `Ошибка сервера (${res.status})`
+          : "Некорректный ответ сервера",
+      );
+    }
+  }
+
   async function uploadAdImage(adId: string, file: File) {
     const fd = new FormData();
     fd.set("id", adId);
@@ -201,7 +214,7 @@ export function AdsModule() {
       method: "POST",
       body: fd,
     });
-    const body = (await res.json()) as { error?: string };
+    const body = await readApiJson(res);
     if (!res.ok) {
       throw new Error(body.error ?? "Не удалось загрузить картинку");
     }
@@ -218,7 +231,7 @@ export function AdsModule() {
         method: "POST",
         body: fd,
       });
-      const body = (await res.json()) as { error?: string };
+      const body = await readApiJson(res);
       if (!res.ok) {
         setError(body.error ?? "Не удалось удалить картинку");
         return;
@@ -491,8 +504,9 @@ export function AdsModule() {
                 ))}
               </ul>
               <p className="mt-2 text-xs text-ink-muted">
-                JPG / PNG / WebP / AVIF / GIF до 3 МБ; короткое MP4 / WebM до 8
-                МБ (muted loop). Берите точный размер выбранного слота.
+                JPG / PNG / WebP / AVIF / GIF / SVG до 3 МБ; короткое MP4 / WebM
+                до 8 МБ (muted loop). SVG конвертируется в WebP. Берите точный
+                размер выбранного слота.
               </p>
             </div>
           ) : null}
@@ -549,7 +563,7 @@ export function AdsModule() {
                 </span>
                 <input
                   type="file"
-                  accept=".jpg,.jpeg,.png,.webp,.gif,.avif,.mp4,.webm,m4v,image/jpeg,image/png,image/webp,image/gif,image/avif,video/mp4,video/webm"
+                  accept=".jpg,.jpeg,.png,.webp,.gif,.avif,.svg,.mp4,.webm,.m4v,image/jpeg,image/png,image/webp,image/gif,image/avif,image/svg+xml,video/mp4,video/webm"
                   onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
                   className="block w-full text-sm text-ink file:mr-3 file:rounded-xl file:border-0 file:bg-accent/15 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-accent"
                 />
