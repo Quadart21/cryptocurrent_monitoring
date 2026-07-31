@@ -89,6 +89,104 @@ export const BANNER_SPECS: Partial<
   },
 };
 
+/** Пример-креативы для витрины /advertise (статические файлы в public/advertise). */
+export const AD_EXAMPLE_BANNERS: Partial<
+  Record<
+    AdPlacement,
+    {
+      src: string;
+      alt: string;
+      sizeLabel: string;
+      width: number;
+      height: number;
+    }
+  >
+> = {
+  header: {
+    src: "/advertise/banner-1200x90.webp",
+    alt: "Пример баннера 1200×90 — под шапкой",
+    sizeLabel: "1200×90",
+    width: 1200,
+    height: 90,
+  },
+  pair_after: {
+    src: "/advertise/banner-1200x90.webp",
+    alt: "Пример баннера 1200×90 — страница пары",
+    sizeLabel: "1200×90",
+    width: 1200,
+    height: 90,
+  },
+  exchanger_page: {
+    src: "/advertise/banner-1200x90.webp",
+    alt: "Пример баннера 1200×90 — карточка обменника",
+    sizeLabel: "1200×90",
+    width: 1200,
+    height: 90,
+  },
+  dashboard: {
+    src: "/advertise/banner-1200x120.webp",
+    alt: "Пример баннера 1200×120 — над курсами",
+    sizeLabel: "1200×120",
+    width: 1200,
+    height: 120,
+  },
+  home_mid: {
+    src: "/advertise/banner-1200x120.webp",
+    alt: "Пример баннера 1200×120 — между курсами и новостями",
+    sizeLabel: "1200×120",
+    width: 1200,
+    height: 120,
+  },
+  footer: {
+    src: "/advertise/banner-970x250.webp",
+    alt: "Пример баннера 970×250 — низ страницы",
+    sizeLabel: "970×250",
+    width: 970,
+    height: 250,
+  },
+};
+
+export function exampleBannerForPlacement(placement: AdPlacement) {
+  return AD_EXAMPLE_BANNERS[placement] ?? null;
+}
+
+/** Уникальные примеры для галереи на /advertise (без дублей по src). */
+export const AD_EXAMPLE_GALLERY = [
+  {
+    key: "1200x120",
+    src: "/advertise/banner-1200x120.webp",
+    sizeLabel: "1200×120",
+    width: 1200,
+    height: 120,
+    aspectClass: "aspect-[1200/120]",
+    maxHeightClass: "max-h-[120px]",
+    placements: ["dashboard", "home_mid"] as AdPlacement[],
+    title: "Над курсами и mid-блок",
+  },
+  {
+    key: "1200x90",
+    src: "/advertise/banner-1200x90.webp",
+    sizeLabel: "1200×90",
+    width: 1200,
+    height: 90,
+    aspectClass: "aspect-[1200/90]",
+    maxHeightClass: "max-h-[90px]",
+    placements: ["header", "pair_after", "exchanger_page"] as AdPlacement[],
+    title: "Шапка, пара, обменник",
+  },
+  {
+    key: "970x250",
+    src: "/advertise/banner-970x250.webp",
+    sizeLabel: "970×250",
+    width: 970,
+    height: 250,
+    aspectClass: "aspect-[970/250]",
+    maxHeightClass: "max-h-[250px]",
+    placements: ["footer"] as AdPlacement[],
+    title: "Низ страницы",
+  },
+] as const;
+
 /** Какие placement допустимы для типа */
 export const AD_TYPE_PLACEMENTS: Record<AdType, AdPlacement[]> = {
   banner: [
