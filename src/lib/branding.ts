@@ -1,4 +1,7 @@
-import { sanitizeAchievementSvg } from "@/lib/sanitize-svg";
+import {
+  sanitizeSvgDetailed,
+  svgSanitizeErrorMessage,
+} from "@/lib/sanitize-svg";
 import {
   clearSiteAssetData,
   setSiteAssetData,
@@ -25,6 +28,8 @@ export {
 
 export const BRANDING_MAX_BYTES = 3 * 1024 * 1024;
 export const BRANDING_LOGO_MAX_BYTES = 1024 * 1024;
+/** Branding SVGs from Figma/Illustrator are far larger than achievement icons. */
+const BRANDING_SVG_MAX_CHARS = 3_500_000;
 
 const PNG_SIG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 const ICO_SIG = [0x00, 0x00, 0x01, 0x00];
@@ -53,11 +58,37 @@ function isIco(buf: Buffer): boolean {
 
 function looksLikeSvg(buf: Buffer, name: string, type: string): boolean {
   if (type.includes("svg") || name.endsWith(".svg")) return true;
-  const head = buf.toString("utf8", 0, Math.min(buf.length, 512)).trimStart();
+  const head = decodeSvgText(buf).slice(0, 512).trimStart();
   return (
     head.startsWith("<svg") ||
     (head.startsWith("<?xml") && head.toLowerCase().includes("<svg"))
   );
+}
+
+function decodeSvgText(buf: Buffer): string {
+  if (buf.length >= 2 && buf[0] === 0xff && buf[1] === 0xfe) {
+    return buf.toString("utf16le");
+  }
+  if (buf.length >= 2 && buf[0] === 0xfe && buf[1] === 0xff) {
+    return new TextDecoder("utf-16be").decode(buf);
+  }
+  // Strip UTF-8 BOM if present
+  if (buf.length >= 3 && buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf) {
+    return buf.toString("utf8", 3);
+  }
+  return buf.toString("utf8");
+}
+
+function sanitizeBrandingSvg(buf: Buffer): string {
+  const result = sanitizeSvgDetailed(decodeSvgText(buf), {
+    maxLength: BRANDING_SVG_MAX_CHARS,
+    allowStyle: true,
+    allowDataImages: true,
+  });
+  if (!result.ok) {
+    throw new Error(svgSanitizeErrorMessage(result.reason));
+  }
+  return result.svg;
 }
 
 async function toPngSquare(buf: Buffer, size: number): Promise<Buffer> {
@@ -119,9 +150,7 @@ export async function validateAndPrepareSiteAsset(
       return { format: "ico", bytes: buf };
     }
     if (looksLikeSvg(buf, name, type)) {
-      const text = buf.toString("utf8");
-      const svg = sanitizeAchievementSvg(text);
-      if (!svg) throw new Error("Некорректный SVG");
+      const svg = sanitizeBrandingSvg(buf);
       const sharp = (await import("sharp")).default;
       const png = await sharp(Buffer.from(svg, "utf8"), { density: 150 })
         .resize(32, 32, {
@@ -140,11 +169,7 @@ export async function validateAndPrepareSiteAsset(
 
   if (kind === "logo") {
     if (looksLikeSvg(buf, name, type)) {
-      const text = buf.toString("utf8");
-      const svg = sanitizeAchievementSvg(text);
-      if (!svg) {
-        throw new Error("Некорректный SVG. Вставьте валидный SVG-файл");
-      }
+      const svg = sanitizeBrandingSvg(buf);
       return { format: "svg", bytes: Buffer.from(svg, "utf8") };
     }
     if (isPng(buf) || type === "image/png" || name.endsWith(".png")) {
@@ -160,9 +185,7 @@ export async function validateAndPrepareSiteAsset(
   if (kind === "icon" || kind === "apple_icon") {
     const size = kind === "icon" ? 32 : 180;
     if (looksLikeSvg(buf, name, type)) {
-      const text = buf.toString("utf8");
-      const svg = sanitizeAchievementSvg(text);
-      if (!svg) throw new Error("Некорректный SVG");
+      const svg = sanitizeBrandingSvg(buf);
       const sharp = (await import("sharp")).default;
       const bytes = await sharp(Buffer.from(svg, "utf8"), { density: 150 })
         .resize(size, size, {
@@ -181,9 +204,7 @@ export async function validateAndPrepareSiteAsset(
 
   // og_image
   if (looksLikeSvg(buf, name, type)) {
-    const text = buf.toString("utf8");
-    const svg = sanitizeAchievementSvg(text);
-    if (!svg) throw new Error("Некорректный SVG");
+    const svg = sanitizeBrandingSvg(buf);
     const sharp = (await import("sharp")).default;
     const bytes = await sharp(Buffer.from(svg, "utf8"), { density: 150 })
       .resize({ width: 1200, withoutEnlargement: true })
