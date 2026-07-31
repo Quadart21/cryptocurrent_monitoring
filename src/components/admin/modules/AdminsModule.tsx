@@ -3,6 +3,7 @@
 import type { FormEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { useAdmin } from "@/components/admin/AdminProvider";
+import { AdminSecurityCard } from "@/components/admin/AdminSecurityCard";
 import {
   AdminPageHeader,
   AdminSection,
@@ -21,13 +22,15 @@ type AdminRow = {
   role: AdminRole;
   active: boolean;
   totpEnabled: boolean;
+  mustChangePassword: boolean;
   displayName: string;
   createdAt: string;
   lastLoginAt: string | null;
 };
 
-type TotpReveal = {
+type Handoff = {
   login: string;
+  tempPassword: string;
   totpSecret: string;
   totpUri: string;
 };
@@ -37,17 +40,11 @@ export function AdminsModule() {
   const [tab, setTab] = useState<"list" | "create">("list");
   const [users, setUsers] = useState<AdminRow[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [ok, setOk] = useState<string | null>(null);
-  const [totpReveal, setTotpReveal] = useState<TotpReveal | null>(null);
+  const [handoff, setHandoff] = useState<Handoff | null>(null);
 
   const [login, setLogin] = useState("");
-  const [password, setPassword] = useState("");
   const [role, setRole] = useState<AdminRole>("moderator");
   const [displayName, setDisplayName] = useState("");
-
-  const [selfSecret, setSelfSecret] = useState<string | null>(null);
-  const [selfUri, setSelfUri] = useState<string | null>(null);
-  const [selfCode, setSelfCode] = useState("");
 
   const load = useCallback(async () => {
     if (!can("admins.read")) return;
@@ -75,16 +72,16 @@ export function AdminsModule() {
     if (!can("admins.write")) return;
     setBusy(true);
     setError(null);
-    setOk(null);
     try {
       const res = await fetch("/api/admin/admins", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ login, password, role, displayName }),
+        body: JSON.stringify({ login, role, displayName }),
       });
       const body = (await res.json()) as {
         error?: string;
         user?: AdminRow;
+        tempPassword?: string;
         totpSecret?: string;
         totpUri?: string;
       };
@@ -92,16 +89,15 @@ export function AdminsModule() {
         setError(body.error ?? "Не удалось создать");
         return;
       }
-      setTotpReveal({
+      setHandoff({
         login: body.user?.login ?? login,
+        tempPassword: body.tempPassword ?? "",
         totpSecret: body.totpSecret ?? "",
         totpUri: body.totpUri ?? "",
       });
       setLogin("");
-      setPassword("");
       setDisplayName("");
       setTab("list");
-      setOk("Админ создан — сохраните секрет 2FA");
       await load();
     } finally {
       setBusy(false);
@@ -110,7 +106,7 @@ export function AdminsModule() {
 
   async function patchUser(
     id: string,
-    patch: Partial<{ role: AdminRole; active: boolean; password: string }>,
+    patch: Partial<{ role: AdminRole; active: boolean; resetPassword: boolean }>,
   ) {
     setBusy(true);
     setError(null);
@@ -120,10 +116,22 @@ export function AdminsModule() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, ...patch }),
       });
-      const body = (await res.json()) as { error?: string };
+      const body = (await res.json()) as {
+        error?: string;
+        user?: AdminRow;
+        tempPassword?: string;
+      };
       if (!res.ok) {
         setError(body.error ?? "Ошибка");
         return;
+      }
+      if (body.tempPassword && body.user) {
+        setHandoff({
+          login: body.user.login,
+          tempPassword: body.tempPassword,
+          totpSecret: "",
+          totpUri: "",
+        });
       }
       await load();
       if (id === me?.id) await refresh();
@@ -152,7 +160,7 @@ export function AdminsModule() {
   }
 
   async function resetTotp(id: string) {
-    if (!confirm("Сбросить 2FA и выдать новый секрет?")) return;
+    if (!confirm("Сбросить 2FA и выдать новый QR?")) return;
     setBusy(true);
     try {
       const res = await fetch("/api/admin/admins", {
@@ -170,8 +178,9 @@ export function AdminsModule() {
         setError(body.error ?? "Ошибка");
         return;
       }
-      setTotpReveal({
+      setHandoff({
         login: body.user?.login ?? "",
+        tempPassword: "",
         totpSecret: body.totpSecret ?? "",
         totpUri: body.totpUri ?? "",
       });
@@ -181,114 +190,13 @@ export function AdminsModule() {
     }
   }
 
-  async function startSelfTotp() {
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/admin/me", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "start" }),
-      });
-      const body = (await res.json()) as {
-        error?: string;
-        totpSecret?: string;
-        totpUri?: string;
-      };
-      if (!res.ok) {
-        setError(body.error ?? "Ошибка");
-        return;
-      }
-      setSelfSecret(body.totpSecret ?? null);
-      setSelfUri(body.totpUri ?? null);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function confirmSelfTotp(e: FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/admin/me", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "confirm", code: selfCode }),
-      });
-      const body = (await res.json()) as { error?: string };
-      if (!res.ok) {
-        setError(body.error ?? "Ошибка");
-        return;
-      }
-      setOk("2FA включена");
-      setSelfSecret(null);
-      setSelfUri(null);
-      setSelfCode("");
-      await refresh();
-      await load();
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  if (!can("admins.read") && me && !me.totpEnabled) {
-    // allow self 2FA setup section only via shell banner → still show setup here if opened
-  }
-
   if (!can("admins.read")) {
     return (
       <div className="space-y-6">
-        <AdminPageHeader title="Админы" description="Недостаточно прав" />
-        {!me?.totpEnabled ? (
-          <AdminSection title="Включить 2FA для своего аккаунта">
-            <div className="space-y-3 p-5">
-              {!selfSecret ? (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void startSelfTotp()}
-                  className="btn-primary rounded-xl px-4 py-2.5 text-sm font-semibold"
-                >
-                  Сгенерировать секрет
-                </button>
-              ) : (
-                <form
-                  onSubmit={(e) => void confirmSelfTotp(e)}
-                  className="space-y-3"
-                >
-                  <p className="text-sm text-ink-muted">
-                    Добавьте в Authenticator:
-                  </p>
-                  <code className="block break-all rounded-xl border border-line bg-bg-soft p-3 text-xs">
-                    {selfSecret}
-                  </code>
-                  {selfUri ? (
-                    <p className="break-all text-[11px] text-ink-muted">
-                      {selfUri}
-                    </p>
-                  ) : null}
-                  <input
-                    value={selfCode}
-                    onChange={(e) => setSelfCode(e.target.value)}
-                    placeholder="Код из приложения"
-                    className="w-full rounded-xl border border-line bg-input px-3 py-2.5 text-sm outline-none focus:border-accent sm:max-w-xs"
-                  />
-                  <button
-                    type="submit"
-                    disabled={busy}
-                    className="btn-primary rounded-xl px-4 py-2.5 text-sm font-semibold"
-                  >
-                    Подтвердить 2FA
-                  </button>
-                </form>
-              )}
-              {error ? <p className="text-sm text-danger">{error}</p> : null}
-            </div>
-          </AdminSection>
-        ) : (
-          <p className="text-sm text-ink-muted">Раздел только для owner.</p>
-        )}
+        <AdminPageHeader
+          title="Админы"
+          description="Недостаточно прав для управления учётными записями."
+        />
       </div>
     );
   }
@@ -297,12 +205,15 @@ export function AdminsModule() {
     <div className="space-y-6">
       <AdminPageHeader
         title="Админы"
-        description="Роли, доступ к разделам и двухфакторная аутентификация."
+        description="Роли, временные пароли и двухфакторная аутентификация."
         actions={
           can("admins.write") ? (
             <button
               type="button"
-              onClick={() => setTab("create")}
+              onClick={() => {
+                setHandoff(null);
+                setTab("create");
+              }}
               className="btn-primary rounded-xl px-4 py-2.5 text-sm font-semibold"
             >
               Добавить
@@ -311,76 +222,54 @@ export function AdminsModule() {
         }
       />
 
-      {!me?.totpEnabled ? (
-        <AdminSection title="Включите 2FA для своего аккаунта">
-          <div className="space-y-3 p-5">
-            <p className="text-sm text-ink-muted">
-              Bootstrap-owner создаётся без 2FA. Включите её сейчас.
-            </p>
-            {!selfSecret ? (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void startSelfTotp()}
-                className="btn-primary rounded-xl px-4 py-2.5 text-sm font-semibold"
-              >
-                Сгенерировать секрет
-              </button>
-            ) : (
-              <form
-                onSubmit={(e) => void confirmSelfTotp(e)}
-                className="space-y-3"
-              >
-                <code className="block break-all rounded-xl border border-line bg-bg-soft p-3 text-xs">
-                  {selfSecret}
-                </code>
-                {selfUri ? (
-                  <p className="break-all text-[11px] text-ink-muted">{selfUri}</p>
-                ) : null}
-                <input
-                  value={selfCode}
-                  onChange={(e) => setSelfCode(e.target.value)}
-                  placeholder="Код из приложения"
-                  className="w-full rounded-xl border border-line bg-input px-3 py-2.5 text-sm outline-none focus:border-accent sm:max-w-xs"
-                />
-                <button
-                  type="submit"
-                  disabled={busy}
-                  className="btn-primary rounded-xl px-4 py-2.5 text-sm font-semibold"
-                >
-                  Подтвердить 2FA
-                </button>
-              </form>
-            )}
-          </div>
-        </AdminSection>
-      ) : null}
-
-      {totpReveal ? (
-        <AdminSection title={`Секрет 2FA · ${totpReveal.login}`}>
-          <div className="space-y-2 p-5">
-            <p className="text-sm text-warn">
-              Покажите один раз — потом секрет не восстановить без сброса.
-            </p>
-            <code className="block break-all rounded-xl border border-line bg-bg-soft p-3 text-xs">
-              {totpReveal.totpSecret}
-            </code>
-            <p className="break-all text-[11px] text-ink-muted">
-              {totpReveal.totpUri}
-            </p>
-            <button
-              type="button"
-              onClick={() => setTotpReveal(null)}
-              className="rounded-xl border border-line px-3 py-2 text-xs font-semibold"
-            >
-              Скрыть
-            </button>
-          </div>
-        </AdminSection>
-      ) : null}
-
       {error ? <p className="text-sm text-danger">{error}</p> : null}
-      {ok ? <p className="text-sm text-ok">{ok}</p> : null}
+
+      {handoff ? (
+        <AdminSecurityCard
+          title={
+            handoff.tempPassword
+              ? "Передайте доступ новому админу"
+              : `Новый QR · ${handoff.login}`
+          }
+          subtitle={
+            handoff.tempPassword
+              ? "Покажите карточку один раз. Временный пароль сменится при первом входе."
+              : "Отсканируйте QR и подтвердите код при следующем входе в аккаунт."
+          }
+          steps={
+            handoff.tempPassword
+              ? [
+                  {
+                    title: "Отправьте логин и временный пароль",
+                    detail: "Безопасным каналом — не в общий чат.",
+                  },
+                  {
+                    title: "Первый вход → смена пароля",
+                    detail: "Система сама попросит задать постоянный пароль.",
+                  },
+                  {
+                    title: "Подключить 2FA по QR",
+                    detail: "Можно отсканировать сейчас или настроить после входа (кнопка «Позже»).",
+                  },
+                ]
+              : [
+                  {
+                    title: "Отсканируйте новый QR",
+                    detail: "Старый код в приложении перестанет работать.",
+                  },
+                  {
+                    title: "Подтвердите код при входе",
+                    detail: "Пользователь включит 2FA, введя 6 цифр из приложения.",
+                  },
+                ]
+          }
+          login={handoff.login}
+          tempPassword={handoff.tempPassword || null}
+          totpSecret={handoff.totpSecret || null}
+          totpUri={handoff.totpUri || null}
+          onLater={() => setHandoff(null)}
+        />
+      ) : null}
 
       <AdminTabBar
         value={tab}
@@ -408,17 +297,6 @@ export function AdminsModule() {
                 />
               </label>
               <label className="block space-y-1">
-                <span className="text-xs text-ink-muted">Пароль</span>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={8}
-                  className="w-full rounded-xl border border-line bg-input px-3 py-2.5 text-sm outline-none focus:border-accent"
-                />
-              </label>
-              <label className="block space-y-1">
                 <span className="text-xs text-ink-muted">Имя</span>
                 <input
                   value={displayName}
@@ -426,7 +304,7 @@ export function AdminsModule() {
                   className="w-full rounded-xl border border-line bg-input px-3 py-2.5 text-sm outline-none focus:border-accent"
                 />
               </label>
-              <label className="block space-y-1">
+              <label className="block space-y-1 sm:col-span-2">
                 <span className="text-xs text-ink-muted">Роль</span>
                 <select
                   value={role}
@@ -441,15 +319,16 @@ export function AdminsModule() {
                 </select>
               </label>
             </div>
-            <p className="text-xs text-ink-muted">
-              После создания сразу включается 2FA — секрет покажем один раз.
+            <p className="rounded-xl border border-line bg-bg-soft/40 px-3 py-2.5 text-xs text-ink-muted">
+              Пароль сгенерируется автоматически. После создания увидите карточку
+              с временным паролем и QR для 2FA.
             </p>
             <button
               type="submit"
               disabled={busy}
               className="btn-primary rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-60"
             >
-              Создать
+              Создать и показать доступ
             </button>
           </form>
         </AdminSection>
@@ -478,7 +357,8 @@ export function AdminsModule() {
                   <p className="mt-1 text-xs text-ink-muted">
                     {ADMIN_ROLE_LABEL[u.role]} ·{" "}
                     {u.active ? "активен" : "отключён"} · 2FA{" "}
-                    {u.totpEnabled ? "вкл" : "выкл"}
+                    {u.totpEnabled ? "вкл" : "ожидает"}
+                    {u.mustChangePassword ? " · ждёт смены пароля" : ""}
                     {u.lastLoginAt
                       ? ` · вход ${new Date(u.lastLoginAt).toLocaleString("ru-RU")}`
                       : ""}
@@ -524,13 +404,18 @@ export function AdminsModule() {
                       type="button"
                       disabled={busy}
                       onClick={() => {
-                        const next = window.prompt("Новый пароль (мин. 8)");
-                        if (!next) return;
-                        void patchUser(u.id, { password: next });
+                        if (
+                          !confirm(
+                            "Выдать новый временный пароль? Пользователь сменит его при входе.",
+                          )
+                        ) {
+                          return;
+                        }
+                        void patchUser(u.id, { resetPassword: true });
                       }}
                       className="rounded-xl border border-line px-3 py-1.5 text-xs font-semibold"
                     >
-                      Пароль
+                      Новый пароль
                     </button>
                     <button
                       type="button"

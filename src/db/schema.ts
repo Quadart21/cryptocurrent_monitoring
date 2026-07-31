@@ -582,6 +582,7 @@ export const adminUsers = pgTable(
     active: boolean("active").notNull().default(true),
     totpSecret: text("totp_secret"),
     totpEnabled: boolean("totp_enabled").notNull().default(false),
+    mustChangePassword: boolean("must_change_password").notNull().default(false),
     displayName: text("display_name").notNull().default(""),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),

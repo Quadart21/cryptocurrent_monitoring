@@ -194,15 +194,18 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
           <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
             {me && !me.totpEnabled ? (
-              <div className="mb-4 rounded-2xl border border-warn/40 bg-warn/10 px-4 py-3 text-sm text-warn">
-                Включите 2FA в разделе{" "}
-                <Link
-                  href={`${ADMIN_PATH}/admins`}
-                  className="font-semibold underline underline-offset-2"
+              <div className="mb-4 flex flex-col gap-2 rounded-2xl border border-warn/40 bg-warn/10 px-4 py-3 text-sm text-warn sm:flex-row sm:items-center sm:justify-between">
+                <span>2FA ещё не включена — рекомендуем подключить.</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    sessionStorage.removeItem("gs_admin_totp_later");
+                    window.location.reload();
+                  }}
+                  className="shrink-0 rounded-xl border border-warn/40 px-3 py-1.5 text-xs font-semibold"
                 >
-                  Админы
-                </Link>
-                .
+                  Настроить сейчас
+                </button>
               </div>
             ) : null}
             {forbidden ? (

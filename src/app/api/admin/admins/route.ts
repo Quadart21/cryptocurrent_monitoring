@@ -30,10 +30,8 @@ export async function POST(request: Request) {
     action?: string;
     id?: string;
     login?: string;
-    password?: string;
     role?: string;
     displayName?: string;
-    active?: boolean;
   };
 
   if (body.action === "reset_totp") {
@@ -47,16 +45,15 @@ export async function POST(request: Request) {
     return NextResponse.json(result);
   }
 
-  if (!body.login || !body.password || !body.role || !isAdminRole(body.role)) {
+  if (!body.login || !body.role || !isAdminRole(body.role)) {
     return NextResponse.json(
-      { error: "Нужны login, password и role" },
+      { error: "Нужны login и role" },
       { status: 400 },
     );
   }
 
   const result = await createAdminUser({
     login: body.login,
-    password: body.password,
     role: body.role,
     displayName: body.displayName,
   });
@@ -75,7 +72,7 @@ export async function PATCH(request: Request) {
     role?: string;
     active?: boolean;
     displayName?: string;
-    password?: string;
+    resetPassword?: boolean;
   };
   if (!body.id) {
     return NextResponse.json({ error: "id required" }, { status: 400 });
@@ -90,14 +87,14 @@ export async function PATCH(request: Request) {
       role: body.role && isAdminRole(body.role) ? body.role : undefined,
       active: body.active,
       displayName: body.displayName,
-      password: body.password,
+      resetPassword: body.resetPassword,
     },
     session.user.id,
   );
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }
-  return NextResponse.json({ user: result });
+  return NextResponse.json(result);
 }
 
 export async function DELETE(request: Request) {

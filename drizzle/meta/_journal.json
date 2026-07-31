@@ -134,6 +134,13 @@
       "when": 1785420000000,
       "tag": "0018_admin_users",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1785430000000,
+      "tag": "0019_admin_must_change_password",
+      "breakpoints": true
     }
   ]
 }

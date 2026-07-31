@@ -20,6 +20,7 @@ import {
   verifyPasswordScrypt,
 } from "@/lib/security/crypto";
 import {
+  generateOwnerTempPassword,
   generateTotpSecret,
   totpAuthUri,
   verifyTotpCode,
@@ -31,6 +32,7 @@ export type AdminUserPublic = {
   role: AdminRole;
   active: boolean;
   totpEnabled: boolean;
+  mustChangePassword: boolean;
   displayName: string;
   createdAt: string;
   updatedAt: string;
@@ -50,6 +52,7 @@ function mapUser(row: typeof adminUsers.$inferSelect): AdminUserRow {
     role,
     active: Boolean(row.active),
     totpEnabled: Boolean(row.totpEnabled),
+    mustChangePassword: Boolean(row.mustChangePassword),
     totpSecret: row.totpSecret ?? null,
     passwordHash: row.passwordHash,
     displayName: row.displayName ?? "",
@@ -96,6 +99,7 @@ export async function ensureBootstrapAdmin(): Promise<void> {
       active: true,
       totpSecret: null,
       totpEnabled: false,
+      mustChangePassword: false,
       displayName: "Owner",
       createdAt: now,
       updatedAt: now,
@@ -153,7 +157,7 @@ export async function authenticateAdmin(input: {
   totpCode?: string;
 }): Promise<
   | { ok: true; user: AdminUserRow }
-  | { ok: false; error: string; needsTotp?: boolean; needsTotpSetup?: boolean }
+  | { ok: false; error: string; needsTotp?: boolean }
 > {
   const user = await getAdminUserByLogin(input.login);
   if (!user || !user.active) {
@@ -190,12 +194,12 @@ export async function authenticateAdmin(input: {
 
 export async function createAdminUser(input: {
   login: string;
-  password: string;
   role: AdminRole;
   displayName?: string;
 }): Promise<
   | {
       user: AdminUserPublic;
+      tempPassword: string;
       totpSecret: string;
       totpUri: string;
     }
@@ -206,9 +210,6 @@ export async function createAdminUser(input: {
   if (!/^[a-z0-9_]{3,32}$/.test(login)) {
     return { error: "Логин: 3–32 символа, a-z 0-9 _" };
   }
-  if (input.password.length < 8) {
-    return { error: "Пароль не короче 8 символов" };
-  }
   if (!ADMIN_ROLES.includes(input.role)) {
     return { error: "Неизвестная роль" };
   }
@@ -216,10 +217,11 @@ export async function createAdminUser(input: {
     return { error: "Такой логин уже есть" };
   }
 
+  const tempPassword = generateOwnerTempPassword();
   const totpSecret = generateTotpSecret();
   const now = new Date().toISOString();
   const id = `adm_${randomBytes(6).toString("hex")}`;
-  const passwordHash = await hashPasswordScrypt(input.password);
+  const passwordHash = await hashPasswordScrypt(tempPassword);
   const db = getDb();
   const [row] = await db
     .insert(adminUsers)
@@ -230,7 +232,8 @@ export async function createAdminUser(input: {
       role: input.role,
       active: true,
       totpSecret,
-      totpEnabled: true,
+      totpEnabled: false,
+      mustChangePassword: true,
       displayName: (input.displayName ?? "").trim(),
       createdAt: now,
       updatedAt: now,
@@ -241,6 +244,7 @@ export async function createAdminUser(input: {
   const user = mapUser(row);
   return {
     user: toPublicAdmin(user),
+    tempPassword,
     totpSecret,
     totpUri: totpAuthUri(totpSecret, login, "GapSnap Admin"),
   };
@@ -252,10 +256,14 @@ export async function updateAdminUser(
     role?: AdminRole;
     active?: boolean;
     displayName?: string;
-    password?: string;
+    /** If set, regenerates a temp password and forces change on next login */
+    resetPassword?: boolean;
   },
   actorId: string,
-): Promise<AdminUserPublic | { error: string }> {
+): Promise<
+  | { user: AdminUserPublic; tempPassword?: string }
+  | { error: string }
+> {
   await ensureBootstrapAdmin();
   const current = await getAdminUserById(id);
   if (!current) return { error: "Не найден" };
@@ -286,15 +294,14 @@ export async function updateAdminUser(
     return { error: "Нельзя отключить самого себя" };
   }
 
-  const db = getDb();
-  const nextPassword =
-    typeof patch.password === "string" && patch.password.length > 0
-      ? await hashPasswordScrypt(patch.password)
-      : undefined;
-  if (patch.password !== undefined && patch.password.length > 0 && patch.password.length < 8) {
-    return { error: "Пароль не короче 8 символов" };
+  let tempPassword: string | undefined;
+  let nextPassword: string | undefined;
+  if (patch.resetPassword) {
+    tempPassword = generateOwnerTempPassword();
+    nextPassword = await hashPasswordScrypt(tempPassword);
   }
 
+  const db = getDb();
   const [row] = await db
     .update(adminUsers)
     .set({
@@ -303,13 +310,43 @@ export async function updateAdminUser(
       ...(patch.displayName !== undefined
         ? { displayName: patch.displayName.trim() }
         : {}),
-      ...(nextPassword ? { passwordHash: nextPassword } : {}),
+      ...(nextPassword
+        ? { passwordHash: nextPassword, mustChangePassword: true }
+        : {}),
       updatedAt: new Date().toISOString(),
     })
     .where(eq(adminUsers.id, id))
     .returning();
 
-  return row ? toPublicAdmin(mapUser(row)) : { error: "Не найден" };
+  if (!row) return { error: "Не найден" };
+  return { user: toPublicAdmin(mapUser(row)), tempPassword };
+}
+
+export async function changeOwnPassword(
+  userId: string,
+  input: { currentPassword?: string; newPassword: string },
+): Promise<{ ok: true } | { error: string }> {
+  const user = await getAdminUserById(userId);
+  if (!user) return { error: "Не найден" };
+  const next = input.newPassword;
+  if (next.length < 8) return { error: "Пароль не короче 8 символов" };
+
+  if (!user.mustChangePassword) {
+    const current = input.currentPassword ?? "";
+    const ok = await verifyPasswordScrypt(current, user.passwordHash);
+    if (!ok) return { error: "Текущий пароль неверный" };
+  }
+
+  const db = getDb();
+  await db
+    .update(adminUsers)
+    .set({
+      passwordHash: await hashPasswordScrypt(next),
+      mustChangePassword: false,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(adminUsers.id, userId));
+  return { ok: true };
 }
 
 export async function deleteAdminUser(
@@ -344,7 +381,7 @@ export async function resetAdminTotp(id: string): Promise<
     .update(adminUsers)
     .set({
       totpSecret,
-      totpEnabled: true,
+      totpEnabled: false,
       updatedAt: new Date().toISOString(),
     })
     .where(eq(adminUsers.id, id))
@@ -357,6 +394,7 @@ export async function resetAdminTotp(id: string): Promise<
   };
 }
 
+/** Start or resume pending 2FA setup (secret may already exist). */
 export async function enableSelfTotp(
   userId: string,
 ): Promise<
@@ -368,22 +406,32 @@ export async function enableSelfTotp(
   if (current.totpEnabled && current.totpSecret) {
     return { error: "2FA уже включена — попросите owner сбросить" };
   }
-  const totpSecret = generateTotpSecret();
-  const db = getDb();
-  const [row] = await db
-    .update(adminUsers)
-    .set({
+
+  let totpSecret = current.totpSecret;
+  if (!totpSecret) {
+    totpSecret = generateTotpSecret();
+    const db = getDb();
+    const [row] = await db
+      .update(adminUsers)
+      .set({
+        totpSecret,
+        totpEnabled: false,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(adminUsers.id, userId))
+      .returning();
+    if (!row) return { error: "Не найден" };
+    return {
       totpSecret,
-      totpEnabled: false,
-      updatedAt: new Date().toISOString(),
-    })
-    .where(eq(adminUsers.id, userId))
-    .returning();
-  if (!row) return { error: "Не найден" };
+      totpUri: totpAuthUri(totpSecret, current.login, "GapSnap Admin"),
+      user: toPublicAdmin(mapUser(row)),
+    };
+  }
+
   return {
     totpSecret,
     totpUri: totpAuthUri(totpSecret, current.login, "GapSnap Admin"),
-    user: toPublicAdmin(mapUser(row)),
+    user: toPublicAdmin(current),
   };
 }
 

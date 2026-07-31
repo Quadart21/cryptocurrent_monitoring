@@ -46,6 +46,7 @@ export type AdminMe = {
   role: string;
   active: boolean;
   totpEnabled: boolean;
+  mustChangePassword: boolean;
   displayName: string;
   permissions: string[];
 };
