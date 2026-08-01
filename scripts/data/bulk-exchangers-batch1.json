@@ -1,0 +1,83 @@
+[
+  {
+    "name": "Crypik",
+    "website": "https://crypik.com/",
+    "feedUrl": "https://crypik.com/assets/rates.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "notes": "OK ~4587 pairs"
+  },
+  {
+    "name": "RavenChange",
+    "website": "https://ravenchange.ru/",
+    "feedUrl": "https://ravenchange.ru/wryymuesocdc.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "notes": "OK ~163 pairs"
+  },
+  {
+    "name": "KizilCash",
+    "website": "https://kizilcash.com/en/",
+    "feedUrl": "https://kizilcash.com/exports/valuta.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "notes": "OK ~82 pairs"
+  },
+  {
+    "name": "24.exchange",
+    "website": "https://24.exchange/en/",
+    "feedUrl": "https://24.exchange/exports/rates.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "notes": "OK ~3793 pairs"
+  },
+  {
+    "name": "VsemObmen",
+    "website": "https://www.vsemobmen.online/en/",
+    "feedUrl": "https://www.vsemobmen.online/service/export/xml/:code",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "notes": "OK ~8029 pairs; :code → FEED_PARTNER_CODE"
+  },
+  {
+    "name": "Money Office",
+    "website": "https://money-office.com/",
+    "feedUrl": "https://money-office.com/exportxml.xml",
+    "exchangeUrlTemplate": "",
+    "status": "pending",
+    "skipFeedCheck": true,
+    "notes": "XML OK only with browser UA; GapSnapMonitor/1.0 gets 403. ~8 pairs. Sync will fail until UA allowlist or fetch UA change."
+  },
+  {
+    "name": "Flexy69",
+    "website": "https://www.flexy69.cc/en/",
+    "feedUrl": "https://www.flexy69.cc/service/export/xml/:code",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "notes": "OK ~3281 pairs; :code → FEED_PARTNER_CODE"
+  },
+  {
+    "name": "LampaBit",
+    "website": "https://lampabit.com/en/",
+    "feedUrl": "https://lampabit.com/exports/valuta.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "notes": "OK ~617 pairs"
+  },
+  {
+    "name": "Groza",
+    "website": "https://groza.io/en/",
+    "feedUrl": "https://groza.io/exports/rates.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "notes": "OK ~488 pairs"
+  },
+  {
+    "name": "SectorMoney",
+    "website": "https://sectormoney.com/en/",
+    "feedUrl": "https://sectormoney.com/exports/valuta.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "notes": "OK ~23 pairs"
+  }
+]

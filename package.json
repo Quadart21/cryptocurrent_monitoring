@@ -1,6 +1,6 @@
 {
   "name": "gapsnap",
-  "version": "2.32.2",
+  "version": "2.33.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -13,6 +13,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:import": "node --env-file=.env scripts/import-json-store.mjs",
+    "db:import-exchangers": "node --env-file=.env scripts/bulk-add-exchangers.mjs",
     "db:seed-achievements": "node --env-file=.env scripts/seed-achievements.mjs"
   },
   "dependencies": {
