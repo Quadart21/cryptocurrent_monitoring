@@ -1212,24 +1212,26 @@ export async function replaceExchangerRatesBatch(
           .where(eq(exchangers.id, exchangerId));
 
         if (items.length) {
-          await tx.insert(rates).values(
-            items.map((item, index) => ({
-              id: `${exchangerId}_${item.from}_${item.to}_${index}`,
-              exchangerId,
-              from: item.from,
-              to: item.to,
-              inAmount: item.in,
-              outAmount: item.out,
-              rate: item.rate,
-              reserve: item.reserve,
-              minAmount: item.minAmount,
-              maxAmount: item.maxAmount,
-              city: item.city ?? null,
-              param: item.param ?? null,
-              tofee: item.tofee ?? null,
-              syncedAt,
-            })),
-          );
+          const CHUNK = 400;
+          const rows = items.map((item, index) => ({
+            id: `${exchangerId}_${item.from}_${item.to}_${index}`,
+            exchangerId,
+            from: item.from,
+            to: item.to,
+            inAmount: item.in,
+            outAmount: item.out,
+            rate: item.rate,
+            reserve: item.reserve,
+            minAmount: item.minAmount,
+            maxAmount: item.maxAmount,
+            city: item.city ?? null,
+            param: item.param ?? null,
+            tofee: item.tofee ?? null,
+            syncedAt,
+          }));
+          for (let i = 0; i < rows.length; i += CHUNK) {
+            await tx.insert(rates).values(rows.slice(i, i + CHUNK));
+          }
         }
       } else {
         await tx

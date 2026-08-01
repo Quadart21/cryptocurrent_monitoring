@@ -101,11 +101,20 @@ export function ExchangersModule() {
           sync: form.activate && !form.skipFeedCheck,
         }),
       });
-      const data = (await res.json()) as {
+      let data: {
         error?: string;
         feedWarning?: string | null;
         exchanger?: { id: string };
-      };
+      } = {};
+      try {
+        data = (await res.json()) as typeof data;
+      } catch {
+        throw new Error(
+          res.status === 504 || res.status === 502
+            ? "Сервер не успел обработать крупный XML-фид. Включите «Не проверять фид сейчас» или повторите."
+            : `Ошибка сервера (HTTP ${res.status})`,
+        );
+      }
       if (!res.ok) throw new Error(data.error ?? "Не удалось создать");
       setForm(EMPTY_FORM);
       setShowCreate(false);

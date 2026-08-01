@@ -170,6 +170,28 @@ declare global {
   }> | null | undefined;
 }
 
+export async function syncExchangerFeed(exchangerId: string): Promise<{
+  ok: boolean;
+  pairCount: number;
+  error?: string;
+}> {
+  const exchangers = await listExchangers();
+  const target = exchangers.find((e) => e.id === exchangerId);
+  if (!target) {
+    return { ok: false, pairCount: 0, error: "Обменник не найден" };
+  }
+  const result = await fetchOne(target);
+  await replaceExchangerRatesBatch([result]);
+  if (!result.meta.ok) {
+    return {
+      ok: false,
+      pairCount: 0,
+      error: result.meta.error,
+    };
+  }
+  return { ok: true, pairCount: result.items.length };
+}
+
 export async function syncAllFeeds(): Promise<{
   total: number;
   ok: number;

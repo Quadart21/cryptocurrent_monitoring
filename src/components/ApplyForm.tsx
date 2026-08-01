@@ -30,7 +30,18 @@ export function ApplyForm() {
         method: "POST",
         body: form,
       });
-      const data = (await res.json()) as ApplyResult;
+      let data: ApplyResult = {};
+      try {
+        data = (await res.json()) as ApplyResult;
+      } catch {
+        setResult({
+          error:
+            res.status === 504 || res.status === 502
+              ? "Сервер не успел проверить большой XML-фид. Попробуйте ещё раз или добавьте обменник через админку с пропуском проверки фида."
+              : `Ошибка сервера (HTTP ${res.status}). Попробуйте ещё раз.`,
+        });
+        return;
+      }
       if (!res.ok) setResult({ error: data.error ?? "Не удалось отправить заявку" });
       else {
         setResult(data);
@@ -38,7 +49,10 @@ export function ApplyForm() {
         setLogoName(null);
       }
     } catch {
-      setResult({ error: "Сеть недоступна, попробуйте ещё раз" });
+      setResult({
+        error:
+          "Не удалось связаться с сервером (таймаут или обрыв). Для крупных фидов подождите и повторите.",
+      });
     } finally {
       setPending(false);
     }

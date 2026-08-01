@@ -14,11 +14,13 @@ import {
   getSeoSettings,
   listExchangers,
   provisionOwnerAccessOnApproval,
+  replaceExchangerRates,
   setOwnerCredentials,
   updateExchanger,
 } from "@/lib/store";
 import { assertSafeOutboundUrl } from "@/lib/security/ssrf";
-import { syncAllFeeds, validateFeedUrl } from "@/lib/sync-feeds";
+import { syncExchangerFeed, validateFeedUrl } from "@/lib/sync-feeds";
+import type { ParsedRateItem } from "@/lib/xml/parse-rates";
 import {
   generateOwnerTempPassword,
   generateTotpSecret,
@@ -147,11 +149,13 @@ export async function POST(request: Request) {
   }
 
   let pairCount = 0;
+  let feedItems: ParsedRateItem[] = [];
   let feedWarning: string | null = null;
   if (!body.skipFeedCheck) {
     try {
       const validated = await validateFeedUrl(feedUrl);
       pairCount = validated.pairCount;
+      feedItems = validated.items;
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Не удалось проверить XML-фид";
@@ -186,8 +190,17 @@ export async function POST(request: Request) {
       }
     }
 
-    if (body.sync || status === "active") {
-      await syncAllFeeds();
+    // Import rates for this exchanger only — never syncAllFeeds on create
+    // (full sync times out on large feeds and surfaces as "сеть недоступна").
+    if (feedItems.length && (body.sync || status === "active")) {
+      await replaceExchangerRates(exchanger.id, feedItems, { ok: true });
+      const refreshed = await getExchangerById(exchanger.id);
+      if (refreshed) exchanger = refreshed;
+    } else if ((body.sync || status === "active") && body.skipFeedCheck) {
+      const synced = await syncExchangerFeed(exchanger.id);
+      if (!synced.ok && synced.error) {
+        feedWarning = synced.error;
+      }
       const refreshed = await getExchangerById(exchanger.id);
       if (refreshed) exchanger = refreshed;
     }
@@ -366,8 +379,13 @@ export async function PATCH(request: Request) {
     }
   }
 
-  if (body.sync || body.status === "active") {
-    await syncAllFeeds();
+  if (body.sync || becomingActive) {
+    const synced = await syncExchangerFeed(updated.id);
+    const refreshed = await getExchangerById(updated.id);
+    if (refreshed) updated = refreshed;
+    if (!synced.ok && synced.error && !mailWarning) {
+      mailWarning = `Курсы не загрузились: ${synced.error}`;
+    }
   }
 
   const {
