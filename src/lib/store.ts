@@ -171,6 +171,7 @@ function mapExchanger(row: ExchangerRow): FeedExchanger {
     ownerEmail: row.ownerEmail ?? null,
     ownerTotpSecret: row.ownerTotpSecret ?? null,
     ownerTotpEnabled: Boolean(row.ownerTotpEnabled),
+    apiId: row.apiId ?? null,
   };
 }
 
@@ -1206,6 +1207,14 @@ export async function updateExchanger(
         ? new Date().toISOString()
         : current.approvedAt;
 
+  let nextApiId = current.apiId;
+  if (nextApiId == null && (becomingActive || patch.status === "active")) {
+    const [maxRow] = await db
+      .select({ maxId: sql<number>`coalesce(max(${exchangers.apiId}), 0)` })
+      .from(exchangers);
+    nextApiId = Number(maxRow?.maxId ?? 0) + 1;
+  }
+
   const logoPatch =
     patch.logo === undefined
       ? {}
@@ -1237,6 +1246,7 @@ export async function updateExchanger(
       ...(patch.verified !== undefined ? { verified: patch.verified } : {}),
       ...(achievementIds !== undefined ? { achievementIds } : {}),
       approvedAt: nextApprovedAt,
+      ...(nextApiId != null && current.apiId == null ? { apiId: nextApiId } : {}),
       ...logoPatch,
     })
     .where(eq(exchangers.id, id))

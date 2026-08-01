@@ -1,0 +1,276 @@
+openapi: 3.0.3
+info:
+  title: GapSnap API v. 2.0
+  description: |
+    API текущих курсов мониторинга GapSnap. Формат совместим с BestChange API v2.
+
+    - [Документация и заявка на ключ](/api-docs)
+    - Ключ передаётся в path: `/v2/{apiKey}/…`
+  version: "2.0"
+servers:
+  - url: /
+tags:
+  - name: Обменные курсы
+    description: GapSnap API v2 (BestChange-compatible).
+paths:
+  /v2/{apiKey}/langs:
+    get:
+      tags: [Обменные курсы]
+      parameters:
+        - $ref: "#/components/parameters/apiKeyParam"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Langs"
+  /v2/{apiKey}/groups/{lang}:
+    get:
+      tags: [Обменные курсы]
+      parameters:
+        - $ref: "#/components/parameters/apiKeyParam"
+        - $ref: "#/components/parameters/langParam"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupList"
+  /v2/{apiKey}/countries/{lang}:
+    get:
+      tags: [Обменные курсы]
+      parameters:
+        - $ref: "#/components/parameters/apiKeyParam"
+        - $ref: "#/components/parameters/langParam"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CountryList"
+  /v2/{apiKey}/cities/{lang}:
+    get:
+      tags: [Обменные курсы]
+      parameters:
+        - $ref: "#/components/parameters/apiKeyParam"
+        - $ref: "#/components/parameters/langParam"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CityList"
+  /v2/{apiKey}/currencies/{lang}:
+    get:
+      tags: [Обменные курсы]
+      parameters:
+        - $ref: "#/components/parameters/apiKeyParam"
+        - $ref: "#/components/parameters/langParam"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrencyList"
+  /v2/{apiKey}/changers/{lang}:
+    get:
+      tags: [Обменные курсы]
+      parameters:
+        - $ref: "#/components/parameters/apiKeyParam"
+        - $ref: "#/components/parameters/langParam"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChangerList"
+  /v2/{apiKey}/presences/{pair}:
+    get:
+      tags: [Обменные курсы]
+      parameters:
+        - $ref: "#/components/parameters/apiKeyParam"
+        - name: pair
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "305-89"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresenceList"
+  /v2/{apiKey}/rates/{pair}:
+    get:
+      tags: [Обменные курсы]
+      parameters:
+        - $ref: "#/components/parameters/apiKeyParam"
+        - name: pair
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "Пара или список через +, до 500. Пример: 305-89+31-12 или 305-89-1 (с городом)"
+          example: "305-89+31-12"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExchangeRateList"
+components:
+  parameters:
+    apiKeyParam:
+      name: apiKey
+      in: path
+      required: true
+      schema:
+        type: string
+    langParam:
+      name: lang
+      in: path
+      required: true
+      schema:
+        type: string
+      example: ru
+  schemas:
+    Langs:
+      type: object
+      properties:
+        langs:
+          type: array
+          items:
+            type: string
+          example: ["en", "ru"]
+    Group:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+    GroupList:
+      type: object
+      properties:
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/Group"
+    Country:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        code: { type: string }
+    CountryList:
+      type: object
+      properties:
+        countries:
+          type: array
+          items:
+            $ref: "#/components/schemas/Country"
+    City:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        code: { type: string }
+        country: { type: integer }
+    CityList:
+      type: object
+      properties:
+        cities:
+          type: array
+          items:
+            $ref: "#/components/schemas/City"
+    Currency:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        urlname: { type: string }
+        viewname: { type: string }
+        code: { type: string }
+        crypto: { type: boolean }
+        cash: { type: boolean }
+        ps: { type: integer }
+        group: { type: integer }
+    CurrencyList:
+      type: object
+      properties:
+        currencies:
+          type: array
+          items:
+            $ref: "#/components/schemas/Currency"
+    Changer:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        langs:
+          type: array
+          items: { type: string }
+        urls:
+          type: object
+          additionalProperties: { type: string }
+        pages:
+          type: object
+          additionalProperties: { type: string }
+        reserve: { type: number }
+        reviews:
+          type: object
+          properties:
+            claim: { type: integer }
+            closed: { type: integer }
+            neutral: { type: integer }
+            positive: { type: integer }
+        rating: { type: integer }
+        active: { type: boolean }
+    ChangerList:
+      type: object
+      properties:
+        changers:
+          type: array
+          items:
+            $ref: "#/components/schemas/Changer"
+    Presence:
+      type: object
+      properties:
+        pair: { type: string }
+        best: { type: number }
+        count: { type: integer }
+    PresenceList:
+      type: object
+      properties:
+        presences:
+          type: array
+          items:
+            $ref: "#/components/schemas/Presence"
+    ExchangeRate:
+      type: object
+      properties:
+        changer: { type: integer }
+        rate: { type: number }
+        rankrate: { type: string }
+        reserve: { type: string }
+        inmin: { type: string }
+        inmax: { type: string }
+        marks:
+          type: array
+          items: { type: string }
+    ExchangeRateList:
+      type: object
+      properties:
+        rates:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              $ref: "#/components/schemas/ExchangeRate"

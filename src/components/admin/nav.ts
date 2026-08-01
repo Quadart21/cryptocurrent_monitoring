@@ -69,6 +69,15 @@ export const ADMIN_NAV: AdminNavItem[] = [
     permission: "banners.read",
   },
   {
+    id: "api-clients",
+    href: `${ADMIN_PATH}/api-clients`,
+    label: "API-ключи",
+    description: "Заявки на доступ к API",
+    group: "moderation",
+    badge: "pendingApiClients",
+    permission: "api_clients.read",
+  },
+  {
     id: "blog",
     href: `${ADMIN_PATH}/blog`,
     label: "Новости",
@@ -176,6 +185,7 @@ export function adminNavBadgeCount(
   if (badge === "pendingReviews") return counts.pendingReviews;
   if (badge === "pendingComplaints") return counts.pendingComplaints ?? 0;
   if (badge === "pendingCatalog") return counts.pendingCatalog;
+  if (badge === "pendingApiClients") return counts.pendingApiClients ?? 0;
   if (badge === "bannerMissing") return counts.bannerMissing;
   if (badge === "syncQueue") {
     return counts.pendingCatalog;

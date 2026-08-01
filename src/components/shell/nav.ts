@@ -2,7 +2,7 @@ export type NavItem = {
   href: string;
   label: string;
   hint: string;
-  icon: "exchange" | "list" | "ad" | "plus" | "cabinet" | "block" | "rates" | "blog";
+  icon: "exchange" | "list" | "ad" | "plus" | "cabinet" | "block" | "rates" | "blog" | "api";
 };
 
 export const SITE_NAV: NavItem[] = [
@@ -29,6 +29,12 @@ export const SITE_NAV: NavItem[] = [
     label: "Реклама",
     hint: "Форматы и тарифы",
     icon: "ad",
+  },
+  {
+    href: "/api-docs",
+    label: "API",
+    hint: "Документация и ключ",
+    icon: "api",
   },
   {
     href: "/apply",

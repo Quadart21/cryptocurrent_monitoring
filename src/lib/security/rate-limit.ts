@@ -92,11 +92,20 @@ export function apiRateLimitForPath(
 
   if (
     pathname === "/api/apply" ||
+    pathname === "/api/api-access/apply" ||
     (pathname === "/api/reviews" && m === "POST")
   ) {
     return {
       tier: "write",
       limit: envInt("RATE_LIMIT_WRITE_PER_MIN", 12),
+      windowMs: 60_000,
+    };
+  }
+
+  if (pathname.startsWith("/v2/")) {
+    return {
+      tier: "read",
+      limit: envInt("RATE_LIMIT_V2_PER_MIN", 600),
       windowMs: 60_000,
     };
   }

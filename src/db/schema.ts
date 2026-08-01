@@ -85,10 +85,13 @@ export const exchangers = pgTable(
     ownerEmail: text("owner_email"),
     ownerTotpSecret: text("owner_totp_secret"),
     ownerTotpEnabled: boolean("owner_totp_enabled").notNull().default(false),
+    /** Stable numeric ID for BestChange-compatible public API (`changers` / rates). */
+    apiId: integer("api_id"),
   },
   (t) => [
     index("exchangers_status_idx").on(t.status),
     index("exchangers_owner_login_idx").on(t.ownerLogin),
+    uniqueIndex("exchangers_api_id_uidx").on(t.apiId),
   ],
 );
 
@@ -439,6 +442,9 @@ export const emailSettings = pgTable("email_settings", {
   notifyComplaintConfirm: boolean("notify_complaint_confirm")
     .notNull()
     .default(true),
+  notifyApiKeyApproved: boolean("notify_api_key_approved")
+    .notNull()
+    .default(true),
   updatedAt: text("updated_at").notNull(),
 });
 
@@ -625,4 +631,35 @@ export const siteAssets = pgTable("site_assets", {
   updatedAt: text("updated_at").notNull(),
   data: bytea("data").notNull(),
 });
+
+export type ApiClientStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "revoked";
+
+/** External API access applications and issued keys (BestChange-style). */
+export const apiClients = pgTable(
+  "api_clients",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    email: text("email").notNull(),
+    website: text("website").notNull().default(""),
+    purpose: text("purpose").notNull().default(""),
+    status: text("status").notNull().default("pending"),
+    keyPrefix: text("key_prefix"),
+    keyHash: text("key_hash"),
+    rateLimitPerSec: integer("rate_limit_per_sec").notNull().default(10),
+    lastUsedAt: text("last_used_at"),
+    createdAt: text("created_at").notNull(),
+    moderatedAt: text("moderated_at"),
+    adminNote: text("admin_note").notNull().default(""),
+  },
+  (t) => [
+    index("api_clients_status_idx").on(t.status),
+    index("api_clients_email_idx").on(t.email),
+    uniqueIndex("api_clients_key_hash_uidx").on(t.keyHash),
+  ],
+);
 

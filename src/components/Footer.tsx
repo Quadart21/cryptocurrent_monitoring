@@ -29,6 +29,7 @@ export function Footer({ brandLogoUrl }: { brandLogoUrl?: string | null }) {
             title="Партнёрам"
             links={[
               { href: "/advertise", label: "Реклама" },
+              { href: "/api-docs", label: "API" },
               { href: "/partners", label: "Партнёрам" },
               { href: "/apply", label: "Добавить обменник" },
               { href: "/cabinet", label: "Кабинет" },

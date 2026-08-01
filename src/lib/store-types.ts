@@ -67,6 +67,8 @@ export type FeedExchanger = {
   /** TOTP secret (base32), если 2FA включена */
   ownerTotpSecret: string | null;
   ownerTotpEnabled: boolean;
+  /** Numeric ID for BestChange-compatible public API. */
+  apiId: number | null;
 };
 
 export type AchievementMode = "manual" | "auto";

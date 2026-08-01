@@ -6,6 +6,7 @@ import {
 import { adminMePayload } from "@/lib/admin-users";
 import { countPendingCatalogProposals } from "@/lib/bestchange/catalog-proposals";
 import { countPendingComplaints } from "@/lib/complaints";
+import { countPendingApiClients } from "@/lib/public-api/auth";
 import {
   getLastGlobalSyncAt,
   getRatesCount,
@@ -46,6 +47,7 @@ export async function GET() {
     ads,
     pendingCatalog,
     pendingComplaints,
+    pendingApiClients,
   ] = await Promise.all([
     getLastGlobalSyncAt(),
     getRatesCount(),
@@ -57,6 +59,7 @@ export async function GET() {
     listAds(),
     countPendingCatalogProposals(),
     countPendingComplaints(),
+    countPendingApiClients(),
   ]);
 
   const tagMap = Object.fromEntries(qualityTags.map((t) => [t.id, t.label]));
@@ -80,6 +83,7 @@ export async function GET() {
       pendingReviews: visibleReviews.filter((r) => r.status === "pending").length,
       pendingComplaints,
       pendingCatalog,
+      pendingApiClients,
       achievements: achievements.length,
       ads: ads.length,
       bannerMissing: exchangers.filter(

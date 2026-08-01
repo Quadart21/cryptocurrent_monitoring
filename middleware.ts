@@ -81,8 +81,8 @@ export async function middleware(request: NextRequest) {
     return withNoIndex(res);
   }
 
-  // Application-layer DoS shield for all APIs
-  if (pathname.startsWith("/api/")) {
+  // Application-layer DoS shield for all APIs (+ public /v2 partner API)
+  if (pathname.startsWith("/api/") || pathname.startsWith("/v2/")) {
     const tooBig = assertContentLength(
       request,
       uploadBodyMaxBytes(pathname),
@@ -91,6 +91,10 @@ export async function middleware(request: NextRequest) {
 
     const limited = checkApiRateLimit(request, pathname);
     if (!limited.ok) return rateLimited(limited.retryAfterSec);
+  }
+
+  if (pathname.startsWith("/v2/")) {
+    return NextResponse.next();
   }
 
   if (pathname === "/api/admin/login" || pathname === "/api/owner/login") {

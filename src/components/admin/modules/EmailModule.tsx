@@ -651,6 +651,10 @@ export function EmailModule() {
                   "Подтверждение жалобы",
                   settings.notifyComplaintConfirm,
                 ],
+                [
+                  "API-ключ одобрен",
+                  settings.notifyApiKeyApproved,
+                ],
               ].map(([label, on]) => (
                 <li
                   key={String(label)}
@@ -955,6 +959,14 @@ export function EmailModule() {
                 checked={settings.notifyComplaintConfirm}
                 onChange={(v) =>
                   setSettings({ ...settings, notifyComplaintConfirm: v })
+                }
+              />
+              <Toggle
+                label="API-ключ одобрен"
+                hint="Заявителю — выданный ключ доступа к /v2"
+                checked={settings.notifyApiKeyApproved}
+                onChange={(v) =>
+                  setSettings({ ...settings, notifyApiKeyApproved: v })
                 }
               />
             </div>

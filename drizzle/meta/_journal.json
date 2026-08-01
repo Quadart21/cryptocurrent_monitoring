@@ -155,6 +155,13 @@
       "when": 1785450000000,
       "tag": "0021_site_assets",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1785460000000,
+      "tag": "0022_api_clients",
+      "breakpoints": true
     }
   ]
 }

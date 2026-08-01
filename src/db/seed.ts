@@ -116,6 +116,7 @@ export const seedExchanger: FeedExchanger = {
   ownerEmail: "seed@gapsnap.local",
   ownerTotpSecret: null,
   ownerTotpEnabled: false,
+  apiId: 1,
 };
 
 export const seedAdPricing: AdPricingSettings = {
@@ -448,6 +449,7 @@ export async function ensureSeeded(db: Db): Promise<void> {
       ownerEmail: seedExchanger.ownerEmail,
       ownerTotpSecret: null,
       ownerTotpEnabled: false,
+      apiId: seedExchanger.apiId,
     });
 
     if (seedBlacklist.length) {

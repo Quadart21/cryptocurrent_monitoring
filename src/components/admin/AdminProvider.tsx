@@ -46,6 +46,7 @@ const emptyCounts: AdminCounts = {
   pendingReviews: 0,
   pendingComplaints: 0,
   pendingCatalog: 0,
+  pendingApiClients: 0,
   achievements: 0,
   ads: 0,
   bannerMissing: 0,

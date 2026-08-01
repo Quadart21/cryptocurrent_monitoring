@@ -6,7 +6,8 @@ export type EmailTemplateId =
   | "owner_banner_unpublished"
   | "review_owner_replied"
   | "review_author_replied"
-  | "complaint_confirm";
+  | "complaint_confirm"
+  | "api_key_approved";
 
 export type EmailContactSource = "exchanger" | "review" | "manual";
 
@@ -32,6 +33,7 @@ export type EmailSettings = {
   notifyReviewThreadAuthor: boolean;
   notifyReviewThreadOwner: boolean;
   notifyComplaintConfirm: boolean;
+  notifyApiKeyApproved: boolean;
   updatedAt: string;
 };
 
@@ -118,5 +120,12 @@ export const EMAIL_TEMPLATE_VARS: Record<string, string[]> = {
     "siteName",
     "exchangerName",
     "confirmUrl",
+  ],
+  api_key_approved: [
+    "siteName",
+    "clientName",
+    "apiKey",
+    "docsUrl",
+    "exampleUrl",
   ],
 };

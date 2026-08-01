@@ -12,6 +12,7 @@ export const DEFAULT_EMAIL_SETTINGS: EmailSettings = {
   notifyReviewThreadAuthor: true,
   notifyReviewThreadOwner: true,
   notifyComplaintConfirm: true,
+  notifyApiKeyApproved: true,
   updatedAt: NOW,
 };
 
@@ -206,6 +207,35 @@ HTML для вставки:
   <p>Вы отправили жалобу на обменник <strong>{{exchangerName}}</strong> на {{siteName}}.</p>
   <p><a href="{{confirmUrl}}" style="display:inline-block;padding:12px 18px;background:#dc2626;color:#fff;border-radius:10px;text-decoration:none;font-weight:600">Подтвердить жалобу</a></p>
   <p style="font-size:13px;color:#555">Ссылка действует 24 часа.</p>
+</div>`,
+    enabled: true,
+    updatedAt: NOW,
+  },
+  {
+    id: "api_key_approved",
+    name: "API-ключ одобрен",
+    description: "Заявителю: выданный ключ доступа к /v2",
+    subject: "{{siteName}}: ваш API-ключ",
+    text: `Здравствуйте, {{clientName}}!
+
+Ваша заявка на доступ к API {{siteName}} одобрена.
+
+Ключ (сохраните — повторно не отправляется):
+{{apiKey}}
+
+Документация: {{docsUrl}}
+Пример: {{exampleUrl}}
+
+Лимит по умолчанию: 10 запросов в секунду.`,
+    html: `<div style="font-family:system-ui,sans-serif;line-height:1.5;color:#111;max-width:560px">
+  <p>Здравствуйте, <strong>{{clientName}}</strong>!</p>
+  <p>Ваша заявка на доступ к API <strong>{{siteName}}</strong> одобрена.</p>
+  <h3 style="margin:24px 0 8px;font-size:16px">API-ключ</h3>
+  <p style="font-size:13px;color:#555">Сохраните ключ — повторно он не отправляется.</p>
+  <pre style="padding:12px;background:#f8fafc;border-radius:10px;overflow:auto;font-size:13px;word-break:break-all">{{apiKey}}</pre>
+  <p><a href="{{docsUrl}}" style="display:inline-block;padding:12px 18px;background:#0f766e;color:#fff;border-radius:10px;text-decoration:none;font-weight:600">Документация API</a></p>
+  <p style="font-size:13px;color:#555">Пример: <a href="{{exampleUrl}}">{{exampleUrl}}</a></p>
+  <p style="font-size:13px;color:#555">Лимит по умолчанию: 10 запросов в секунду.</p>
 </div>`,
     enabled: true,
     updatedAt: NOW,
