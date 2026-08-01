@@ -1,0 +1,104 @@
+[
+  {
+    "name": "Lionex",
+    "website": "https://lionex.net/en/",
+    "feedUrl": "https://lionex.net/exports/valuta.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "contact": "lionex.net@gmail.com",
+    "description": "Онлайн-обменник электронных валют. Поддержка ежедневно 10:00–22:00 МСК, Telegram @lionex_support.",
+    "skipFeedCheck": true,
+    "notes": "Feed currently empty (0 bytes); email+TG from /en/contacts"
+  },
+  {
+    "name": "PayMarket",
+    "website": "https://paymarket.cc/en/",
+    "feedUrl": "https://paymarket.cc/exports/valuta.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "contact": "mail.paymarket@yandex.ru",
+    "description": "Онлайн-обменник электронных валют и криптовалют: банки РФ и цифровые активы. Гарантия перевода и поддержка по любым вопросам.",
+    "notes": "OK ~1706 pairs; email from /en/contacts"
+  },
+  {
+    "name": "Pocket Exchange",
+    "website": "https://pocket-exchange.com/en/",
+    "feedUrl": "https://pocket-exchange.com/valuta.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "contact": "pocket-exchange@hotmail.com",
+    "description": "Обмен электронных валют: Bitcoin, Ethereum, Litecoin и др., банки РФ (Сбер, Альфа-Банк, Т-Банк).",
+    "notes": "OK ~2230 pairs; email from /en/contacts"
+  },
+  {
+    "name": "Cryptomat",
+    "website": "https://cryptomat.cc/en/",
+    "feedUrl": "https://cryptomat.cc/exports/courses.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "contact": "support@cryptomat.cc",
+    "description": "Обмен криптовалют: Bitcoin, USDT, ETH, LTC по выгодным курсам. Поддержка ежедневно 10:00–22:00 МСК.",
+    "notes": "OK ~1059 pairs; email from /en/contacts"
+  },
+  {
+    "name": "Global-Ex",
+    "website": "https://global-ex.cc/en/",
+    "feedUrl": "https://global-ex.cc/exports/rates.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "contact": "global-ex.info@yandex.ru",
+    "description": "Онлайн-обменник электронных валют. Техподдержка круглосуточно 24/7.",
+    "notes": "OK ~1042 pairs; email from /en/contacts"
+  },
+  {
+    "name": "Metka",
+    "website": "https://metka.cc/en",
+    "feedUrl": "https://metka.cc/valuta.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "contact": "info@metka.cc",
+    "description": "Сервис электронных валют. Круглосуточный обмен криптовалют по выгодному курсу.",
+    "notes": "OK ~2407 pairs; email from contacts/FAQ"
+  },
+  {
+    "name": "Ferma",
+    "website": "https://ferma.cc/en/",
+    "feedUrl": "https://ferma.cc/valuta.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "contact": "info.ferma.cc@gmail.com",
+    "description": "Ferma — быстрый обмен валют без лишних сложностей. Поддержка 24/7.",
+    "notes": "OK ~4296 pairs; email from /en/contacts"
+  },
+  {
+    "name": "ExDex",
+    "website": "https://exdex.xyz/en/",
+    "feedUrl": "https://exdex.xyz/request-exportxml.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "contact": "info@exdex.xyz",
+    "description": "Обменный пункт электронных валют. Техподдержка с 10:00 до 23:00 МСК.",
+    "notes": "OK ~547 pairs; email from /en/page/contacts"
+  },
+  {
+    "name": "Sova",
+    "website": "https://sova.gg/en/",
+    "feedUrl": "https://sova.gg/valuta.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "contact": "workingquestionsova@gmail.com",
+    "description": "Быстрый и безопасный обмен криптовалют и электронных валют. Надёжный сервис, поддержка 24/7.",
+    "notes": "OK ~2937 pairs; email from /en/contacts"
+  },
+  {
+    "name": "LionChange",
+    "website": "https://www.lionchange.com/en/",
+    "feedUrl": "https://www.lionchange.com/service/export/xml/:code",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "contact": "mail@lionchange.com",
+    "description": "Быстрый онлайн-обменник электронных валют и криптовалют. Telegram @LNEXC, режим работы 10:00–20:00.",
+    "skipFeedCheck": true,
+    "notes": "Feed OK ~1275 pairs from workstation (:code→gapsnap); prod IP gets Cloudflare 403 intermittently; email+TG from /en/contacts"
+  }
+]
