@@ -6,6 +6,7 @@ import { ConditionalShell } from "@/components/shell/ConditionalShell";
 import { ConsentProvider } from "@/components/consent/ConsentProvider";
 import { ConsentAwareAnalytics } from "@/components/consent/ConsentAwareAnalytics";
 import { CookieBanner } from "@/components/consent/CookieBanner";
+import { AnalyticsScripts, YandexMetrikaSnippet } from "@/components/seo/AnalyticsScripts";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { getOrganizationJsonLd, getRootMetadata } from "@/lib/seo";
 import { buildWebSiteJsonLd } from "@/lib/seo-jsonld";
@@ -65,12 +66,13 @@ export default async function RootLayout({
         <Script id="gapsnap-theme-init" strategy="beforeInteractive">
           {themeInit}
         </Script>
+        {/* Metrika in initial HTML so Yandex counter verification can find it. */}
+        <YandexMetrikaSnippet counterId={seo.yandexMetricaId} />
         <JsonLd data={[org, website].filter(Boolean) as object[]} />
         <ThemeProvider>
           <ConsentProvider>
             <ConsentAwareAnalytics
               googleAnalyticsId={seo.googleAnalyticsId}
-              yandexMetricaId={seo.yandexMetricaId}
               gtmId={seo.gtmId}
             />
             <ConditionalShell

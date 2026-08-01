@@ -440,7 +440,10 @@ export function SeoModule() {
                 onChange={(e) => patch("googleAnalyticsId", e.target.value)}
               />
             </Field>
-            <Field label="Яндекс.Метрика" hint="числовой ID счётчика">
+            <Field
+              label="Яндекс.Метрика"
+              hint="числовой ID счётчика — ставится сразу в HTML (без ожидания cookies)"
+            >
               <input
                 className={inputClass}
                 value={seo.yandexMetricaId}
