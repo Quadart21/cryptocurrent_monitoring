@@ -6,11 +6,28 @@ import {
 import { assertSafeOutboundUrl } from "@/lib/security/ssrf";
 import { parseRatesXml, type ParsedRateItem } from "@/lib/xml/parse-rates";
 
-const FETCH_TIMEOUT_MS = 12_000;
+/** Large feeds (e.g. Waybit ~2MB / 8k pairs) need more headroom than a small XML. */
+const FETCH_TIMEOUT_MS = 45_000;
 const POLL_INTERVAL_MS = 60_000;
 const FETCH_CONCURRENCY = 4;
 const MAX_REDIRECTS = 3;
-const MAX_BODY_BYTES = 2_500_000;
+const MAX_BODY_BYTES = 12_000_000;
+
+/**
+ * BestChange-style export URLs often include a partner placeholder `:code`.
+ * Replace with GapSnap id when fetching (rates are the same; tracking differs).
+ */
+export function resolveFeedUrl(feedUrl: string): string {
+  const code =
+    process.env.FEED_PARTNER_CODE?.trim() ||
+    process.env.NEXT_PUBLIC_SITE_NAME?.trim().toLowerCase().replace(/\s+/g, "") ||
+    "gapsnap";
+  return feedUrl
+    .trim()
+    .replace(/:code\b/gi, encodeURIComponent(code))
+    .replace(/\{code\}/gi, encodeURIComponent(code))
+    .replace(/%code%/gi, encodeURIComponent(code));
+}
 
 async function fetchWithSsrfGuard(feedUrl: string): Promise<Response> {
   let current = await assertSafeOutboundUrl(feedUrl, { allowHttp: true });
@@ -24,7 +41,7 @@ async function fetchWithSsrfGuard(feedUrl: string): Promise<Response> {
         redirect: "manual",
         headers: {
           Accept: "application/xml, text/xml, */*",
-          "User-Agent": "GapSnapMonitor/1.0 (+https://gapsnap.local)",
+          "User-Agent": "GapSnapMonitor/1.0 (+https://gapsnap.org)",
           "Cache-Control": "no-cache",
         },
         cache: "no-store",
@@ -44,6 +61,16 @@ async function fetchWithSsrfGuard(feedUrl: string): Promise<Response> {
       }
 
       return res;
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error.name === "AbortError" || /aborted/i.test(error.message))
+      ) {
+        throw new Error(
+          `Таймаут загрузки фида (${Math.round(FETCH_TIMEOUT_MS / 1000)} с). Крупные XML могут грузиться дольше — попробуйте ещё раз.`,
+        );
+      }
+      throw error;
     } finally {
       clearTimeout(timer);
     }
@@ -53,8 +80,9 @@ async function fetchWithSsrfGuard(feedUrl: string): Promise<Response> {
 }
 
 export async function fetchFeedXml(feedUrl: string): Promise<string> {
-  await assertSafeOutboundUrl(feedUrl, { allowHttp: true });
-  const res = await fetchWithSsrfGuard(feedUrl);
+  const resolved = resolveFeedUrl(feedUrl);
+  await assertSafeOutboundUrl(resolved, { allowHttp: true });
+  const res = await fetchWithSsrfGuard(resolved);
 
   if (!res.ok) {
     throw new Error(`HTTP ${res.status} при запросе фида`);
@@ -62,12 +90,12 @@ export async function fetchFeedXml(feedUrl: string): Promise<string> {
 
   const lengthHeader = res.headers.get("content-length");
   if (lengthHeader && Number(lengthHeader) > MAX_BODY_BYTES) {
-    throw new Error("Фид слишком большой");
+    throw new Error("Фид слишком большой (лимит 12 МБ)");
   }
 
   const buf = Buffer.from(await res.arrayBuffer());
   if (buf.length > MAX_BODY_BYTES) {
-    throw new Error("Фид слишком большой");
+    throw new Error("Фид слишком большой (лимит 12 МБ)");
   }
 
   const text = buf.toString("utf8");

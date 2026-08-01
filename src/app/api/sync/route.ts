@@ -4,6 +4,7 @@ import { syncAllFeeds } from "@/lib/sync-feeds";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 120;
 
 /** Mutations only via POST — GET removed (CSRF / accidental sync). */
 export async function POST() {

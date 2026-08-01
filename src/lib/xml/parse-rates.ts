@@ -22,7 +22,11 @@ function asArray<T>(value: T | T[] | undefined | null): T[] {
 
 function num(value: unknown, fallback = 0): number {
   if (value == null || value === "") return fallback;
-  const n = Number(String(value).replace(",", ".").replace(/\s/g, ""));
+  // BestChange feeds often use "0.0037 BTC" / "300 USDT" — take leading number.
+  const raw = String(value).trim().replace(",", ".").replace(/\s+/g, " ");
+  const match = raw.match(/^[-+]?\d+(?:\.\d+)?/);
+  if (!match) return fallback;
+  const n = Number(match[0]);
   return Number.isFinite(n) ? n : fallback;
 }
 

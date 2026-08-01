@@ -11,6 +11,7 @@ import { syncAllFeeds } from "@/lib/sync-feeds";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 120;
 
 export async function GET(request: Request) {
   const denied = await assertAdminResource("sync", request.method);

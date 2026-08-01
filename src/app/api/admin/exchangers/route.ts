@@ -27,6 +27,8 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+/** Large XML feeds (multi‑MB) need longer than the default serverless window. */
+export const maxDuration = 60;
 
 function newExchangerId(): string {
   return `ex_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;

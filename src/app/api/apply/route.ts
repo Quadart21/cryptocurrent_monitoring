@@ -9,6 +9,7 @@ import { assertSafeOutboundUrl } from "@/lib/security/ssrf";
 import { validateFeedUrl } from "@/lib/sync-feeds";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 function newExchangerId(): string {
   return `ex_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;

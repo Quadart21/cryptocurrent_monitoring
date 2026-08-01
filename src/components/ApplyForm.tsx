@@ -60,7 +60,7 @@ export function ApplyForm() {
           label="URL XML-фида"
           name="feedUrl"
           placeholder="https://example.com/exports/rates.xml"
-          hint="Публичный XML со списком курсов: корневой тег rates, внутри item с полями from, to, in, out, amount (резерв). Опционально — minamount/maxamount или frommin/frommax (лимиты)."
+          hint="Публичный XML со списком курсов: корневой тег rates, внутри item с полями from, to, in, out, amount (резерв). Опционально — minamount/maxamount или frommin/frommax. Допускается шаблон :code (как у BestChange) — мы подставим код GapSnap."
           required
         />
         <Field label="Контакт" name="contact" placeholder="email@ или @telegram" required />
