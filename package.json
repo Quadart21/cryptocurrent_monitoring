@@ -1,6 +1,6 @@
 {
   "name": "gapsnap",
-  "version": "2.35.0",
+  "version": "2.35.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -14,6 +14,8 @@
     "db:studio": "drizzle-kit studio",
     "db:import": "node --env-file=.env scripts/import-json-store.mjs",
     "db:import-exchangers": "node --env-file=.env scripts/bulk-add-exchangers.mjs",
+    "db:update-exchanger-contacts": "node --env-file=.env scripts/update-exchanger-contacts.mjs",
+    "db:update-exchanger-contacts-api": "node --env-file=.env scripts/update-exchanger-contacts-api.mjs",
     "db:seed-achievements": "node --env-file=.env scripts/seed-achievements.mjs"
   },
   "dependencies": {
