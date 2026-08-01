@@ -13,26 +13,33 @@ export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ kind: string }> };
 
-const FALLBACK_FILES: Partial<Record<SiteAssetKind, string>> = {
-  logo: path.join("public", "gapsnap-mark.png"),
-  icon: path.join("public", "branding", "default-icon.png"),
-  apple_icon: path.join("public", "branding", "default-apple-icon.png"),
+/** Fallback files under `public/` — cwd is ignored for Turbopack NFT tracing. */
+const FALLBACK_FILES: Partial<Record<SiteAssetKind, string[]>> = {
+  logo: ["gapsnap-mark.png"],
+  icon: ["branding", "default-icon.png"],
+  apple_icon: ["branding", "default-apple-icon.png"],
 };
+
+function publicPath(...segments: string[]): string {
+  return path.join(
+    /* turbopackIgnore: true */ process.cwd(),
+    "public",
+    ...segments,
+  );
+}
 
 async function readFallback(
   kind: SiteAssetKind,
 ): Promise<{ format: "png"; bytes: Buffer } | null> {
-  const rel = FALLBACK_FILES[kind];
-  if (!rel) return null;
+  const segments = FALLBACK_FILES[kind];
+  if (!segments) return null;
   try {
-    const bytes = await readFile(path.join(process.cwd(), rel));
+    const bytes = await readFile(publicPath(...segments));
     return { format: "png", bytes };
   } catch {
     if (kind === "icon" || kind === "apple_icon") {
       try {
-        const bytes = await readFile(
-          path.join(process.cwd(), "public", "gapsnap-mark.png"),
-        );
+        const bytes = await readFile(publicPath("gapsnap-mark.png"));
         return { format: "png", bytes };
       } catch {
         return null;
