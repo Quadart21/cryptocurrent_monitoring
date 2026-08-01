@@ -10,7 +10,8 @@ import {
   AdvertiseTariffs,
 } from "@/components/advertise/AdvertiseTariffs";
 import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
-import { getAdPricing, listAdTariffs } from "@/lib/store";
+import { resolvePublicContact } from "@/lib/site-contacts";
+import { getAdPricing, getSeoSettings, listAdTariffs } from "@/lib/store";
 
 export const metadata: Metadata = {
   title: "Рекламодателям",
@@ -21,11 +22,17 @@ export const metadata: Metadata = {
 export const revalidate = 60;
 
 export default async function AdvertisePage() {
-  const [tariffs, pricing] = await Promise.all([
+  const [tariffs, pricing, seo] = await Promise.all([
     listAdTariffs({ activeOnly: true }),
     getAdPricing(),
+    getSeoSettings(),
   ]);
-  const href = advertiseContactHref(pricing.contact);
+  const contact = resolvePublicContact({
+    override: pricing.contact,
+    contactEmail: seo.contactEmail,
+    contactTelegram: seo.contactTelegram,
+  });
+  const href = advertiseContactHref(contact);
 
   return (
     <div className="space-y-12 sm:space-y-16">
@@ -36,7 +43,7 @@ export default async function AdvertisePage() {
         ]}
       />
 
-      <AdvertiseHero intro={pricing.intro} contact={pricing.contact} href={href} />
+      <AdvertiseHero intro={pricing.intro} contact={contact} href={href} />
       <AdvertiseExamples />
       <AdvertiseSteps />
       <AdvertiseTariffs tariffs={tariffs} />

@@ -121,7 +121,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
     id: "seo",
     href: `${ADMIN_PATH}/seo`,
     label: "SEO",
-    description: "Мета, robots, sitemap",
+    description: "Мета, контакты, robots",
     group: "site",
     permission: "seo.read",
   },

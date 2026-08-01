@@ -231,15 +231,20 @@ export function AdTariffsModule() {
         <AdminSection title="Страница для рекламодателей">
           <form onSubmit={(e) => void savePricing(e)} className="space-y-3 p-5">
             <label className="block space-y-1">
-              <span className="text-xs text-ink-muted">Контакт</span>
+              <span className="text-xs text-ink-muted">
+                Контакт для рекламы
+              </span>
               <input
                 value={pricing.contact}
                 onChange={(e) =>
                   setPricing((p) => ({ ...p, contact: e.target.value }))
                 }
-                placeholder="email@ или @telegram"
+                placeholder="пусто = email/Telegram из SEO → Контакты"
                 className="w-full rounded-2xl border border-line bg-input px-3 py-2.5 text-sm outline-none focus:border-accent"
               />
+              <span className="block text-xs text-ink-muted">
+                Если пусто — берётся публичный контакт из раздела SEO → Контакты.
+              </span>
             </label>
             <label className="block space-y-1">
               <span className="text-xs text-ink-muted">Вводный текст</span>

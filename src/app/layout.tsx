@@ -77,6 +77,8 @@ export default async function RootLayout({
               initialAds={initialAds}
               brandLogoUrl={brandLogoUrl}
               apiEnabled={apiEnabled}
+              contactEmail={seo.contactEmail}
+              contactTelegram={seo.contactTelegram}
             >
               {children}
             </ConditionalShell>

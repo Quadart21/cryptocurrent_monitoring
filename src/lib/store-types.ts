@@ -332,6 +332,10 @@ export type SeoSettings = {
   jsonLdEnabled: boolean;
   organizationName: string;
   organizationLogoUrl: string;
+  /** Публичный email (футер, партнёры, schema.org) */
+  contactEmail: string;
+  /** Telegram: @handle или https://t.me/... */
+  contactTelegram: string;
   /** GA4 measurement id, e.g. G-XXXX */
   googleAnalyticsId: string;
   /** Yandex.Metrika counter id */

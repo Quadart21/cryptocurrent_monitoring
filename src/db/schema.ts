@@ -361,6 +361,10 @@ export const seo = pgTable("seo", {
   jsonLdEnabled: boolean("json_ld_enabled").notNull().default(true),
   organizationName: text("organization_name").notNull(),
   organizationLogoUrl: text("organization_logo_url").notNull().default(""),
+  /** Публичный email сайта (футер, партнёры, schema.org) */
+  contactEmail: text("contact_email").notNull().default(""),
+  /** Telegram: @handle или https://t.me/... */
+  contactTelegram: text("contact_telegram").notNull().default(""),
   googleAnalyticsId: text("google_analytics_id").notNull().default(""),
   yandexMetricaId: text("yandex_metrica_id").notNull().default(""),
   gtmId: text("gtm_id").notNull().default(""),

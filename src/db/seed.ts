@@ -120,7 +120,7 @@ export const seedExchanger: FeedExchanger = {
 };
 
 export const seedAdPricing: AdPricingSettings = {
-  contact: "ads@gapsnap.local",
+  contact: "support@gapsnap.org",
   intro:
     "Разместите баннер или выделите обменник в мониторинге GapSnap. Ниже — актуальные форматы, размеры и тарифы.",
   note: "Цены указаны в рублях. Слоты ограничены: при занятости даты согласуем отдельно.",
@@ -153,6 +153,8 @@ export const seedSeo: SeoSettings = {
   jsonLdEnabled: true,
   organizationName: "GapSnap",
   organizationLogoUrl: "",
+  contactEmail: "support@gapsnap.org",
+  contactTelegram: "",
   googleAnalyticsId: "",
   yandexMetricaId: "",
   gtmId: "",
@@ -180,7 +182,7 @@ export const seedLegal: LegalSettings = {
 
 ## Контакты
 
-По вопросам персональных данных используйте контакт из раздела рекламы или заявки на сайте.`,
+По вопросам персональных данных напишите на email из футера сайта или укажите контакт в заявке обменника.`,
   cookieTitle: "Политика cookies",
   cookieUpdatedAt: SEED_AT,
   cookieBody: `На сайте GapSnap используются cookies и похожие технологии.
@@ -510,6 +512,8 @@ export async function ensureSeeded(db: Db): Promise<void> {
       jsonLdEnabled: seedSeo.jsonLdEnabled,
       organizationName: seedSeo.organizationName,
       organizationLogoUrl: seedSeo.organizationLogoUrl,
+      contactEmail: seedSeo.contactEmail,
+      contactTelegram: seedSeo.contactTelegram,
       googleAnalyticsId: seedSeo.googleAnalyticsId,
       yandexMetricaId: seedSeo.yandexMetricaId,
       gtmId: seedSeo.gtmId,

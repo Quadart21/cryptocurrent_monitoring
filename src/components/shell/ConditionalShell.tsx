@@ -9,11 +9,15 @@ export function ConditionalShell({
   initialAds = [],
   brandLogoUrl,
   apiEnabled = true,
+  contactEmail,
+  contactTelegram,
 }: {
   children: React.ReactNode;
   initialAds?: PublicAd[];
   brandLogoUrl?: string | null;
   apiEnabled?: boolean;
+  contactEmail?: string | null;
+  contactTelegram?: string | null;
 }) {
   const pathname = usePathname();
   if (
@@ -29,6 +33,8 @@ export function ConditionalShell({
       initialAds={initialAds}
       brandLogoUrl={brandLogoUrl}
       apiEnabled={apiEnabled}
+      contactEmail={contactEmail}
+      contactTelegram={contactTelegram}
     >
       {children}
     </AppShell>

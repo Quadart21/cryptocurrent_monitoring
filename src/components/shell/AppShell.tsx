@@ -9,11 +9,15 @@ export function AppShell({
   initialAds = [],
   brandLogoUrl,
   apiEnabled = true,
+  contactEmail,
+  contactTelegram,
 }: {
   children: React.ReactNode;
   initialAds?: PublicAd[];
   brandLogoUrl?: string | null;
   apiEnabled?: boolean;
+  contactEmail?: string | null;
+  contactTelegram?: string | null;
 }) {
   return (
     <div className="mobile-shell-pad relative z-10 flex min-h-screen flex-col overflow-x-clip">
@@ -23,7 +27,12 @@ export function AppShell({
           {children}
         </div>
       </SiteAdsChrome>
-      <Footer brandLogoUrl={brandLogoUrl} apiEnabled={apiEnabled} />
+      <Footer
+        brandLogoUrl={brandLogoUrl}
+        apiEnabled={apiEnabled}
+        contactEmail={contactEmail}
+        contactTelegram={contactTelegram}
+      />
       <MobileBottomNav />
     </div>
   );

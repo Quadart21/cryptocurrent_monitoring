@@ -312,6 +312,8 @@ function mapSeo(row: SeoRow | undefined): SeoSettings {
     jsonLdEnabled: row.jsonLdEnabled,
     organizationName: row.organizationName || seedSeo.organizationName,
     organizationLogoUrl: row.organizationLogoUrl,
+    contactEmail: row.contactEmail ?? "",
+    contactTelegram: row.contactTelegram ?? "",
     googleAnalyticsId: row.googleAnalyticsId ?? "",
     yandexMetricaId: row.yandexMetricaId ?? "",
     gtmId: row.gtmId ?? "",
@@ -387,6 +389,12 @@ function normalizeSeoSettings(
     organizationLogoUrl:
       typeof raw?.organizationLogoUrl === "string"
         ? raw.organizationLogoUrl.trim()
+        : "",
+    contactEmail:
+      typeof raw?.contactEmail === "string" ? raw.contactEmail.trim() : "",
+    contactTelegram:
+      typeof raw?.contactTelegram === "string"
+        ? raw.contactTelegram.trim()
         : "",
     googleAnalyticsId:
       typeof raw?.googleAnalyticsId === "string"
@@ -2187,6 +2195,8 @@ export async function updateSeoSettings(
       jsonLdEnabled: merged.jsonLdEnabled,
       organizationName: merged.organizationName,
       organizationLogoUrl: merged.organizationLogoUrl,
+      contactEmail: merged.contactEmail,
+      contactTelegram: merged.contactTelegram,
       googleAnalyticsId: merged.googleAnalyticsId,
       yandexMetricaId: merged.yandexMetricaId,
       gtmId: merged.gtmId,
@@ -2217,6 +2227,8 @@ export async function updateSeoSettings(
         jsonLdEnabled: merged.jsonLdEnabled,
         organizationName: merged.organizationName,
         organizationLogoUrl: merged.organizationLogoUrl,
+        contactEmail: merged.contactEmail,
+        contactTelegram: merged.contactTelegram,
         googleAnalyticsId: merged.googleAnalyticsId,
         yandexMetricaId: merged.yandexMetricaId,
         gtmId: merged.gtmId,

@@ -34,6 +34,8 @@ const emptySeo: SeoSettings = {
   jsonLdEnabled: true,
   organizationName: "",
   organizationLogoUrl: "",
+  contactEmail: "",
+  contactTelegram: "",
   googleAnalyticsId: "",
   yandexMetricaId: "",
   gtmId: "",
@@ -67,7 +69,13 @@ export function SeoModule() {
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
   const [tab, setTab] = useState<
-    "meta" | "social" | "robots" | "verification" | "schema" | "analytics"
+    | "meta"
+    | "contacts"
+    | "social"
+    | "robots"
+    | "verification"
+    | "schema"
+    | "analytics"
   >("meta");
 
   const load = useCallback(async () => {
@@ -113,7 +121,7 @@ export function SeoModule() {
     <div className="space-y-6">
       <AdminPageHeader
         title="SEO"
-        description="Заголовки, Open Graph, robots.txt, sitemap и коды верификации поисковиков. После сохранения проверьте /robots.txt и /sitemap.xml."
+        description="Заголовки, публичные контакты, Open Graph, robots.txt, sitemap и коды верификации. Контакты из вкладки «Контакты» показываются в футере и на страницах партнёров/рекламы."
       />
 
       {(error || ok) && (
@@ -132,6 +140,7 @@ export function SeoModule() {
             <AdminTabBar
               tabs={[
                 { id: "meta", label: "Метаданные" },
+                { id: "contacts", label: "Контакты" },
                 { id: "social", label: "Open Graph" },
                 { id: "robots", label: "Robots" },
                 { id: "verification", label: "Верификация" },
@@ -200,6 +209,34 @@ export function SeoModule() {
                 />
               </Field>
             </div>
+          </div>
+            ) : null}
+
+            {tab === "contacts" ? (
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Field
+              label="Email"
+              hint="Показывается в футере, на странице партнёров и в schema.org. Единый публичный контакт сайта."
+            >
+              <input
+                className={inputClass}
+                type="email"
+                placeholder="support@gapsnap.org"
+                value={seo.contactEmail}
+                onChange={(e) => patch("contactEmail", e.target.value)}
+              />
+            </Field>
+            <Field
+              label="Telegram"
+              hint="@username или https://t.me/username — тоже в футере и у партнёров"
+            >
+              <input
+                className={inputClass}
+                placeholder="@gapsnap"
+                value={seo.contactTelegram}
+                onChange={(e) => patch("contactTelegram", e.target.value)}
+              />
+            </Field>
           </div>
             ) : null}
 

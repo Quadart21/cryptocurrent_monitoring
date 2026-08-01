@@ -1,12 +1,8 @@
 import Link from "next/link";
+import { contactHref } from "@/lib/site-contacts";
 
 export function advertiseContactHref(contact: string): string | null {
-  const c = contact.trim();
-  if (!c) return null;
-  if (c.includes("@") && !c.startsWith("@")) return `mailto:${c}`;
-  if (c.startsWith("@")) return `https://t.me/${c.slice(1)}`;
-  if (c.startsWith("http")) return c;
-  return `mailto:${c}`;
+  return contactHref(contact);
 }
 
 export function AdvertiseHero({

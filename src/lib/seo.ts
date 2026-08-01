@@ -8,6 +8,7 @@ import {
 import { brandingPublicUrl } from "@/lib/branding-url";
 import { getSeoSettings, listSiteAssetMeta } from "@/lib/store";
 import type { SeoSettings } from "@/lib/store-types";
+import { telegramHref } from "@/lib/site-contacts";
 
 export function normalizeSiteUrl(url: string): string {
   const trimmed = url.trim().replace(/\/+$/, "");
@@ -203,6 +204,9 @@ export function buildOrganizationJsonLd(seo: SeoSettings): object | null {
     seo.siteUrl || process.env.SITE_URL || "",
     seo.organizationLogoUrl,
   );
+  const email = seo.contactEmail.trim() || undefined;
+  const tg = telegramHref(seo.contactTelegram);
+  const sameAs = tg ? [tg] : undefined;
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
@@ -210,6 +214,8 @@ export function buildOrganizationJsonLd(seo: SeoSettings): object | null {
     url: siteUrl || undefined,
     logo: logo || undefined,
     description: seo.description || undefined,
+    email,
+    sameAs,
   };
 }
 
