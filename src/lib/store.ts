@@ -1192,15 +1192,20 @@ export async function replaceExchangerRatesBatch(
   await db.transaction(async (tx) => {
     for (const { exchangerId, items, meta } of updates) {
       const [ex] = await tx
-        .select({ id: exchangers.id, status: exchangers.status })
+        .select({
+          id: exchangers.id,
+          status: exchangers.status,
+          pairCount: exchangers.pairCount,
+        })
         .from(exchangers)
         .where(eq(exchangers.id, exchangerId))
         .limit(1);
       if (!ex) continue;
 
-      await tx.delete(rates).where(eq(rates.exchangerId, exchangerId));
-
       if (meta.ok) {
+        // Replace rates only on successful fetch — never wipe on failure.
+        await tx.delete(rates).where(eq(rates.exchangerId, exchangerId));
+
         await tx
           .update(exchangers)
           .set({
@@ -1234,12 +1239,27 @@ export async function replaceExchangerRatesBatch(
           }
         }
       } else {
+        // Soft-fail: keep previous rates on the board. Mark error only when
+        // there is nothing left to show; otherwise stay active with lastError.
+        const [rateCount] = await tx
+          .select({ n: count() })
+          .from(rates)
+          .where(eq(rates.exchangerId, exchangerId));
+        const cachedPairs = Number(rateCount?.n ?? 0);
+        const hasCachedRates = cachedPairs > 0;
         await tx
           .update(exchangers)
           .set({
-            status: ex.status === "pending" ? "pending" : "error",
+            status:
+              ex.status === "pending"
+                ? "pending"
+                : hasCachedRates
+                  ? "active"
+                  : "error",
             lastError: meta.error,
             lastSyncAt: syncedAt,
+            // Keep pairCount aligned with what is still in the rates table.
+            ...(hasCachedRates ? { pairCount: cachedPairs } : {}),
           })
           .where(eq(exchangers.id, exchangerId));
       }

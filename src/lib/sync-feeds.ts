@@ -39,6 +39,19 @@ export function resolveFeedUrl(feedUrl: string): string {
     .replace(/%code%/gi, encodeURIComponent(code));
 }
 
+const FEED_FETCH_ATTEMPTS = Math.max(
+  1,
+  Math.min(5, Number(process.env.FEED_FETCH_ATTEMPTS) || 3),
+);
+const FEED_RETRY_DELAY_MS = Math.max(
+  200,
+  Math.min(10_000, Number(process.env.FEED_RETRY_DELAY_MS) || 1_200),
+);
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function fetchWithSsrfGuard(feedUrl: string): Promise<Response> {
   let current = await assertSafeOutboundUrl(feedUrl, { allowHttp: true });
 
@@ -51,6 +64,7 @@ async function fetchWithSsrfGuard(feedUrl: string): Promise<Response> {
         redirect: "manual",
         headers: {
           Accept: "application/xml, text/xml, */*",
+          "Accept-Language": "ru,en;q=0.8",
           "User-Agent": "GapSnapMonitor/1.0 (+https://gapsnap.org)",
           "Cache-Control": "no-cache",
         },
@@ -89,7 +103,11 @@ async function fetchWithSsrfGuard(feedUrl: string): Promise<Response> {
   throw new Error("Не удалось загрузить фид");
 }
 
-export async function fetchFeedXml(feedUrl: string): Promise<string> {
+function looksLikeRatesXml(text: string): boolean {
+  return text.includes("<") && /<rates[\s>]/i.test(text);
+}
+
+async function fetchFeedXmlOnce(feedUrl: string): Promise<string> {
   const resolved = resolveFeedUrl(feedUrl);
   await assertSafeOutboundUrl(resolved, { allowHttp: true });
   const res = await fetchWithSsrfGuard(resolved);
@@ -108,12 +126,49 @@ export async function fetchFeedXml(feedUrl: string): Promise<string> {
     throw new Error("Фид слишком большой (лимит 12 МБ)");
   }
 
+  if (buf.length === 0) {
+    throw new Error("Пустой ответ фида (0 байт)");
+  }
+
   const text = buf.toString("utf8");
-  if (!text.includes("<") || !/<rates[\s>]/i.test(text)) {
-    throw new Error("Ответ не похож на XML-фид курсов (нужен корневой тег rates)");
+  if (!looksLikeRatesXml(text)) {
+    throw new Error(
+      "Ответ не похож на XML-фид курсов (нужен корневой тег rates)",
+    );
   }
 
   return text;
+}
+
+function isRetryableFeedError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    /пустой ответ/i.test(message) ||
+    /не похож на XML/i.test(message) ||
+    /HTTP 5\d\d/i.test(message) ||
+    /HTTP 429/i.test(message) ||
+    /таймаут/i.test(message) ||
+    /fetch failed/i.test(message) ||
+    /ECONNRESET|ETIMEDOUT|EAI_AGAIN|ENOTFOUND|UND_ERR/i.test(message)
+  );
+}
+
+export async function fetchFeedXml(feedUrl: string): Promise<string> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= FEED_FETCH_ATTEMPTS; attempt += 1) {
+    try {
+      return await fetchFeedXmlOnce(feedUrl);
+    } catch (error) {
+      lastError = error;
+      if (attempt >= FEED_FETCH_ATTEMPTS || !isRetryableFeedError(error)) {
+        break;
+      }
+      await sleep(FEED_RETRY_DELAY_MS * attempt);
+    }
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Не удалось загрузить фид");
 }
 
 export async function validateFeedUrl(feedUrl: string) {
