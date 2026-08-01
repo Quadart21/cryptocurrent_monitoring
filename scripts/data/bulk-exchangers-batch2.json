@@ -1,0 +1,82 @@
+[
+  {
+    "name": "LuckyChange",
+    "website": "https://luckychange.net/en/",
+    "feedUrl": "https://luckychange.net/exports/rates.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "notes": "OK ~2705 pairs; no prod duplicate"
+  },
+  {
+    "name": "Cryptojet",
+    "website": "https://cryptojet.one/en/",
+    "feedUrl": "https://cryptojet.one/request-exportxml.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "notes": "OK ~86 pairs; intermittent fetch fail once, retries OK; no prod duplicate"
+  },
+  {
+    "name": "SapfirEx",
+    "website": "https://sapfirex.com/?locale=en",
+    "feedUrl": "https://sapfirex.com/valuta.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "notes": "OK ~45 pairs; no prod duplicate"
+  },
+  {
+    "name": "Tarifex",
+    "website": "https://tarifex.io/en/",
+    "feedUrl": "https://tarifex.io/exports/monitoring.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "notes": "OK ~4846 pairs; no prod duplicate"
+  },
+  {
+    "name": "GoldenGateX",
+    "website": "https://goldengatex.net/en/?ref=bestchange&locale=en",
+    "feedUrl": "https://goldengatex.net/exports/valuta.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "notes": "OK ~1191 pairs; no prod duplicate"
+  },
+  {
+    "name": "Coinfy",
+    "website": "https://coinfy.cc/en",
+    "feedUrl": "https://coinfy.cc/valuta.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "notes": "OK ~2093 pairs; no prod duplicate"
+  },
+  {
+    "name": "AlpinaEx",
+    "website": "https://alpinaex.com/en/",
+    "feedUrl": "https://alpinaex.com/exports/rates.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "notes": "OK ~2320 pairs; no prod duplicate"
+  },
+  {
+    "name": "Tasty-Changer",
+    "website": "https://tasty-changer.com/en/",
+    "feedUrl": "https://tasty-changer.com/exports/TASTY_KURS.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "notes": "OK ~3144 pairs; no prod duplicate"
+  },
+  {
+    "name": "N-Obmen",
+    "website": "https://n-obmen.net/en/",
+    "feedUrl": "https://n-obmen.net/exports/rates.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "notes": "OK ~2039 pairs; no prod duplicate"
+  },
+  {
+    "name": "Razmen",
+    "website": "https://razmen.cc/en/",
+    "feedUrl": "https://razmen.cc/exports/rates.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "notes": "OK ~717 pairs; no prod duplicate"
+  }
+]
