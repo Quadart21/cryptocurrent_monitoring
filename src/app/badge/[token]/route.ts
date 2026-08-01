@@ -1,3 +1,5 @@
+import { readFile } from "fs/promises";
+import path from "path";
 import { NextResponse } from "next/server";
 import { getDb } from "@/db/index";
 import { exchangers } from "@/db/schema";
@@ -6,14 +8,19 @@ import { eq } from "drizzle-orm";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function badgeSvg(): string {
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="88" height="31" viewBox="0 0 88 31" role="img" aria-label="GapSnap">
-  <rect width="88" height="31" rx="4" fill="#0f766e"/>
-  <rect x="1" y="1" width="86" height="29" rx="3" fill="none" stroke="#99f6e4" stroke-width="1"/>
-  <text x="44" y="14" text-anchor="middle" fill="#ecfdf5" font-family="Segoe UI,Arial,sans-serif" font-size="10" font-weight="700">GapSnap</text>
-  <text x="44" y="24" text-anchor="middle" fill="#a7f3d0" font-family="Segoe UI,Arial,sans-serif" font-size="7">мониторинг</text>
-</svg>`;
+const BADGE_PNG_PATH = path.join(
+  process.cwd(),
+  "public",
+  "badge",
+  "gapsnap-button.png",
+);
+
+let cachedBadge: Buffer | null = null;
+
+async function badgePng(): Promise<Buffer> {
+  if (cachedBadge) return cachedBadge;
+  cachedBadge = await readFile(BADGE_PNG_PATH);
+  return cachedBadge;
 }
 
 type Props = { params: Promise<{ token: string }> };
@@ -35,11 +42,16 @@ export async function GET(_request: Request, { params }: Props) {
     return new NextResponse("Not found", { status: 404 });
   }
 
-  return new NextResponse(badgeSvg(), {
-    status: 200,
-    headers: {
-      "Content-Type": "image/svg+xml; charset=utf-8",
-      "Cache-Control": "public, max-age=3600",
-    },
-  });
+  try {
+    const png = await badgePng();
+    return new NextResponse(new Uint8Array(png), {
+      status: 200,
+      headers: {
+        "Content-Type": "image/png",
+        "Cache-Control": "public, max-age=3600",
+      },
+    });
+  } catch {
+    return new NextResponse("Badge asset missing", { status: 500 });
+  }
 }

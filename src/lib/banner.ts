@@ -66,7 +66,7 @@ export function bannerEmbedHtml(input: {
   const base = input.siteUrl.replace(/\/$/, "");
   const href = `${base}/?utm_source=badge&utm_medium=partner&utm_campaign=${encodeURIComponent(input.slug)}`;
   const img = bannerImageUrl(base, input.token);
-  return `<a href="${href}" target="_blank" rel="noopener noreferrer" data-gapsnap-badge="${input.token}"><img src="${img}" alt="GapSnap — мониторинг обменников" width="88" height="31" /></a>`;
+  return `<a href="${href}" target="_blank" rel="noopener noreferrer" data-gapsnap-badge="${input.token}"><img src="${img}" alt="GapSnap" width="88" height="31" /></a>`;
 }
 
 /** True if HTML of partner site contains our badge marker. */
