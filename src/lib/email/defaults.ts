@@ -103,6 +103,46 @@ otpauth: {{totpUri}}
     updatedAt: NOW,
   },
   {
+    id: "owner_access_remind",
+    name: "Напоминание доступа в кабинет",
+    description: "Логин и временный пароль по запросу владельца (email из обменника)",
+    subject: "{{siteName}}: доступ в кабинет — «{{exchangerName}}»",
+    text: `Вы запросили доступ к кабинету владельца на {{siteName}} для обменника «{{exchangerName}}».
+
+Кабинет: {{cabinetUrl}}
+Логин: {{ownerLogin}}
+Временный пароль: {{tempPassword}}
+
+{{totpText}}
+
+Если вы не запрашивали доступ — проигнорируйте письмо.`,
+    html: wrapEmailHtml({
+      body: [
+        p("Здравствуйте!"),
+        p(
+          `Вы запросили доступ к кабинету владельца на <strong style="color:#6d28d9">{{siteName}}</strong> для обменника <strong>{{exchangerName}}</strong>.`,
+        ),
+        emailHighlight(
+          `Ниже — данные для входа. Пароль временный: после входа рекомендуем сменить его при следующей возможности.`,
+        ),
+        `<h3 style="margin:0 0 8px;font-size:16px;color:#17151f">Данные для входа</h3>`,
+        `<ul style="margin:0 0 16px;padding-left:18px;color:#17151f">
+                <li>Логин: <code>{{ownerLogin}}</code></li>
+                <li>Временный пароль: <code>{{tempPassword}}</code></li>
+                <li>Кабинет: <a href="{{cabinetUrl}}" style="color:#6d28d9">{{cabinetUrl}}</a></li>
+              </ul>`,
+        "{{totpHtml}}",
+        muted(
+          "Если вы не запрашивали доступ — просто проигнорируйте это письмо.",
+        ),
+      ].join("\n              "),
+      ctaHref: "{{cabinetUrl}}",
+      ctaAlt: "Открыть кабинет",
+    }),
+    enabled: true,
+    updatedAt: NOW,
+  },
+  {
     id: "owner_new_review",
     name: "Новый отзыв владельцу",
     description: "Уведомление после публикации отзыва",

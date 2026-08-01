@@ -1,6 +1,7 @@
 export type EmailTemplateId =
   | "review_confirm"
   | "owner_approved"
+  | "owner_access_remind"
   | "owner_new_review"
   | "owner_banner_missing"
   | "owner_banner_unpublished"
@@ -77,6 +78,16 @@ export const EMAIL_TEMPLATE_VARS: Record<string, string[]> = {
     "cabinetUrl",
     "totpSecret",
     "totpUri",
+  ],
+  owner_access_remind: [
+    "siteName",
+    "siteUrl",
+    "exchangerName",
+    "ownerLogin",
+    "tempPassword",
+    "cabinetUrl",
+    "totpText",
+    "totpHtml",
   ],
   owner_new_review: [
     "siteName",

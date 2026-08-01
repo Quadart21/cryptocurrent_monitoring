@@ -37,6 +37,53 @@ export async function sendOwnerApprovedEmail(input: {
   });
 }
 
+export async function sendOwnerAccessRemindEmail(input: {
+  to: string;
+  exchangerName: string;
+  ownerLogin: string;
+  tempPassword: string;
+  /** Present when 2FA was just provisioned for the first time. */
+  totpSecret?: string | null;
+  totpUri?: string | null;
+  totpAlreadyEnabled?: boolean;
+}): Promise<void> {
+  const seo = await getSeoSettings();
+  const base = siteBaseUrl(seo.siteUrl);
+
+  let totpText: string;
+  let totpHtml: string;
+  if (input.totpSecret && input.totpUri) {
+    totpText = `2FA секрет: ${input.totpSecret}\notpauth: ${input.totpUri}\n\nПри входе: пароль + код из Authenticator.`;
+    totpHtml = [
+      `<h3 style="margin:0 0 8px;font-size:16px;color:#17151f">2FA</h3>`,
+      `<p style="margin:0 0 8px">Секрет: <code>${input.totpSecret}</code></p>`,
+      `<p style="margin:0 0 16px;font-size:13px;color:#6a6578;word-break:break-all">${input.totpUri}</p>`,
+      `<p style="margin:0 0 16px">При входе: пароль + код из приложения-аутентификатора.</p>`,
+    ].join("\n              ");
+  } else if (input.totpAlreadyEnabled) {
+    totpText =
+      "У кабинета включена 2FA — при входе введите код из приложения-аутентификатора, как обычно.";
+    totpHtml = `<p style="margin:0 0 16px">У кабинета включена 2FA — при входе введите код из приложения-аутентификатора, как обычно.</p>`;
+  } else {
+    totpText = "";
+    totpHtml = "";
+  }
+
+  await sendTemplatedEmail({
+    templateId: "owner_access_remind",
+    to: input.to,
+    tag: "owner-access-remind",
+    vars: {
+      exchangerName: input.exchangerName,
+      ownerLogin: input.ownerLogin,
+      tempPassword: input.tempPassword,
+      cabinetUrl: `${base}/cabinet`,
+      totpText,
+      totpHtml,
+    },
+  });
+}
+
 export async function sendOwnerNewReviewEmail(input: {
   to: string;
   exchangerName: string;

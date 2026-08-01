@@ -1718,6 +1718,44 @@ export async function findExchangerByOwnerLogin(
   return row ? mapExchanger(row) : undefined;
 }
 
+/** Match exchangers by ownerEmail (exact) or contact text containing the email. */
+export async function findExchangersByOwnerEmail(
+  email: string,
+): Promise<FeedExchanger[]> {
+  const needle = email.trim().toLowerCase();
+  if (!needle || !needle.includes("@")) return [];
+
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(exchangers)
+    .where(
+      or(
+        eq(exchangers.ownerEmail, needle),
+        sql`position(${needle} in lower(coalesce(${exchangers.contact}, ''))) > 0`,
+      ),
+    );
+
+  const emailRe = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i;
+  const out: FeedExchanger[] = [];
+  const seen = new Set<string>();
+  for (const row of rows) {
+    if (seen.has(row.id)) continue;
+    const direct = (row.ownerEmail ?? "").trim().toLowerCase();
+    if (direct === needle) {
+      seen.add(row.id);
+      out.push(mapExchanger(row));
+      continue;
+    }
+    const fromContact = row.contact.match(emailRe)?.[0]?.toLowerCase() ?? null;
+    if (fromContact === needle) {
+      seen.add(row.id);
+      out.push(mapExchanger(row));
+    }
+  }
+  return out;
+}
+
 export async function setOwnerCredentials(
   id: string,
   input: { ownerLogin: string; ownerPasswordHash: string },
@@ -1738,6 +1776,52 @@ export async function setOwnerCredentials(
       ownerLogin,
       ownerPasswordHash: input.ownerPasswordHash,
     })
+    .where(eq(exchangers.id, id))
+    .returning();
+  return row ? mapExchanger(row) : null;
+}
+
+/** Reset password (+ optional first-time TOTP) for cabinet access remind. */
+export async function resetOwnerAccessForRemind(
+  id: string,
+  input: {
+    ownerLogin: string;
+    ownerPasswordHash: string;
+    totpSecret?: string | null;
+    ownerEmail?: string | null;
+  },
+): Promise<FeedExchanger | null> {
+  const ownerLogin = input.ownerLogin.trim().toLowerCase();
+  const db = getDb();
+
+  const taken = await db
+    .select({ id: exchangers.id })
+    .from(exchangers)
+    .where(and(eq(exchangers.ownerLogin, ownerLogin), ne(exchangers.id, id)))
+    .limit(1);
+  if (taken.length) throw new Error("OWNER_LOGIN_TAKEN");
+
+  const patch: {
+    ownerLogin: string;
+    ownerPasswordHash: string;
+    ownerEmail?: string;
+    ownerTotpSecret?: string;
+    ownerTotpEnabled?: boolean;
+  } = {
+    ownerLogin,
+    ownerPasswordHash: input.ownerPasswordHash,
+  };
+  if (input.ownerEmail) {
+    patch.ownerEmail = input.ownerEmail.trim().toLowerCase();
+  }
+  if (input.totpSecret) {
+    patch.ownerTotpSecret = input.totpSecret;
+    patch.ownerTotpEnabled = true;
+  }
+
+  const [row] = await db
+    .update(exchangers)
+    .set(patch)
     .where(eq(exchangers.id, id))
     .returning();
   return row ? mapExchanger(row) : null;
