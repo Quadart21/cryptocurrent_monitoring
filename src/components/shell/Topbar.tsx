@@ -7,13 +7,19 @@ import { GlobalSearch } from "@/components/shell/GlobalSearch";
 import { IconSpreadNav } from "@/components/shell/IconSpreadNav";
 import { MobileNav } from "@/components/shell/MobileNav";
 
-export function Topbar({ brandLogoUrl }: { brandLogoUrl?: string | null }) {
+export function Topbar({
+  brandLogoUrl,
+  apiEnabled = true,
+}: {
+  brandLogoUrl?: string | null;
+  apiEnabled?: boolean;
+}) {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-bg-elevated/95 pt-[env(safe-area-inset-top,0px)] backdrop-blur-md">
       <div className="mx-auto flex max-w-[1400px] flex-col">
         <div className="grid h-14 min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-3 sm:h-16 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-2 justify-self-start">
-            <MobileNav brandLogoUrl={brandLogoUrl} />
+            <MobileNav brandLogoUrl={brandLogoUrl} apiEnabled={apiEnabled} />
             <Link
               href="/"
               className="flex min-w-0 shrink items-center gap-2 sm:gap-2.5"
@@ -31,7 +37,7 @@ export function Topbar({ brandLogoUrl }: { brandLogoUrl?: string | null }) {
           </div>
 
           <div className="hidden min-w-0 justify-self-center px-1 lg:block">
-            <IconSpreadNav />
+            <IconSpreadNav apiEnabled={apiEnabled} />
           </div>
 
           <div className="flex min-w-0 items-center justify-end gap-1.5 justify-self-end sm:gap-3">

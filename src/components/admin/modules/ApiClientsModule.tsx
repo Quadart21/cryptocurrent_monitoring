@@ -28,11 +28,13 @@ const TABS = [
 ] as const;
 
 export function ApiClientsModule() {
-  const { busy, setBusy, refresh } = useAdmin();
+  const { busy, setBusy, refresh, can } = useAdmin();
   const [clients, setClients] = useState<ClientRow[]>([]);
+  const [apiEnabled, setApiEnabledState] = useState(true);
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("pending");
   const [error, setError] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
+  const canWrite = can("api_clients.write");
 
   const load = useCallback(async () => {
     const res = await fetch("/api/admin/api-clients");
@@ -40,8 +42,12 @@ export function ApiClientsModule() {
       setError("Не удалось загрузить заявки");
       return;
     }
-    const data = (await res.json()) as { clients: ClientRow[] };
+    const data = (await res.json()) as {
+      clients: ClientRow[];
+      apiEnabled?: boolean;
+    };
     setClients(data.clients);
+    setApiEnabledState(data.apiEnabled !== false);
     setError(null);
   }, []);
 
@@ -53,6 +59,33 @@ export function ApiClientsModule() {
     if (tab === "all") return clients;
     return clients.filter((c) => c.status === tab);
   }, [clients, tab]);
+
+  async function toggleApi(enabled: boolean) {
+    if (!canWrite) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/api-clients", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "setEnabled", enabled }),
+      });
+      const body = (await res.json()) as {
+        error?: string;
+        apiEnabled?: boolean;
+      };
+      if (!res.ok) {
+        setError(body.error ?? "Не удалось сохранить");
+        return;
+      }
+      setApiEnabledState(body.apiEnabled !== false);
+      await refresh();
+    } catch {
+      setError("Сеть недоступна");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function act(
     id: string,
@@ -96,6 +129,33 @@ export function ApiClientsModule() {
           {error}
         </p>
       ) : null}
+
+      <AdminSection title="Публичный API">
+        <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-ink">
+              {apiEnabled ? "API включён" : "API выключен"}
+            </p>
+            <p className="mt-1 text-sm text-ink-muted">
+              Выключает /v2, страницу /api-docs, приём заявок и ссылки API в
+              меню и футере. Выданные ключи сохраняются, но запросы получают
+              503.
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={busy || !canWrite}
+            onClick={() => void toggleApi(!apiEnabled)}
+            className={`shrink-0 rounded-xl px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50 ${
+              apiEnabled
+                ? "bg-red-600 hover:bg-red-700"
+                : "bg-emerald-600 hover:bg-emerald-700"
+            }`}
+          >
+            {apiEnabled ? "Отключить API" : "Включить API"}
+          </button>
+        </div>
+      </AdminSection>
 
       <div className="flex flex-wrap gap-2">
         {TABS.map((t) => (
@@ -172,7 +232,7 @@ export function ApiClientsModule() {
                   {c.status === "pending" || c.status === "rejected" ? (
                     <button
                       type="button"
-                      disabled={busy}
+                      disabled={busy || !canWrite}
                       onClick={() => void act(c.id, "approve")}
                       className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
                     >
@@ -182,7 +242,7 @@ export function ApiClientsModule() {
                   {c.status === "pending" ? (
                     <button
                       type="button"
-                      disabled={busy}
+                      disabled={busy || !canWrite}
                       onClick={() => void act(c.id, "reject")}
                       className="rounded-lg bg-bg-soft px-3 py-2 text-xs font-semibold text-ink disabled:opacity-50"
                     >
@@ -192,7 +252,7 @@ export function ApiClientsModule() {
                   {c.status === "approved" ? (
                     <button
                       type="button"
-                      disabled={busy}
+                      disabled={busy || !canWrite}
                       onClick={() => void act(c.id, "revoke")}
                       className="rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
                     >

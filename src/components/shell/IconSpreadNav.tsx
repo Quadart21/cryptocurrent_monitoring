@@ -3,18 +3,23 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { SITE_NAV, isNavActive } from "@/components/shell/nav";
+import { isNavActive, publicSiteNav, type NavItem } from "@/components/shell/nav";
 import { NavIcon } from "@/components/shell/NavIcon";
 
 /** How far neighbors move away — capped so we don't collide with logo/search. */
 const SPREAD_PX = 10;
 
-export function IconSpreadNav() {
+export function IconSpreadNav({
+  apiEnabled = true,
+}: {
+  apiEnabled?: boolean;
+}) {
   const pathname = usePathname();
   const [hovered, setHovered] = useState<string | null>(null);
+  const items: NavItem[] = publicSiteNav(apiEnabled);
 
   const hoveredIndex = hovered
-    ? SITE_NAV.findIndex((item) => item.href === hovered)
+    ? items.findIndex((item) => item.href === hovered)
     : -1;
 
   return (
@@ -24,7 +29,7 @@ export function IconSpreadNav() {
       onMouseLeave={() => setHovered(null)}
     >
       <ul className="flex items-center justify-center gap-0.5">
-        {SITE_NAV.map((item, index) => {
+        {items.map((item, index) => {
           const active = isNavActive(pathname, item.href);
           const isOpen = hovered === item.href;
           let shift = 0;

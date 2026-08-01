@@ -5,6 +5,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db/index";
 import { apiClients, type ApiClientStatus } from "@/db/schema";
 import { rateLimit } from "@/lib/security/rate-limit";
+import { getApiEnabled } from "@/lib/public-api/settings";
 
 export type ApiClientRow = {
   id: string;
@@ -228,6 +229,12 @@ export async function withApiAuth(
   apiKey: string,
   handler: (client: ApiClientRow) => Promise<Response> | Response,
 ): Promise<Response> {
+  if (!(await getApiEnabled())) {
+    return Response.json(
+      { error: "API is disabled" },
+      { status: 503, headers: { "Retry-After": "3600" } },
+    );
+  }
   const auth = await authenticateApiKey(apiKey);
   if (!auth.ok) return auth.response;
   return handler(auth.client);

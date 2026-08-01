@@ -418,6 +418,8 @@ export const appMeta = pgTable("app_meta", {
   id: integer("id").primaryKey().default(1),
   lastGlobalSyncAt: text("last_global_sync_at"),
   seededAt: timestamp("seeded_at", { withTimezone: true }),
+  /** Master switch for public /v2 API, docs, and key applications. */
+  apiEnabled: boolean("api_enabled").notNull().default(true),
 });
 
 /** Runtime email settings (from/name can override env). */

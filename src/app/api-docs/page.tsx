@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { ApiAccessForm } from "@/components/ApiAccessForm";
 import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
+import { getApiEnabled } from "@/lib/public-api/settings";
 
 export const metadata: Metadata = {
   title: "API курсов",
@@ -30,7 +32,11 @@ const ENDPOINTS = [
   },
 ];
 
-export default function ApiDocsPage() {
+export default async function ApiDocsPage() {
+  if (!(await getApiEnabled())) {
+    notFound();
+  }
+
   return (
     <div className="mx-auto max-w-3xl space-y-10">
       <Breadcrumbs

@@ -5,17 +5,20 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { BrandMark } from "@/components/BrandMark";
-import { SITE_NAV, isNavActive } from "@/components/shell/nav";
+import { isNavActive, publicSiteNav } from "@/components/shell/nav";
 import { NavIcon } from "@/components/shell/NavIcon";
 
 export function MobileNav({
   brandLogoUrl,
+  apiEnabled = true,
 }: {
   brandLogoUrl?: string | null;
+  apiEnabled?: boolean;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const items = publicSiteNav(apiEnabled);
 
   useEffect(() => {
     setMounted(true);
@@ -76,7 +79,7 @@ export function MobileNav({
               </div>
 
               <nav className="flex-1 space-y-1 overflow-y-auto overscroll-contain p-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
-                {SITE_NAV.map((item) => {
+                {items.map((item) => {
                   const active = isNavActive(pathname, item.href);
                   return (
                     <Link

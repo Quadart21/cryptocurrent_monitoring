@@ -8,10 +8,12 @@ export function ConditionalShell({
   children,
   initialAds = [],
   brandLogoUrl,
+  apiEnabled = true,
 }: {
   children: React.ReactNode;
   initialAds?: PublicAd[];
   brandLogoUrl?: string | null;
+  apiEnabled?: boolean;
 }) {
   const pathname = usePathname();
   if (
@@ -23,7 +25,11 @@ export function ConditionalShell({
     return <>{children}</>;
   }
   return (
-    <AppShell initialAds={initialAds} brandLogoUrl={brandLogoUrl}>
+    <AppShell
+      initialAds={initialAds}
+      brandLogoUrl={brandLogoUrl}
+      apiEnabled={apiEnabled}
+    >
       {children}
     </AppShell>
   );

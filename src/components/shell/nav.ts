@@ -68,3 +68,10 @@ export function isNavActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
+
+/** Public top/footer nav; hide API entry when the feature is off. */
+export function publicSiteNav(apiEnabled = true): NavItem[] {
+  if (apiEnabled) return SITE_NAV;
+  return SITE_NAV.filter((item) => item.href !== "/api-docs");
+}
+

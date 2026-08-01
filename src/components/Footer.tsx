@@ -1,7 +1,21 @@
 import Link from "next/link";
 import { BrandMark } from "@/components/BrandMark";
 
-export function Footer({ brandLogoUrl }: { brandLogoUrl?: string | null }) {
+export function Footer({
+  brandLogoUrl,
+  apiEnabled = true,
+}: {
+  brandLogoUrl?: string | null;
+  apiEnabled?: boolean;
+}) {
+  const partnerLinks = [
+    { href: "/advertise", label: "Реклама" },
+    ...(apiEnabled ? [{ href: "/api-docs", label: "API" }] : []),
+    { href: "/partners", label: "Партнёрам" },
+    { href: "/apply", label: "Добавить обменник" },
+    { href: "/cabinet", label: "Кабинет" },
+  ];
+
   return (
     <footer className="mt-auto border-t border-line bg-bg-elevated">
       <div className="mx-auto flex max-w-[1400px] flex-col gap-8 px-3 py-8 sm:px-6 sm:py-10 lg:flex-row lg:items-start lg:justify-between lg:px-8">
@@ -25,16 +39,7 @@ export function Footer({ brandLogoUrl }: { brandLogoUrl?: string | null }) {
               { href: "/blacklist", label: "Чёрный список" },
             ]}
           />
-          <FooterCol
-            title="Партнёрам"
-            links={[
-              { href: "/advertise", label: "Реклама" },
-              { href: "/api-docs", label: "API" },
-              { href: "/partners", label: "Партнёрам" },
-              { href: "/apply", label: "Добавить обменник" },
-              { href: "/cabinet", label: "Кабинет" },
-            ]}
-          />
+          <FooterCol title="Партнёрам" links={partnerLinks} />
           <FooterCol
             title="Документы"
             links={[

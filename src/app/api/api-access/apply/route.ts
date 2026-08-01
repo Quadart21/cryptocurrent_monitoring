@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createApiClientApplication } from "@/lib/public-api/auth";
+import { getApiEnabled } from "@/lib/public-api/settings";
 import { clientIp, rateLimit } from "@/lib/security/rate-limit";
 import { rateLimitedResponse } from "@/lib/security/request";
 import { verifyTurnstileToken } from "@/lib/turnstile";
@@ -11,6 +12,13 @@ function isEmail(value: string): boolean {
 }
 
 export async function POST(request: Request) {
+  if (!(await getApiEnabled())) {
+    return NextResponse.json(
+      { error: "Приём заявок на API временно отключён" },
+      { status: 403 },
+    );
+  }
+
   const limited = rateLimit(
     `api-access-apply:${clientIp(request)}`,
     5,

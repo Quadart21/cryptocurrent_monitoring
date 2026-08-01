@@ -8,20 +8,22 @@ export function AppShell({
   children,
   initialAds = [],
   brandLogoUrl,
+  apiEnabled = true,
 }: {
   children: React.ReactNode;
   initialAds?: PublicAd[];
   brandLogoUrl?: string | null;
+  apiEnabled?: boolean;
 }) {
   return (
     <div className="mobile-shell-pad relative z-10 flex min-h-screen flex-col overflow-x-clip">
-      <Topbar brandLogoUrl={brandLogoUrl} />
+      <Topbar brandLogoUrl={brandLogoUrl} apiEnabled={apiEnabled} />
       <SiteAdsChrome initialAds={initialAds}>
         <div className="mx-auto w-full max-w-[1400px] flex-1 px-3 py-4 sm:px-6 sm:py-7 lg:px-8">
           {children}
         </div>
       </SiteAdsChrome>
-      <Footer brandLogoUrl={brandLogoUrl} />
+      <Footer brandLogoUrl={brandLogoUrl} apiEnabled={apiEnabled} />
       <MobileBottomNav />
     </div>
   );

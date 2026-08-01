@@ -6,6 +6,7 @@ import {
   listApiClients,
   setApiClientStatus,
 } from "@/lib/public-api/auth";
+import { getApiEnabled, setApiEnabled } from "@/lib/public-api/settings";
 import { getSeoSettings } from "@/lib/store";
 
 export const runtime = "nodejs";
@@ -14,8 +15,12 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const denied = await assertAdminResource("api_clients", "GET");
   if (denied) return denied;
-  const clients = await listApiClients();
+  const [clients, apiEnabled] = await Promise.all([
+    listApiClients(),
+    getApiEnabled(),
+  ]);
   return NextResponse.json({
+    apiEnabled,
     clients: clients.map(({ keyHash: _h, ...c }) => c),
   });
 }
@@ -26,9 +31,21 @@ export async function PATCH(request: Request) {
 
   const body = (await request.json()) as {
     id?: string;
-    action?: "approve" | "reject" | "revoke" | "pending";
+    action?: "approve" | "reject" | "revoke" | "pending" | "setEnabled";
+    enabled?: boolean;
     adminNote?: string;
   };
+
+  if (body.action === "setEnabled") {
+    if (typeof body.enabled !== "boolean") {
+      return NextResponse.json(
+        { error: "enabled boolean required" },
+        { status: 400 },
+      );
+    }
+    const apiEnabled = await setApiEnabled(body.enabled);
+    return NextResponse.json({ apiEnabled });
+  }
 
   if (!body.id || !body.action) {
     return NextResponse.json(
@@ -38,7 +55,9 @@ export async function PATCH(request: Request) {
   }
 
   const note =
-    body.adminNote !== undefined ? String(body.adminNote).slice(0, 2000) : undefined;
+    body.adminNote !== undefined
+      ? String(body.adminNote).slice(0, 2000)
+      : undefined;
 
   if (body.action === "approve") {
     const result = await approveApiClient(body.id, note);
