@@ -1,6 +1,7 @@
 "use client";
 
 import Script from "next/script";
+import { preconnect, prefetchDNS } from "react-dom";
 import {
   forwardRef,
   useCallback,
@@ -48,6 +49,11 @@ export const TurnstileWidget = forwardRef<
   { action = "owner-login", onToken, className },
   ref,
 ) {
+  if (SITE_KEY) {
+    preconnect("https://challenges.cloudflare.com");
+    prefetchDNS("https://challenges.cloudflare.com");
+  }
+
   const { theme } = useTheme();
   const reactId = useId().replace(/:/g, "");
   const containerId = `cf-turnstile-${reactId}`;

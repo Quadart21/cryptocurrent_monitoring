@@ -6,7 +6,7 @@ import { ConditionalShell } from "@/components/shell/ConditionalShell";
 import { ConsentProvider } from "@/components/consent/ConsentProvider";
 import { ConsentAwareAnalytics } from "@/components/consent/ConsentAwareAnalytics";
 import { CookieBanner } from "@/components/consent/CookieBanner";
-import { AnalyticsScripts, YandexMetrikaSnippet } from "@/components/seo/AnalyticsScripts";
+import { YandexMetrikaSnippet } from "@/components/seo/AnalyticsScripts";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { getOrganizationJsonLd, getRootMetadata } from "@/lib/seo";
 import { buildWebSiteJsonLd } from "@/lib/seo-jsonld";
@@ -55,6 +55,9 @@ export default async function RootLayout({
   const initialAds = await getPublicAds();
   const brandLogoUrl = await getBrandLogoUrl();
   const apiEnabled = await getApiEnabled();
+  const hasYandex = Boolean(seo.yandexMetricaId.trim());
+  const hasGoogle =
+    Boolean(seo.googleAnalyticsId.trim()) || Boolean(seo.gtmId.trim());
 
   return (
     <html
@@ -62,6 +65,30 @@ export default async function RootLayout({
       className={`${manrope.variable} ${unbounded.variable} dark h-full antialiased`}
       suppressHydrationWarning
     >
+      <head>
+        {/* Early connections for third-party analytics (Lighthouse: uses-rel-preconnect). */}
+        {hasYandex ? (
+          <>
+            <link rel="preconnect" href="https://mc.yandex.ru" />
+            <link rel="dns-prefetch" href="https://mc.yandex.ru" />
+          </>
+        ) : null}
+        {hasGoogle ? (
+          <>
+            <link rel="preconnect" href="https://www.googletagmanager.com" />
+            <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+            {seo.googleAnalyticsId.trim() ? (
+              <>
+                <link rel="preconnect" href="https://www.google-analytics.com" />
+                <link
+                  rel="dns-prefetch"
+                  href="https://www.google-analytics.com"
+                />
+              </>
+            ) : null}
+          </>
+        ) : null}
+      </head>
       <body className="min-h-full font-sans text-ink">
         <Script id="gapsnap-theme-init" strategy="beforeInteractive">
           {themeInit}
