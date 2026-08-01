@@ -25,7 +25,7 @@ export const DEFAULT_EMAIL_SETTINGS: EmailSettings = {
 const p = (html: string, extraStyle = "") =>
   `<p style="margin:0 0 16px${extraStyle ? `;${extraStyle}` : ""}">${html}</p>`;
 const muted = (html: string) =>
-  p(html, "color:#6a6578;font-size:14px;margin:0 0 22px");
+  p(html, "color:#6a6578;font-size:14px;margin:0");
 
 export const DEFAULT_EMAIL_TEMPLATES: EmailTemplate[] = [
   {
@@ -52,7 +52,8 @@ export const DEFAULT_EMAIL_TEMPLATES: EmailTemplate[] = [
       ].join("\n              "),
       ctaHref: "{{confirmUrl}}",
       ctaAlt: "Подтвердить отзыв",
-      afterCta: `<p style="margin:0;font-size:12px;color:#6a6578;word-break:break-all">Или откройте ссылку:<br/><a href="{{confirmUrl}}" style="color:#6d28d9">{{confirmUrl}}</a></p>`,
+      ctaKind: "action",
+      afterCta: `<p style="margin:0;font-size:12px;color:#6a6578;word-break:break-all;max-width:420px">Или откройте ссылку:<br/><a href="{{confirmUrl}}" style="color:#6d28d9">{{confirmUrl}}</a></p>`,
     }),
     enabled: true,
     updatedAt: NOW,
@@ -93,11 +94,10 @@ otpauth: {{totpUri}}
         `<p style="margin:0 0 8px">Секрет: <code>{{totpSecret}}</code></p>`,
         `<p style="margin:0 0 16px;font-size:13px;color:#6a6578;word-break:break-all">{{totpUri}}</p>`,
         `<h3 style="margin:0 0 8px;font-size:16px;color:#17151f">Баннер GapSnap</h3>`,
-        p("{{bannerHint}}", "margin:0 0 22px"),
+        p("{{bannerHint}}"),
       ].join("\n              "),
       ctaHref: "{{cabinetUrl}}",
       ctaAlt: "Открыть кабинет",
-      afterCta: `<a href="mailto:support@gapsnap.org" style="color:#6d28d9;text-decoration:none;font-weight:600;font-size:14px">Написать нам →</a>`,
     }),
     enabled: true,
     updatedAt: NOW,
@@ -131,6 +131,7 @@ otpauth: {{totpUri}}
       ].join("\n              "),
       ctaHref: "{{cabinetUrl}}",
       ctaAlt: "Ответить в кабинете",
+      ctaKind: "action",
     }),
     enabled: true,
     updatedAt: NOW,
@@ -170,6 +171,7 @@ HTML для вставки:
       ].join("\n              "),
       ctaHref: "{{cabinetUrl}}",
       ctaAlt: "Открыть кабинет",
+      ctaKind: "action",
     }),
     enabled: true,
     updatedAt: NOW,
@@ -211,7 +213,7 @@ HTML для вставки:
       ].join("\n              "),
       ctaHref: "{{cabinetUrl}}",
       ctaAlt: "Открыть кабинет",
-      afterCta: `<a href="mailto:support@gapsnap.org" style="color:#6d28d9;text-decoration:none;font-weight:600;font-size:14px">Написать в поддержку →</a>`,
+      ctaKind: "action",
     }),
     enabled: true,
     updatedAt: NOW,
@@ -242,6 +244,7 @@ HTML для вставки:
       ].join("\n              "),
       ctaHref: "{{replyUrl}}",
       ctaAlt: "Ответить на реакцию",
+      ctaKind: "action",
     }),
     enabled: true,
     updatedAt: NOW,
@@ -270,6 +273,7 @@ HTML для вставки:
       ].join("\n              "),
       ctaHref: "{{cabinetUrl}}",
       ctaAlt: "Ответить в кабинете",
+      ctaKind: "action",
     }),
     enabled: true,
     updatedAt: NOW,
@@ -298,7 +302,8 @@ HTML для вставки:
       ].join("\n              "),
       ctaHref: "{{confirmUrl}}",
       ctaAlt: "Подтвердить жалобу",
-      afterCta: `<p style="margin:0;font-size:12px;color:#6a6578;word-break:break-all">Или откройте ссылку:<br/><a href="{{confirmUrl}}" style="color:#6d28d9">{{confirmUrl}}</a></p>`,
+      ctaKind: "action",
+      afterCta: `<p style="margin:0;font-size:12px;color:#6a6578;word-break:break-all;max-width:420px">Или откройте ссылку:<br/><a href="{{confirmUrl}}" style="color:#6d28d9">{{confirmUrl}}</a></p>`,
     }),
     enabled: true,
     updatedAt: NOW,
@@ -334,6 +339,7 @@ HTML для вставки:
       ].join("\n              "),
       ctaHref: "{{docsUrl}}",
       ctaAlt: "Документация API",
+      ctaKind: "action",
     }),
     enabled: true,
     updatedAt: NOW,

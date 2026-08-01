@@ -1,17 +1,17 @@
 /** Shared GapSnap transactional / broadcast email chrome. */
 
-export const EMAIL_LAYOUT_VERSION = "v1";
+export const EMAIL_LAYOUT_VERSION = "v2";
 
-export const EMAIL_BANNER_SRC =
-  "https://i.ibb.co/x8z1jNgY/6-20260802011523.png";
-export const EMAIL_CTA_BTN_SRC = "https://i.ibb.co/CKYL0CTg/2.png";
+/** Prefer same-origin assets after deploy; ibb kept as fallback in older sends. */
+export const EMAIL_BANNER_SRC = "https://gapsnap.org/email/banner.png";
+export const EMAIL_CTA_BTN_SRC = "https://gapsnap.org/email/cta-dark.png";
 export const EMAIL_DEFAULT_SITE_URL = "https://gapsnap.org";
 export const EMAIL_SUPPORT = "support@gapsnap.org";
 
 const MARKER = `data-gapsnap-email="${EMAIL_LAYOUT_VERSION}"`;
 
 export function hasEmailLayout(html: string): boolean {
-  return html.includes(`data-gapsnap-email=`);
+  return html.includes(`data-gapsnap-email="${EMAIL_LAYOUT_VERSION}"`);
 }
 
 export function emailHighlight(
@@ -41,36 +41,53 @@ export type WrapEmailOptions = {
   /** CTA button href (may include {{placeholders}}). */
   ctaHref?: string;
   ctaAlt?: string;
-  /** Extra line under the button (e.g. mailto). */
+  /**
+   * `brand` — картинка-кнопка GapSnap.
+   * `action` — текстовая CTA (подтвердить, открыть кабинет…).
+   */
+  ctaKind?: "brand" | "action";
+  /** Extra line under the button (e.g. mailto / raw URL). */
   afterCta?: string;
   siteUrl?: string;
   siteLabel?: string;
   supportEmail?: string;
 };
 
-/** Full branded envelope: banner, body, image CTA, footer. */
+/** Full branded envelope: banner, body, CTA, footer. */
 export function wrapEmailHtml(opts: WrapEmailOptions): string {
   const siteUrl = opts.siteUrl ?? "{{siteUrl}}";
   const siteLabel = opts.siteLabel ?? "gapsnap.org";
   const support = opts.supportEmail ?? EMAIL_SUPPORT;
   const ctaHref = opts.ctaHref?.trim();
   const ctaAlt = opts.ctaAlt ?? "Открыть GapSnap";
+  const ctaKind = opts.ctaKind ?? "brand";
 
-  const ctaBlock = ctaHref
-    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 8px">
-                <tr>
-                  <td>
-                    <a href="${ctaHref}" target="_blank" style="display:inline-block;line-height:0;text-decoration:none;border:0">
-                      <img src="${EMAIL_CTA_BTN_SRC}" alt="${ctaAlt}" width="220" style="display:block;width:220px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none" />
-                    </a>
-                  </td>
-                </tr>
-              </table>`
+  const afterInner = opts.afterCta?.trim()
+    ? `<div style="margin:14px 0 0;font-size:12px;line-height:1.45;color:#6a6578">${opts.afterCta}</div>`
     : "";
 
-  const after = opts.afterCta?.trim()
-    ? `<div style="margin:12px 0 0">${opts.afterCta}</div>`
-    : "";
+  const ctaControl =
+    ctaKind === "action"
+      ? `<a href="${ctaHref}" target="_blank" style="display:inline-block;padding:14px 28px;background:#16141f;color:#ffffff;border-radius:999px;text-decoration:none;font-weight:700;font-size:15px;line-height:1.2;border:0;outline:none">${ctaAlt}</a>`
+      : `<a href="${ctaHref}" target="_blank" style="display:inline-block;line-height:0;text-decoration:none;border:0;outline:none">
+                <img src="${EMAIL_CTA_BTN_SRC}" alt="${ctaAlt}" width="176" height="62" style="display:block;width:176px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none" />
+              </a>`;
+
+  const ctaBand = ctaHref
+    ? `<tr>
+            <td align="center" style="padding:4px 32px 30px;background:#ffffff">
+              <div style="height:1px;line-height:1px;font-size:1px;background:#e2e0ea;margin:0 0 24px">&nbsp;</div>
+              ${ctaControl}
+              ${afterInner}
+            </td>
+          </tr>`
+    : opts.afterCta?.trim()
+      ? `<tr>
+            <td align="center" style="padding:0 32px 28px;background:#ffffff">
+              ${afterInner}
+            </td>
+          </tr>`
+      : "";
 
   return `<div ${MARKER} style="margin:0;padding:0;background:#f6f5f8;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif">
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f6f5f8;padding:28px 12px">
@@ -78,17 +95,16 @@ export function wrapEmailHtml(opts: WrapEmailOptions): string {
       <td align="center">
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="560" style="max-width:560px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e2e0ea">
           <tr>
-            <td style="padding:0;line-height:0;font-size:0">
+            <td style="padding:0;line-height:0;font-size:0;background:#0d0c12">
               <img src="${EMAIL_BANNER_SRC}" alt="GapSnap — мониторинг обменников" width="560" style="display:block;width:100%;max-width:560px;height:auto;border:0;outline:none;text-decoration:none" />
             </td>
           </tr>
           <tr>
-            <td style="padding:32px;color:#17151f;font-size:15px;line-height:1.6">
+            <td style="padding:32px 32px 28px;color:#17151f;font-size:15px;line-height:1.6">
               ${opts.body}
-              ${ctaBlock}
-              ${after}
             </td>
           </tr>
+          ${ctaBand}
           <tr>
             <td style="padding:18px 32px 24px;border-top:1px solid #e2e0ea;background:#eeeef3">
               <p style="margin:0;font-size:13px;line-height:1.5;color:#6a6578">
@@ -115,16 +131,15 @@ export function defaultComposeHtml(kind: "compose" | "broadcast"): string {
     kind === "broadcast"
       ? `<p style="margin:0 0 16px">Здравствуйте!</p>
               <p style="margin:0 0 16px">Новости <strong style="color:#6d28d9">GapSnap</strong>.</p>
-              <p style="margin:0 0 22px;color:#6a6578">Кратко расскажем, что изменилось, и чем это полезно вам.</p>`
+              <p style="margin:0;color:#6a6578">Кратко расскажем, что изменилось, и чем это полезно вам.</p>`
       : `<p style="margin:0 0 16px">Здравствуйте!</p>
               <p style="margin:0 0 16px">Сообщение от <strong style="color:#6d28d9">GapSnap</strong>.</p>
-              <p style="margin:0 0 22px;color:#6a6578">Если появятся вопросы — мы на связи и с радостью поможем.</p>`;
+              <p style="margin:0;color:#6a6578">Если появятся вопросы — мы на связи и с радостью поможем.</p>`;
 
   return wrapEmailHtml({
     body: intro,
     ctaHref: EMAIL_DEFAULT_SITE_URL,
     ctaAlt: "Открыть GapSnap",
-    afterCta: `<a href="mailto:${EMAIL_SUPPORT}" style="color:#6d28d9;text-decoration:none;font-weight:600;font-size:14px">Написать нам →</a>`,
     siteUrl: EMAIL_DEFAULT_SITE_URL,
     siteLabel: "gapsnap.org",
   });
