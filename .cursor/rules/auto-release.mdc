@@ -1,9 +1,9 @@
 ---
-description: After meaningful product changes, bump version, commit, push, and GitHub release without waiting for a reminder.
+description: After meaningful product changes, bump version, commit, push, GitHub release, and deploy to production without waiting for a reminder.
 alwaysApply: true
 ---
 
-# Auto commit, push, and release
+# Auto commit, push, release, and deploy
 
 When finishing a meaningful change set for GapSnap (features, fixes, migrations, admin/UX that should hit production):
 
@@ -12,8 +12,15 @@ When finishing a meaningful change set for GapSnap (features, fixes, migrations,
 3. Create annotated tag `vX.Y.Z` matching the version.
 4. Push `main` and tags to `origin`.
 5. Create a GitHub release with `gh release create` (title + short notes).
-6. In the reply, give the release URL and the server update command (backup `.env`, `git fetch` + `reset --hard origin/main`, restore `.env`, `npm install`, build/migrate, `pm2 restart gapsnap`).
+6. **Deploy to production yourself** (do not only paste commands for the user):
+   - Host: `root@2.26.89.254`
+   - Key: `~/.ssh/id_ed25519`
+   - App dir: `/var/www/gapsnap`
+   - Flow: backup `.env` → `git fetch` + `git reset --hard origin/main` → restore `.env` → `npm install` → `npm run build` (and migrate if needed) → `pm2 restart gapsnap`
+   - Prefer writing a remote bash script via `scp` then `ssh … bash /tmp/….sh` (PowerShell heredocs/quoting are fragile).
+   - Confirm online: `pm2 list` and `package.json` version on the server.
+7. In the reply, give the release URL and confirm deploy succeeded (version + pm2 status). Do **not** ask the user to run the server update.
 
-Skip auto-release only for tiny WIP experiments the user explicitly says not to ship, or when secrets would be committed.
+Skip auto-release/deploy only for tiny WIP experiments the user explicitly says not to ship, agent-only docs/rules with no runtime effect (still push if useful), or when secrets would be committed.
 
 Never force-push `main`. Never commit `.env` or credentials.
