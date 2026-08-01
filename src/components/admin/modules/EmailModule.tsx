@@ -18,6 +18,7 @@ import type {
   EmailSettings,
   EmailTemplate,
 } from "@/lib/email/types";
+import { defaultComposeHtml } from "@/lib/email/layout";
 
 type TabId =
   | "overview"
@@ -242,8 +243,8 @@ export function EmailModule() {
 
   const [composeTo, setComposeTo] = useState("");
   const [composeSubject, setComposeSubject] = useState("");
-  const [composeHtml, setComposeHtml] = useState(
-    "<p>Здравствуйте!</p><p>Сообщение от GapSnap.</p>",
+  const [composeHtml, setComposeHtml] = useState(() =>
+    defaultComposeHtml("compose"),
   );
 
   const [contactQ, setContactQ] = useState("");
@@ -254,8 +255,8 @@ export function EmailModule() {
   const [broadcastSegment, setBroadcastSegment] =
     useState<BroadcastSegment>("exchangers");
   const [broadcastSubject, setBroadcastSubject] = useState("");
-  const [broadcastHtml, setBroadcastHtml] = useState(
-    "<p>Здравствуйте!</p><p>Новости GapSnap.</p>",
+  const [broadcastHtml, setBroadcastHtml] = useState(() =>
+    defaultComposeHtml("broadcast"),
   );
 
   const load = useCallback(async () => {

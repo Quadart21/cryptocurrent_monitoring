@@ -1,4 +1,10 @@
 import type { EmailSettings, EmailTemplate } from "@/lib/email/types";
+import {
+  emailCodeBlock,
+  emailHighlight,
+  emailQuote,
+  wrapEmailHtml,
+} from "@/lib/email/layout";
 
 const NOW = "2026-01-01T00:00:00.000Z";
 
@@ -16,6 +22,11 @@ export const DEFAULT_EMAIL_SETTINGS: EmailSettings = {
   updatedAt: NOW,
 };
 
+const p = (html: string, extraStyle = "") =>
+  `<p style="margin:0 0 16px${extraStyle ? `;${extraStyle}` : ""}">${html}</p>`;
+const muted = (html: string) =>
+  p(html, "color:#6a6578;font-size:14px;margin:0 0 22px");
+
 export const DEFAULT_EMAIL_TEMPLATES: EmailTemplate[] = [
   {
     id: "review_confirm",
@@ -28,13 +39,21 @@ export const DEFAULT_EMAIL_TEMPLATES: EmailTemplate[] = [
 
 Заявка: {{orderId}}
 Ссылка действует 24 часа.`,
-    html: `<div style="font-family:system-ui,sans-serif;line-height:1.5;color:#111">
-  <p>Вы оставили отзыв о обменнике <strong>{{exchangerName}}</strong> на {{siteName}}.</p>
-  <p>Заявка: <code>{{orderId}}</code></p>
-  <p><a href="{{confirmUrl}}" style="display:inline-block;padding:12px 18px;background:#0f766e;color:#fff;border-radius:10px;text-decoration:none;font-weight:600">Подтвердить отзыв</a></p>
-  <p style="font-size:13px;color:#555">Или откройте ссылку:<br/><a href="{{confirmUrl}}">{{confirmUrl}}</a></p>
-  <p style="font-size:13px;color:#555">Ссылка действует 24 часа.</p>
-</div>`,
+    html: wrapEmailHtml({
+      body: [
+        p("Здравствуйте!"),
+        p(
+          `Вы оставили отзыв о обменнике <strong>{{exchangerName}}</strong> на <strong style="color:#6d28d9">{{siteName}}</strong>.`,
+        ),
+        emailHighlight(
+          `Заявка: <code style="font-size:13px">{{orderId}}</code><br/>Чтобы отзыв появился на сайте, подтвердите email по кнопке ниже.`,
+        ),
+        muted("Ссылка действует 24 часа. Если вы не оставляли отзыв — просто проигнорируйте письмо."),
+      ].join("\n              "),
+      ctaHref: "{{confirmUrl}}",
+      ctaAlt: "Подтвердить отзыв",
+      afterCta: `<p style="margin:0;font-size:12px;color:#6a6578;word-break:break-all">Или откройте ссылку:<br/><a href="{{confirmUrl}}" style="color:#6d28d9">{{confirmUrl}}</a></p>`,
+    }),
     enabled: true,
     updatedAt: NOW,
   },
@@ -55,21 +74,31 @@ otpauth: {{totpUri}}
 При входе: пароль + код из Authenticator.
 
 {{bannerHint}}`,
-    html: `<div style="font-family:system-ui,sans-serif;line-height:1.5;color:#111;max-width:560px">
-  <p>Ваш обменник <strong>{{exchangerName}}</strong> одобрен на {{siteName}}.</p>
-  <p><a href="{{cabinetUrl}}" style="display:inline-block;padding:12px 18px;background:#0f766e;color:#fff;border-radius:10px;text-decoration:none;font-weight:600">Открыть кабинет</a></p>
-  <h3 style="margin:24px 0 8px;font-size:16px">Данные для входа</h3>
-  <ul>
-    <li>Логин: <code>{{ownerLogin}}</code></li>
-    <li>Временный пароль: <code>{{tempPassword}}</code></li>
-    <li>Адрес: <a href="{{cabinetUrl}}">{{cabinetUrl}}</a></li>
-  </ul>
-  <h3 style="margin:24px 0 8px;font-size:16px">2FA</h3>
-  <p>Секрет: <code>{{totpSecret}}</code></p>
-  <p style="font-size:13px;color:#555;word-break:break-all">{{totpUri}}</p>
-  <h3 style="margin:24px 0 8px;font-size:16px">Баннер GapSnap</h3>
-  <p>{{bannerHint}}</p>
-</div>`,
+    html: wrapEmailHtml({
+      body: [
+        p("Здравствуйте!"),
+        p(
+          `Рады сообщить: обменник <strong>{{exchangerName}}</strong> официально добавлен в мониторинг <strong style="color:#6d28d9">{{siteName}}</strong>.`,
+        ),
+        emailHighlight(
+          `Курсы и направления уже доступны пользователям. Надеемся на долгосрочное и успешное сотрудничество.`,
+        ),
+        `<h3 style="margin:0 0 8px;font-size:16px;color:#17151f">Данные для входа</h3>`,
+        `<ul style="margin:0 0 16px;padding-left:18px;color:#17151f">
+                <li>Логин: <code>{{ownerLogin}}</code></li>
+                <li>Временный пароль: <code>{{tempPassword}}</code></li>
+                <li>Кабинет: <a href="{{cabinetUrl}}" style="color:#6d28d9">{{cabinetUrl}}</a></li>
+              </ul>`,
+        `<h3 style="margin:0 0 8px;font-size:16px;color:#17151f">2FA</h3>`,
+        `<p style="margin:0 0 8px">Секрет: <code>{{totpSecret}}</code></p>`,
+        `<p style="margin:0 0 16px;font-size:13px;color:#6a6578;word-break:break-all">{{totpUri}}</p>`,
+        `<h3 style="margin:0 0 8px;font-size:16px;color:#17151f">Баннер GapSnap</h3>`,
+        p("{{bannerHint}}", "margin:0 0 22px"),
+      ].join("\n              "),
+      ctaHref: "{{cabinetUrl}}",
+      ctaAlt: "Открыть кабинет",
+      afterCta: `<a href="mailto:support@gapsnap.org" style="color:#6d28d9;text-decoration:none;font-weight:600;font-size:14px">Написать нам →</a>`,
+    }),
     enabled: true,
     updatedAt: NOW,
   },
@@ -86,13 +115,23 @@ otpauth: {{totpUri}}
 
 Ответить: {{cabinetUrl}}
 Страница: {{publicUrl}}`,
-    html: `<div style="font-family:system-ui,sans-serif;line-height:1.5;color:#111;max-width:560px">
-  <p>На обменник <strong>{{exchangerName}}</strong> пришёл новый отзыв.</p>
-  <p>Оценка: <strong>{{sentimentLabel}}</strong><br/>Заявка: <code>{{orderId}}</code></p>
-  <blockquote style="margin:16px 0;padding:12px 16px;border-left:3px solid #0f766e;background:#f8fafc">{{reviewText}}</blockquote>
-  <p><a href="{{cabinetUrl}}" style="display:inline-block;padding:12px 18px;background:#0f766e;color:#fff;border-radius:10px;text-decoration:none;font-weight:600">Ответить в кабинете</a></p>
-  <p style="font-size:13px;color:#555"><a href="{{publicUrl}}">{{publicUrl}}</a></p>
-</div>`,
+    html: wrapEmailHtml({
+      body: [
+        p("Здравствуйте!"),
+        p(
+          `На обменник <strong>{{exchangerName}}</strong> пришёл новый отзыв.`,
+        ),
+        emailHighlight(
+          `Оценка: <strong>{{sentimentLabel}}</strong><br/>Заявка: <code>{{orderId}}</code>`,
+        ),
+        emailQuote("{{reviewText}}"),
+        muted(
+          `Страница обменника: <a href="{{publicUrl}}" style="color:#6d28d9">{{publicUrl}}</a>`,
+        ),
+      ].join("\n              "),
+      ctaHref: "{{cabinetUrl}}",
+      ctaAlt: "Ответить в кабинете",
+    }),
     enabled: true,
     updatedAt: NOW,
   },
@@ -113,14 +152,25 @@ HTML для вставки:
 Пропусков подряд: {{misses}}. Если баннер не появится, обменник могут снять с публикации.
 
 — {{siteName}}`,
-    html: `<div style="font-family:system-ui,sans-serif;line-height:1.5;color:#111;max-width:560px">
-  <p>На сайте обменника <strong>{{exchangerName}}</strong> (<a href="{{website}}">{{website}}</a>) мы не нашли кнопку GapSnap.</p>
-  <p>По правилам мониторинга баннер обязателен. Скопируйте код в кабинете и разместите на сайте (обычно в футере).</p>
-  <p><a href="{{cabinetUrl}}" style="display:inline-block;padding:12px 18px;background:#0f766e;color:#fff;border-radius:10px;text-decoration:none;font-weight:600">Открыть кабинет</a></p>
-  <h3 style="margin:24px 0 8px;font-size:16px">HTML для вставки</h3>
-  <pre style="padding:12px;background:#f8fafc;border-radius:10px;overflow:auto;font-size:12px;white-space:pre-wrap">{{bannerHtml}}</pre>
-  <p style="font-size:13px;color:#555">Пропусков подряд: <strong>{{misses}}</strong>. Если баннер не появится, обменник могут снять с публикации на {{siteName}}.</p>
-</div>`,
+    html: wrapEmailHtml({
+      body: [
+        p("Здравствуйте!"),
+        p(
+          `На сайте обменника <strong>{{exchangerName}}</strong> (<a href="{{website}}" style="color:#6d28d9">{{website}}</a>) мы не нашли кнопку GapSnap.`,
+        ),
+        emailHighlight(
+          `По правилам мониторинга баннер обязателен. Скопируйте код в кабинете и разместите на сайте (обычно в футере).`,
+          "warn",
+        ),
+        `<h3 style="margin:0 0 8px;font-size:16px;color:#17151f">HTML для вставки</h3>`,
+        emailCodeBlock("{{bannerHtml}}"),
+        muted(
+          `Пропусков подряд: <strong>{{misses}}</strong>. Если баннер не появится, обменник могут снять с публикации на {{siteName}}.`,
+        ),
+      ].join("\n              "),
+      ctaHref: "{{cabinetUrl}}",
+      ctaAlt: "Открыть кабинет",
+    }),
     enabled: true,
     updatedAt: NOW,
   },
@@ -140,14 +190,29 @@ HTML для вставки:
 Напишите в поддержку после размещения — мы проверим и восстановим карточку.
 
 — {{siteName}}`,
-    html: `<div style="font-family:system-ui,sans-serif;line-height:1.5;color:#111;max-width:560px">
-  <p>Обменник <strong>{{exchangerName}}</strong> снят с публикации на {{siteName}}.</p>
-  <p>Причина: на сайте <a href="{{website}}">{{website}}</a> не найдена кнопка GapSnap.</p>
-  <p>Разместите баннер и напишите в поддержку — мы проверим и восстановим карточку.</p>
-  <p><a href="{{cabinetUrl}}" style="display:inline-block;padding:12px 18px;background:#0f766e;color:#fff;border-radius:10px;text-decoration:none;font-weight:600">Открыть кабинет</a></p>
-  <h3 style="margin:24px 0 8px;font-size:16px">HTML для вставки</h3>
-  <pre style="padding:12px;background:#f8fafc;border-radius:10px;overflow:auto;font-size:12px;white-space:pre-wrap">{{bannerHtml}}</pre>
-</div>`,
+    html: wrapEmailHtml({
+      body: [
+        p("Здравствуйте!"),
+        p(
+          `Обменник <strong>{{exchangerName}}</strong> снят с публикации на <strong style="color:#6d28d9">{{siteName}}</strong>.`,
+        ),
+        emailHighlight(
+          `Причина: на сайте <a href="{{website}}" style="color:#991b1b">{{website}}</a> не найдена кнопка GapSnap.`,
+          "danger",
+        ),
+        p(
+          `Разместите баннер и напишите в поддержку — мы проверим и восстановим карточку.`,
+        ),
+        `<h3 style="margin:0 0 8px;font-size:16px;color:#17151f">HTML для вставки</h3>`,
+        emailCodeBlock("{{bannerHtml}}"),
+        muted(
+          `Если появятся вопросы — мы на связи и поможем вернуть карточку.`,
+        ),
+      ].join("\n              "),
+      ctaHref: "{{cabinetUrl}}",
+      ctaAlt: "Открыть кабинет",
+      afterCta: `<a href="mailto:support@gapsnap.org" style="color:#6d28d9;text-decoration:none;font-weight:600;font-size:14px">Написать в поддержку →</a>`,
+    }),
     enabled: true,
     updatedAt: NOW,
   },
@@ -164,12 +229,20 @@ HTML для вставки:
 Страница: {{publicUrl}}
 
 Ссылка для ответа действует 14 дней.`,
-    html: `<div style="font-family:system-ui,sans-serif;line-height:1.5;color:#111;max-width:560px">
-  <p>По вашему отзыву на <strong>{{exchangerName}}</strong> пришёл ответ (<strong>{{roleLabel}}</strong>).</p>
-  <blockquote style="margin:16px 0;padding:12px 16px;border-left:3px solid #6d28d9;background:#f8fafc">{{replyText}}</blockquote>
-  <p><a href="{{replyUrl}}" style="display:inline-block;padding:12px 18px;background:#6d28d9;color:#fff;border-radius:10px;text-decoration:none;font-weight:600">Ответить на реакцию</a></p>
-  <p style="font-size:13px;color:#555">Ссылка действует 14 дней. Страница обменника: <a href="{{publicUrl}}">{{publicUrl}}</a></p>
-</div>`,
+    html: wrapEmailHtml({
+      body: [
+        p("Здравствуйте!"),
+        p(
+          `По вашему отзыву на <strong>{{exchangerName}}</strong> пришёл ответ (<strong>{{roleLabel}}</strong>).`,
+        ),
+        emailQuote("{{replyText}}"),
+        muted(
+          `Ссылка для ответа действует 14 дней. Страница: <a href="{{publicUrl}}" style="color:#6d28d9">{{publicUrl}}</a>`,
+        ),
+      ].join("\n              "),
+      ctaHref: "{{replyUrl}}",
+      ctaAlt: "Ответить на реакцию",
+    }),
     enabled: true,
     updatedAt: NOW,
   },
@@ -184,12 +257,20 @@ HTML для вставки:
 
 Ответить в кабинете: {{cabinetUrl}}
 Страница: {{publicUrl}}`,
-    html: `<div style="font-family:system-ui,sans-serif;line-height:1.5;color:#111;max-width:560px">
-  <p>Автор отзыва ответил по обменнику <strong>{{exchangerName}}</strong>.</p>
-  <blockquote style="margin:16px 0;padding:12px 16px;border-left:3px solid #0f766e;background:#f8fafc">{{replyText}}</blockquote>
-  <p><a href="{{cabinetUrl}}" style="display:inline-block;padding:12px 18px;background:#0f766e;color:#fff;border-radius:10px;text-decoration:none;font-weight:600">Ответить в кабинете</a></p>
-  <p style="font-size:13px;color:#555"><a href="{{publicUrl}}">{{publicUrl}}</a></p>
-</div>`,
+    html: wrapEmailHtml({
+      body: [
+        p("Здравствуйте!"),
+        p(
+          `Автор отзыва ответил по обменнику <strong>{{exchangerName}}</strong>.`,
+        ),
+        emailQuote("{{replyText}}"),
+        muted(
+          `Страница: <a href="{{publicUrl}}" style="color:#6d28d9">{{publicUrl}}</a>`,
+        ),
+      ].join("\n              "),
+      ctaHref: "{{cabinetUrl}}",
+      ctaAlt: "Ответить в кабинете",
+    }),
     enabled: true,
     updatedAt: NOW,
   },
@@ -203,11 +284,22 @@ HTML для вставки:
 Подтвердите email: {{confirmUrl}}
 
 Ссылка действует 24 часа.`,
-    html: `<div style="font-family:system-ui,sans-serif;line-height:1.5;color:#111;max-width:560px">
-  <p>Вы отправили жалобу на обменник <strong>{{exchangerName}}</strong> на {{siteName}}.</p>
-  <p><a href="{{confirmUrl}}" style="display:inline-block;padding:12px 18px;background:#dc2626;color:#fff;border-radius:10px;text-decoration:none;font-weight:600">Подтвердить жалобу</a></p>
-  <p style="font-size:13px;color:#555">Ссылка действует 24 часа.</p>
-</div>`,
+    html: wrapEmailHtml({
+      body: [
+        p("Здравствуйте!"),
+        p(
+          `Вы отправили жалобу на обменник <strong>{{exchangerName}}</strong> на <strong style="color:#6d28d9">{{siteName}}</strong>.`,
+        ),
+        emailHighlight(
+          `Чтобы жалоба была принята в работу, подтвердите email по кнопке ниже.`,
+          "danger",
+        ),
+        muted("Ссылка действует 24 часа. Если вы не отправляли жалобу — проигнорируйте письмо."),
+      ].join("\n              "),
+      ctaHref: "{{confirmUrl}}",
+      ctaAlt: "Подтвердить жалобу",
+      afterCta: `<p style="margin:0;font-size:12px;color:#6a6578;word-break:break-all">Или откройте ссылку:<br/><a href="{{confirmUrl}}" style="color:#6d28d9">{{confirmUrl}}</a></p>`,
+    }),
     enabled: true,
     updatedAt: NOW,
   },
@@ -227,16 +319,22 @@ HTML для вставки:
 Пример: {{exampleUrl}}
 
 Лимит по умолчанию: 10 запросов в секунду.`,
-    html: `<div style="font-family:system-ui,sans-serif;line-height:1.5;color:#111;max-width:560px">
-  <p>Здравствуйте, <strong>{{clientName}}</strong>!</p>
-  <p>Ваша заявка на доступ к API <strong>{{siteName}}</strong> одобрена.</p>
-  <h3 style="margin:24px 0 8px;font-size:16px">API-ключ</h3>
-  <p style="font-size:13px;color:#555">Сохраните ключ — повторно он не отправляется.</p>
-  <pre style="padding:12px;background:#f8fafc;border-radius:10px;overflow:auto;font-size:13px;word-break:break-all">{{apiKey}}</pre>
-  <p><a href="{{docsUrl}}" style="display:inline-block;padding:12px 18px;background:#0f766e;color:#fff;border-radius:10px;text-decoration:none;font-weight:600">Документация API</a></p>
-  <p style="font-size:13px;color:#555">Пример: <a href="{{exampleUrl}}">{{exampleUrl}}</a></p>
-  <p style="font-size:13px;color:#555">Лимит по умолчанию: 10 запросов в секунду.</p>
-</div>`,
+    html: wrapEmailHtml({
+      body: [
+        p("Здравствуйте, <strong>{{clientName}}</strong>!"),
+        p(
+          `Ваша заявка на доступ к API <strong style="color:#6d28d9">{{siteName}}</strong> одобрена.`,
+        ),
+        `<h3 style="margin:0 0 8px;font-size:16px;color:#17151f">API-ключ</h3>`,
+        muted("Сохраните ключ — повторно он не отправляется."),
+        emailCodeBlock("{{apiKey}}"),
+        muted(
+          `Пример: <a href="{{exampleUrl}}" style="color:#6d28d9">{{exampleUrl}}</a><br/>Лимит по умолчанию: 10 запросов в секунду.`,
+        ),
+      ].join("\n              "),
+      ctaHref: "{{docsUrl}}",
+      ctaAlt: "Документация API",
+    }),
     enabled: true,
     updatedAt: NOW,
   },

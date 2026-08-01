@@ -8,6 +8,7 @@ import {
   DEFAULT_EMAIL_SETTINGS,
   DEFAULT_EMAIL_TEMPLATES,
 } from "@/lib/email/defaults";
+import { hasEmailLayout } from "@/lib/email/layout";
 import type {
   EmailLogRow,
   EmailSettings,
@@ -63,20 +64,37 @@ async function ensureEmailDefaults(): Promise<void> {
     });
   }
 
-  const existing = await db.select({ id: emailTemplates.id }).from(emailTemplates);
-  const have = new Set(existing.map((r) => r.id));
+  const existing = await db.select().from(emailTemplates);
+  const byId = new Map(existing.map((r) => [r.id, r]));
   for (const tpl of DEFAULT_EMAIL_TEMPLATES) {
-    if (have.has(tpl.id)) continue;
-    await db.insert(emailTemplates).values({
-      id: tpl.id,
-      name: tpl.name,
-      description: tpl.description,
-      subject: tpl.subject,
-      html: tpl.html,
-      text: tpl.text,
-      enabled: tpl.enabled,
-      updatedAt: tpl.updatedAt,
-    });
+    const row = byId.get(tpl.id);
+    if (!row) {
+      await db.insert(emailTemplates).values({
+        id: tpl.id,
+        name: tpl.name,
+        description: tpl.description,
+        subject: tpl.subject,
+        html: tpl.html,
+        text: tpl.text,
+        enabled: tpl.enabled,
+        updatedAt: tpl.updatedAt,
+      });
+      continue;
+    }
+    // One-shot brand layout upgrade (skip if already on layout chrome or manually kept).
+    if (!hasEmailLayout(row.html)) {
+      await db
+        .update(emailTemplates)
+        .set({
+          name: tpl.name,
+          description: tpl.description,
+          subject: tpl.subject,
+          html: tpl.html,
+          text: tpl.text,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(emailTemplates.id, tpl.id));
+    }
   }
 }
 
@@ -354,6 +372,7 @@ export async function sendTemplatedEmail(
   const seo = await getSeoSettings();
   const vars = {
     siteName: seo.siteName || "GapSnap",
+    siteUrl: siteBaseUrl(seo.siteUrl),
     ...input.vars,
   };
   const subject = renderTemplate(tpl.subject, vars);

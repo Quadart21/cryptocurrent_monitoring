@@ -63,12 +63,14 @@ export type EmailLogRow = {
 export const EMAIL_TEMPLATE_VARS: Record<string, string[]> = {
   review_confirm: [
     "siteName",
+    "siteUrl",
     "exchangerName",
     "confirmUrl",
     "orderId",
   ],
   owner_approved: [
     "siteName",
+    "siteUrl",
     "exchangerName",
     "ownerLogin",
     "tempPassword",
@@ -78,6 +80,7 @@ export const EMAIL_TEMPLATE_VARS: Record<string, string[]> = {
   ],
   owner_new_review: [
     "siteName",
+    "siteUrl",
     "exchangerName",
     "exchangerSlug",
     "sentimentLabel",
@@ -88,6 +91,7 @@ export const EMAIL_TEMPLATE_VARS: Record<string, string[]> = {
   ],
   owner_banner_missing: [
     "siteName",
+    "siteUrl",
     "exchangerName",
     "website",
     "cabinetUrl",
@@ -96,6 +100,7 @@ export const EMAIL_TEMPLATE_VARS: Record<string, string[]> = {
   ],
   owner_banner_unpublished: [
     "siteName",
+    "siteUrl",
     "exchangerName",
     "website",
     "cabinetUrl",
@@ -103,6 +108,7 @@ export const EMAIL_TEMPLATE_VARS: Record<string, string[]> = {
   ],
   review_owner_replied: [
     "siteName",
+    "siteUrl",
     "exchangerName",
     "replyText",
     "replyUrl",
@@ -111,6 +117,7 @@ export const EMAIL_TEMPLATE_VARS: Record<string, string[]> = {
   ],
   review_author_replied: [
     "siteName",
+    "siteUrl",
     "exchangerName",
     "replyText",
     "cabinetUrl",
@@ -118,11 +125,13 @@ export const EMAIL_TEMPLATE_VARS: Record<string, string[]> = {
   ],
   complaint_confirm: [
     "siteName",
+    "siteUrl",
     "exchangerName",
     "confirmUrl",
   ],
   api_key_approved: [
     "siteName",
+    "siteUrl",
     "clientName",
     "apiKey",
     "docsUrl",
