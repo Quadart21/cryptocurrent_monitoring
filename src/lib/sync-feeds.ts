@@ -8,8 +8,18 @@ import { parseRatesXml, type ParsedRateItem } from "@/lib/xml/parse-rates";
 
 /** Large feeds (e.g. Waybit ~2MB / 8k pairs) need more headroom than a small XML. */
 const FETCH_TIMEOUT_MS = 45_000;
-const POLL_INTERVAL_MS = 60_000;
-const FETCH_CONCURRENCY = 4;
+/** Target freshness: each exchanger XML is re-fetched about once per minute. */
+const POLL_INTERVAL_MS = Math.max(
+  30_000,
+  Number(process.env.FEED_SYNC_INTERVAL_MS) || 60_000,
+);
+const FETCH_CONCURRENCY = Math.max(
+  1,
+  Math.min(16, Number(process.env.FEED_SYNC_CONCURRENCY) || 6),
+);
+/** How often the scheduler looks for exchangers due for refresh. */
+const SCHEDULER_TICK_MS = 5_000;
+const START_DELAY_MS = 1_500;
 const MAX_REDIRECTS = 3;
 const MAX_BODY_BYTES = 12_000_000;
 
@@ -168,6 +178,74 @@ declare global {
     failed: number;
     syncedAt: string;
   }> | null | undefined;
+  // eslint-disable-next-line no-var
+  var __gapsnapFeedInFlightIds: Set<string> | undefined;
+  // eslint-disable-next-line no-var
+  var __gapsnapFeedSchedulerBusy: boolean | undefined;
+}
+
+function inFlightIds(): Set<string> {
+  if (!globalThis.__gapsnapFeedInFlightIds) {
+    globalThis.__gapsnapFeedInFlightIds = new Set();
+  }
+  return globalThis.__gapsnapFeedInFlightIds;
+}
+
+function lastSyncAgeMs(ex: FeedExchanger, now: number): number {
+  if (!ex.lastSyncAt) return Number.POSITIVE_INFINITY;
+  const ts = Date.parse(ex.lastSyncAt);
+  if (!Number.isFinite(ts)) return Number.POSITIVE_INFINITY;
+  return now - ts;
+}
+
+function isDue(ex: FeedExchanger, now: number): boolean {
+  return lastSyncAgeMs(ex, now) >= POLL_INTERVAL_MS;
+}
+
+/**
+ * Continuously refresh exchangers whose last XML sync is older than
+ * POLL_INTERVAL_MS. Writes each result immediately so the board updates
+ * without waiting for a full fleet pass.
+ */
+async function syncDueExchangers(): Promise<void> {
+  if (globalThis.__gapsnapFeedSchedulerBusy) return;
+  if (globalThis.__gapsnapSyncInFlight) return;
+  globalThis.__gapsnapFeedSchedulerBusy = true;
+
+  try {
+    const flying = inFlightIds();
+    const slots = FETCH_CONCURRENCY - flying.size;
+    if (slots <= 0) return;
+
+    const now = Date.now();
+    const exchangers = await listExchangers();
+    const due = exchangers
+      .filter((e) => e.status === "active" || e.status === "error")
+      .filter((e) => !flying.has(e.id) && isDue(e, now))
+      .sort((a, b) => lastSyncAgeMs(b, now) - lastSyncAgeMs(a, now))
+      .slice(0, slots);
+
+    for (const ex of due) {
+      flying.add(ex.id);
+      void (async () => {
+        try {
+          const result = await fetchOne(ex);
+          await replaceExchangerRatesBatch([result]);
+          if (!result.meta.ok) {
+            console.warn(
+              `[gapsnap] feed sync failed for ${ex.slug}: ${result.meta.error}`,
+            );
+          }
+        } catch (error) {
+          console.error(`[gapsnap] feed sync crashed for ${ex.slug}`, error);
+        } finally {
+          flying.delete(ex.id);
+        }
+      })();
+    }
+  } finally {
+    globalThis.__gapsnapFeedSchedulerBusy = false;
+  }
 }
 
 export async function syncExchangerFeed(exchangerId: string): Promise<{
@@ -207,23 +285,29 @@ export async function syncAllFeeds(): Promise<{
     const targets = exchangers.filter(
       (e) => e.status === "active" || e.status === "error",
     );
+    const flying = inFlightIds();
+    for (const t of targets) flying.add(t.id);
 
-    const results = await mapPool(targets, FETCH_CONCURRENCY, fetchOne);
-    await replaceExchangerRatesBatch(results);
+    try {
+      const results = await mapPool(targets, FETCH_CONCURRENCY, fetchOne);
+      await replaceExchangerRatesBatch(results);
 
-    let ok = 0;
-    let failed = 0;
-    for (const r of results) {
-      if (r.meta.ok) ok += 1;
-      else failed += 1;
+      let ok = 0;
+      let failed = 0;
+      for (const r of results) {
+        if (r.meta.ok) ok += 1;
+        else failed += 1;
+      }
+
+      return {
+        total: targets.length,
+        ok,
+        failed,
+        syncedAt: new Date().toISOString(),
+      };
+    } finally {
+      for (const t of targets) flying.delete(t.id);
     }
-
-    return {
-      total: targets.length,
-      ok,
-      failed,
-      syncedAt: new Date().toISOString(),
-    };
   })().finally(() => {
     globalThis.__gapsnapSyncInFlight = null;
   });
@@ -237,15 +321,15 @@ export function startFeedPoller(): void {
   globalThis.__gapsnapPollerStarted = true;
 
   const tick = () => {
-    void syncAllFeeds().catch((error) => {
-      console.error("[gapsnap] feed sync failed", error);
+    void syncDueExchangers().catch((error) => {
+      console.error("[gapsnap] feed scheduler failed", error);
     });
   };
 
-  setTimeout(tick, 1_500);
-  setInterval(tick, POLL_INTERVAL_MS);
+  setTimeout(tick, START_DELAY_MS);
+  setInterval(tick, SCHEDULER_TICK_MS);
 
   console.info(
-    `[gapsnap] feed poller started (every ${POLL_INTERVAL_MS / 1000}s)`,
+    `[gapsnap] feed poller started (per-exchanger every ${POLL_INTERVAL_MS / 1000}s, concurrency ${FETCH_CONCURRENCY}, tick ${SCHEDULER_TICK_MS / 1000}s)`,
   );
 }

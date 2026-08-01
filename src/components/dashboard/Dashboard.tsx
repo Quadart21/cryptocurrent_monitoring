@@ -129,7 +129,7 @@ export function Dashboard({
         }
 
         const ratesRes = await fetch(`/api/rates?${params}`, {
-          next: { revalidate: 60 },
+          cache: "no-store",
         });
 
         if (id !== requestId.current) return;
