@@ -1056,6 +1056,120 @@ export async function addExchangerApplication(input: {
   return mapExchanger(row);
 }
 
+/** Admin: create exchanger without public apply / owner password. */
+export async function createExchangerManual(input: {
+  id?: string;
+  name: string;
+  website: string;
+  exchangeUrlTemplate?: string;
+  feedUrl: string;
+  contact?: string;
+  description?: string;
+  pairCount?: number;
+  status?: "pending" | "active";
+  ownerEmail?: string | null;
+  ownerLogin?: string | null;
+}): Promise<FeedExchanger> {
+  const db = getDb();
+  const name = input.name.trim();
+  const website = input.website.trim();
+  const feedUrl = input.feedUrl.trim();
+  const contact = (input.contact ?? "").trim();
+  const description = (input.description ?? "").trim();
+  const exchangeUrlTemplate = (input.exchangeUrlTemplate ?? "").trim();
+  const status = input.status === "active" ? "active" : "pending";
+  const ownerEmail = input.ownerEmail?.trim().toLowerCase() || null;
+  const ownerLogin = input.ownerLogin?.trim().toLowerCase() || null;
+
+  const slugBase = slugify(name) || "exchanger";
+  let slug = slugBase;
+  let i = 2;
+  const id =
+    input.id ??
+    `ex_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+
+  const existing = await db
+    .select({ slug: exchangers.slug, ownerLogin: exchangers.ownerLogin })
+    .from(exchangers);
+  while (existing.some((e) => e.slug === slug)) {
+    slug = `${slugBase}-${i++}`;
+  }
+  if (
+    ownerLogin &&
+    existing.some((e) => e.ownerLogin && e.ownerLogin === ownerLogin)
+  ) {
+    throw new Error("OWNER_LOGIN_TAKEN");
+  }
+
+  let apiId: number | null = null;
+  if (status === "active") {
+    const [maxRow] = await db
+      .select({ maxId: sql<number>`coalesce(max(${exchangers.apiId}), 0)` })
+      .from(exchangers);
+    apiId = Number(maxRow?.maxId ?? 0) + 1;
+  }
+
+  const now = new Date().toISOString();
+  const [row] = await db
+    .insert(exchangers)
+    .values({
+      id,
+      slug,
+      name,
+      website,
+      exchangeUrlTemplate,
+      feedUrl,
+      contact,
+      description:
+        description ||
+        (status === "active"
+          ? "Добавлен вручную из админки."
+          : "Черновик: добавлен вручную из админки."),
+      status,
+      verified: false,
+      rating: 0,
+      reviews: 0,
+      reviewsPositive: 0,
+      reviewsNegative: 0,
+      ageYears: 1,
+      createdAt: now,
+      approvedAt: status === "active" ? now : null,
+      lastSyncAt: null,
+      lastError: null,
+      pairCount: input.pairCount ?? 0,
+      achievementIds: [],
+      logoFormat: null,
+      logoUpdatedAt: null,
+      logoData: null,
+      traffic: emptyExchangerTraffic() as ExchangerTrafficJson,
+      bannerToken: null,
+      bannerCheck: emptyBannerCheck() as BannerCheckJson,
+      ownerLogin,
+      ownerPasswordHash: null,
+      ownerEmail,
+      ownerTotpSecret: null,
+      ownerTotpEnabled: false,
+      apiId,
+    })
+    .returning();
+
+  if (ownerEmail) {
+    try {
+      const { upsertEmailContact } = await import("@/lib/email/contacts");
+      await upsertEmailContact({
+        email: ownerEmail,
+        source: "exchanger",
+        label: name,
+        exchangerId: id,
+      });
+    } catch {
+      // mailing list is best-effort
+    }
+  }
+
+  return mapExchanger(row);
+}
+
 export async function replaceExchangerRates(
   exchangerId: string,
   items: ParsedRateItem[],

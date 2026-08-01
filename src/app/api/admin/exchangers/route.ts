@@ -7,6 +7,7 @@ import {
   sendOwnerApprovedEmail,
 } from "@/lib/owner-mail";
 import {
+  createExchangerManual,
   deleteExchanger,
   ensureBannerToken,
   getExchangerById,
@@ -16,7 +17,8 @@ import {
   setOwnerCredentials,
   updateExchanger,
 } from "@/lib/store";
-import { syncAllFeeds } from "@/lib/sync-feeds";
+import { assertSafeOutboundUrl } from "@/lib/security/ssrf";
+import { syncAllFeeds, validateFeedUrl } from "@/lib/sync-feeds";
 import {
   generateOwnerTempPassword,
   generateTotpSecret,
@@ -25,6 +27,21 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+function newExchangerId(): string {
+  return `ex_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function toPublicExchanger(
+  ex: Awaited<ReturnType<typeof createExchangerManual>>,
+) {
+  const { ownerPasswordHash: _h, ownerTotpSecret: _t, ...safe } = ex;
+  return {
+    ...safe,
+    hasOwnerPassword: Boolean(_h),
+    ownerTotpEnabled: Boolean(ex.ownerTotpEnabled),
+  };
+}
 
 export async function GET() {
   const denied = await assertAdminResource("exchangers", "GET");
@@ -39,6 +56,155 @@ export async function GET() {
       }),
     ),
   });
+}
+
+/** Manual create from admin (no public apply / owner password required). */
+export async function POST(request: Request) {
+  const denied = await assertAdminResource("exchangers", request.method);
+  if (denied) return denied;
+
+  const body = (await request.json()) as {
+    name?: string;
+    website?: string;
+    exchangeUrlTemplate?: string;
+    feedUrl?: string;
+    contact?: string;
+    description?: string;
+    ownerEmail?: string;
+    ownerLogin?: string;
+    status?: "pending" | "active";
+    /** Skip live XML validation (useful when feed is temporarily down). */
+    skipFeedCheck?: boolean;
+    sync?: boolean;
+  };
+
+  const name = String(body.name ?? "").trim();
+  const website = String(body.website ?? "").trim();
+  const feedUrl = String(body.feedUrl ?? "").trim();
+  const exchangeUrlTemplate = String(body.exchangeUrlTemplate ?? "").trim();
+  const contact = String(body.contact ?? "").trim();
+  const description = String(body.description ?? "").trim();
+  const ownerEmail = String(body.ownerEmail ?? "").trim().toLowerCase();
+  const ownerLogin = String(body.ownerLogin ?? "").trim().toLowerCase();
+  const status = body.status === "active" ? "active" : "pending";
+
+  if (name.length < 2) {
+    return NextResponse.json(
+      { error: "Укажите название обменника" },
+      { status: 400 },
+    );
+  }
+  try {
+    await assertSafeOutboundUrl(website, { allowHttp: true });
+  } catch {
+    return NextResponse.json(
+      { error: "Укажите корректный URL сайта" },
+      { status: 400 },
+    );
+  }
+  const templateError = validateExchangeUrlTemplate(exchangeUrlTemplate);
+  if (templateError) {
+    return NextResponse.json({ error: templateError }, { status: 400 });
+  }
+  if (exchangeUrlTemplate) {
+    try {
+      const sample = exchangeUrlTemplate
+        .replaceAll("{0}", "BTC")
+        .replaceAll("{1}", "USDTTRC20");
+      await assertSafeOutboundUrl(sample, { allowHttp: true });
+    } catch {
+      return NextResponse.json(
+        { error: "Некорректный шаблон ссылки на обмен" },
+        { status: 400 },
+      );
+    }
+  }
+  try {
+    await assertSafeOutboundUrl(feedUrl, { allowHttp: true });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Некорректный URL XML-фида";
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
+  if (ownerEmail) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ownerEmail) || ownerEmail.length > 254) {
+      return NextResponse.json(
+        { error: "Некорректный email владельца" },
+        { status: 400 },
+      );
+    }
+  }
+  if (ownerLogin && !/^[a-z0-9_]{3,32}$/.test(ownerLogin)) {
+    return NextResponse.json(
+      {
+        error:
+          "Логин кабинета: 3–32 символа, латиница, цифры и подчёркивание",
+      },
+      { status: 400 },
+    );
+  }
+
+  let pairCount = 0;
+  let feedWarning: string | null = null;
+  if (!body.skipFeedCheck) {
+    try {
+      const validated = await validateFeedUrl(feedUrl);
+      pairCount = validated.pairCount;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Не удалось проверить XML-фид";
+      return NextResponse.json({ error: message }, { status: 422 });
+    }
+  } else {
+    feedWarning =
+      "Фид не проверялся при создании — запустите синхронизацию позже.";
+  }
+
+  try {
+    let exchanger = await createExchangerManual({
+      id: newExchangerId(),
+      name,
+      website,
+      exchangeUrlTemplate,
+      feedUrl,
+      contact,
+      description,
+      pairCount,
+      status,
+      ownerEmail: ownerEmail || null,
+      ownerLogin: ownerLogin || null,
+    });
+
+    if (status === "active") {
+      try {
+        const withToken = await ensureBannerToken(exchanger.id);
+        if (withToken) exchanger = withToken;
+      } catch (error) {
+        console.error("[gapsnap] ensure banner token failed", error);
+      }
+    }
+
+    if (body.sync || status === "active") {
+      await syncAllFeeds();
+      const refreshed = await getExchangerById(exchanger.id);
+      if (refreshed) exchanger = refreshed;
+    }
+
+    return NextResponse.json({
+      ok: true,
+      exchanger: toPublicExchanger(exchanger),
+      feedWarning,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "fail";
+    if (message === "OWNER_LOGIN_TAKEN") {
+      return NextResponse.json(
+        { error: "Такой логин уже занят" },
+        { status: 409 },
+      );
+    }
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 }
 
 export async function PATCH(request: Request) {
