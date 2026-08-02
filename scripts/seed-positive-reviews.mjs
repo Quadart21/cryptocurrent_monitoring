@@ -91,15 +91,42 @@ function newReviewId() {
   return `rv_${Date.now().toString(36)}_${randomBytes(4).toString("hex")}`;
 }
 
-function randomOrderId() {
-  return String(randInt(540, 10000));
-}
-
 function randomCreatedAt() {
   const now = Date.now();
   const daysAgo = randInt(1, 240);
   const ms = now - daysAgo * 24 * 60 * 60 * 1000 - randInt(0, 86_400_000);
   return new Date(ms).toISOString();
+}
+
+/** Increasing order IDs for chronologically sorted reviews (540..10000). */
+function assignOrderIds(count) {
+  const MIN_ORDER = 540;
+  const MAX_ORDER = 10000;
+  if (count <= 0) return [];
+  if (count === 1) {
+    return [randInt(MIN_ORDER, Math.min(MAX_ORDER, MIN_ORDER + 800))];
+  }
+
+  const startMax = Math.max(
+    MIN_ORDER,
+    Math.min(2500, MAX_ORDER - count * 2),
+  );
+  let current = randInt(MIN_ORDER, startMax);
+  const ids = [current];
+  const stepsLeft = count - 1;
+  const avgGap = Math.max(1, Math.floor((MAX_ORDER - current) / stepsLeft));
+
+  for (let i = 1; i < count; i++) {
+    const left = count - i;
+    const room = MAX_ORDER - current;
+    const maxGap = Math.max(1, Math.floor(room / left));
+    const hi = Math.min(maxGap, Math.max(1, avgGap + randInt(0, 8)));
+    const lo = Math.min(hi, Math.max(1, avgGap - randInt(0, 3)));
+    current += randInt(lo, hi);
+    if (current > MAX_ORDER) current = MAX_ORDER;
+    ids.push(current);
+  }
+  return ids;
 }
 
 function assignCounts(exchangers) {
@@ -194,8 +221,18 @@ async function main() {
 
     for (const p of plan) {
       if (p.toAdd <= 0) continue;
-      for (let i = 0; i < p.toAdd; i++) {
-        const createdAt = randomCreatedAt();
+
+      // Build drafts, sort by date, then assign rising order numbers.
+      const drafts = Array.from({ length: p.toAdd }, () => ({
+        createdAt: randomCreatedAt(),
+        text: pick(TEXTS),
+        tags: pickTags(),
+      }));
+      drafts.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      const orderIds = assignOrderIds(drafts.length);
+
+      for (let i = 0; i < drafts.length; i++) {
+        const d = drafts[i];
         const id = `${newReviewId()}_${inserted}`;
         await client.query(
           `insert into reviews (
@@ -212,11 +249,11 @@ async function main() {
             p.id,
             p.slug,
             p.name,
-            randomOrderId(),
-            pick(TEXTS),
-            pickTags(),
-            createdAt,
-            createdAt,
+            String(orderIds[i]),
+            d.text,
+            d.tags,
+            d.createdAt,
+            d.createdAt,
           ],
         );
         inserted += 1;
