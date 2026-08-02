@@ -79,5 +79,14 @@
     "contact": "",
     "description": "Сервис автоматического обмена криптовалют. Поддержка Telegram @cash4ex / @four_exchange_bot.",
     "notes": "OK ~4 pairs from prod; no public email"
+  },
+  {
+    "name": "WMBlr",
+    "website": "https://wmblr.ru/",
+    "feedUrl": "https://wmblr.ru/monitor.xml",
+    "status": "active",
+    "contact": "info@wmblr.ru",
+    "description": "Онлайн-обменник электронных валют WMBlr. Выплаты 24/7, email info@wmblr.ru.",
+    "notes": "OK ~623 pairs from prod; initially skipped as suspected dup, confirmed absent"
   }
 ]

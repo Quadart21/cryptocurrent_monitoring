@@ -7,5 +7,6 @@
   { "domain": "cash-bit.com", "description": "Круглосуточный обменник криптовалют. Быстрая покупка и продажа. Telegram @trans_bit_bot.", "email": "info@cash-bit.com", "telegram": "trans_bit_bot" },
   { "domain": "fehupay.com", "description": "Обменный сервис онлайн: быстрый обмен с низкими комиссиями. График 9:00–23:00 МСК.", "email": "support@fehupay.com" },
   { "domain": "first-btc.io", "description": "Онлайн-обменник криптовалют First-BTC. Telegram @firstbtc.", "email": "firstbtcinfo@gmail.com", "telegram": "firstbtc" },
-  { "domain": "4ex.cash", "description": "Сервис автоматического обмена криптовалют. Поддержка Telegram @cash4ex / @four_exchange_bot.", "telegram": "cash4ex" }
+  { "domain": "4ex.cash", "description": "Сервис автоматического обмена криптовалют. Поддержка Telegram @cash4ex / @four_exchange_bot.", "telegram": "cash4ex" },
+  { "domain": "wmblr.ru", "description": "Онлайн-обменник электронных валют WMBlr. Выплаты 24/7, email info@wmblr.ru.", "email": "info@wmblr.ru" }
 ]
