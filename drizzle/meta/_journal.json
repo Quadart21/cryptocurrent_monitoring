@@ -176,6 +176,13 @@
       "when": 1785480000000,
       "tag": "0024_seo_contacts",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1785490000000,
+      "tag": "0025_legal_terms",
+      "breakpoints": true
     }
   ]
 }

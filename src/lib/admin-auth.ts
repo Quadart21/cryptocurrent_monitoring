@@ -22,6 +22,7 @@ const RESERVED_ADMIN_PATHS = new Set([
   "/blacklist",
   "/privacy",
   "/cookies",
+  "/terms",
   "/offer",
   "/partners",
   "/catalogs",

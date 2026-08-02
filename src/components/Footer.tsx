@@ -62,6 +62,7 @@ export function Footer({
           <FooterCol
             title="Документы"
             links={[
+              { href: "/terms", label: "Условия" },
               { href: "/privacy", label: "Конфиденциальность" },
               { href: "/cookies", label: "Cookies" },
               { href: "/offer", label: "Оферта" },

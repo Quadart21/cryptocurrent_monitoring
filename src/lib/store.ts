@@ -2329,6 +2329,9 @@ function mapLegal(row: LegalRow): LegalSettings {
     cookieTitle: row.cookieTitle,
     cookieBody: row.cookieBody,
     cookieUpdatedAt: row.cookieUpdatedAt,
+    termsTitle: row.termsTitle,
+    termsBody: row.termsBody,
+    termsUpdatedAt: row.termsUpdatedAt,
     bannerTitle: row.bannerTitle,
     bannerBody: row.bannerBody,
   };
@@ -2359,6 +2362,18 @@ function normalizeLegalSettings(
       typeof raw?.cookieUpdatedAt === "string" && raw.cookieUpdatedAt.trim()
         ? raw.cookieUpdatedAt
         : base.cookieUpdatedAt,
+    termsTitle:
+      typeof raw?.termsTitle === "string" && raw.termsTitle.trim()
+        ? raw.termsTitle.trim()
+        : base.termsTitle,
+    termsBody:
+      typeof raw?.termsBody === "string" && raw.termsBody.trim()
+        ? raw.termsBody
+        : base.termsBody,
+    termsUpdatedAt:
+      typeof raw?.termsUpdatedAt === "string" && raw.termsUpdatedAt.trim()
+        ? raw.termsUpdatedAt
+        : base.termsUpdatedAt,
     bannerTitle:
       typeof raw?.bannerTitle === "string" && raw.bannerTitle.trim()
         ? raw.bannerTitle.trim()
@@ -2398,6 +2413,10 @@ export async function updateLegalSettings(
       patch.cookieBody !== undefined || patch.cookieTitle !== undefined
         ? now
         : current.cookieUpdatedAt,
+    termsUpdatedAt:
+      patch.termsBody !== undefined || patch.termsTitle !== undefined
+        ? now
+        : current.termsUpdatedAt,
   });
   const db = getDb();
   await db

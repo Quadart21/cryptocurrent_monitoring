@@ -12,6 +12,7 @@ import {
   qualityTags,
   seo,
 } from "@/db/schema";
+import { SEED_TERMS_BODY } from "@/data/seed-terms-body";
 import { emptyExchangerTraffic } from "@/lib/exchanger-traffic";
 import type {
   AdPricingSettings,
@@ -200,6 +201,9 @@ export const seedLegal: LegalSettings = {
 При первом визите вы можете принять все cookies или только необходимые. Изменить выбор можно, очистив cookies браузера и обновив страницу — снова появится плашка согласия.
 
 Подробнее о персональных данных — в [политике конфиденциальности](/privacy).`,
+  termsTitle: "Условия использования",
+  termsUpdatedAt: SEED_AT,
+  termsBody: SEED_TERMS_BODY,
   bannerTitle: "Мы используем cookies",
   bannerBody:
     "Необходимые cookies нужны для работы сайта. Аналитические — только с вашего согласия. Подробнее в политике cookies.",
@@ -401,6 +405,28 @@ export async function ensureMissingAdTariffs(db: Db): Promise<void> {
     )
     .onConflictDoNothing({ target: adTariffs.id });
 }
+
+/** Backfill terms of use when column exists but body is empty. */
+export async function ensureLegalTerms(db: Db): Promise<void> {
+  const [row] = await db.select().from(legal).where(eq(legal.id, 1)).limit(1);
+  if (!row) {
+    await db
+      .insert(legal)
+      .values({ id: 1, ...seedLegal })
+      .onConflictDoNothing();
+    return;
+  }
+  if (typeof row.termsBody === "string" && row.termsBody.trim()) return;
+  await db
+    .update(legal)
+    .set({
+      termsTitle: seedLegal.termsTitle,
+      termsBody: seedLegal.termsBody,
+      termsUpdatedAt: seedLegal.termsUpdatedAt,
+    })
+    .where(eq(legal.id, 1));
+}
+
 export async function ensureSeeded(db: Db): Promise<void> {
   const [meta] = await db.select().from(appMeta).where(eq(appMeta.id, 1)).limit(1);
   if (meta?.seededAt) return;
@@ -527,6 +553,9 @@ export async function ensureSeeded(db: Db): Promise<void> {
       cookieTitle: seedLegal.cookieTitle,
       cookieBody: seedLegal.cookieBody,
       cookieUpdatedAt: seedLegal.cookieUpdatedAt,
+      termsTitle: seedLegal.termsTitle,
+      termsBody: seedLegal.termsBody,
+      termsUpdatedAt: seedLegal.termsUpdatedAt,
       bannerTitle: seedLegal.bannerTitle,
       bannerBody: seedLegal.bannerBody,
     });

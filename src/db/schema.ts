@@ -323,7 +323,7 @@ export const adPricing = pgTable("ad_pricing", {
   note: text("note").notNull(),
 });
 
-/** Privacy / cookie policies + consent banner copy (admin-editable). */
+/** Privacy / cookie / terms policies + consent banner copy (admin-editable). */
 export const legal = pgTable("legal", {
   id: integer("id").primaryKey().default(1),
   privacyTitle: text("privacy_title").notNull(),
@@ -332,6 +332,9 @@ export const legal = pgTable("legal", {
   cookieTitle: text("cookie_title").notNull(),
   cookieBody: text("cookie_body").notNull(),
   cookieUpdatedAt: text("cookie_updated_at").notNull(),
+  termsTitle: text("terms_title").notNull().default("Условия использования"),
+  termsBody: text("terms_body").notNull().default(""),
+  termsUpdatedAt: text("terms_updated_at").notNull().default(""),
   bannerTitle: text("banner_title").notNull(),
   bannerBody: text("banner_body").notNull(),
 });

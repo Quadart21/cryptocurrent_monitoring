@@ -286,7 +286,7 @@ export type AdPricingSettings = {
   note: string;
 };
 
-/** Политики конфиденциальности и cookies (админка → Правовые) */
+/** Политики конфиденциальности, cookies и условия использования (админка → Правовые) */
 export type LegalSettings = {
   privacyTitle: string;
   /** Markdown */
@@ -296,6 +296,10 @@ export type LegalSettings = {
   /** Markdown */
   cookieBody: string;
   cookieUpdatedAt: string;
+  termsTitle: string;
+  /** Markdown */
+  termsBody: string;
+  termsUpdatedAt: string;
   /** Текст плашки согласия */
   bannerTitle: string;
   bannerBody: string;

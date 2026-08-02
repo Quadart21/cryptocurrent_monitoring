@@ -16,6 +16,9 @@ const emptyLegal = (): LegalSettings => ({
   cookieTitle: "",
   cookieBody: "",
   cookieUpdatedAt: "",
+  termsTitle: "",
+  termsBody: "",
+  termsUpdatedAt: "",
   bannerTitle: "",
   bannerBody: "",
 });
@@ -25,7 +28,9 @@ export function LegalModule() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
-  const [tab, setTab] = useState<"banner" | "privacy" | "cookies">("banner");
+  const [tab, setTab] = useState<"banner" | "privacy" | "cookies" | "terms">(
+    "terms",
+  );
 
   async function load() {
     const res = await fetch("/api/admin/legal", { cache: "no-store" });
@@ -65,7 +70,7 @@ export function LegalModule() {
     <div className="space-y-6">
       <AdminPageHeader
         title="Правовые документы"
-        description="Тексты политик на сайте и плашка согласия на cookies. Markdown: ## заголовки, списки, ссылки."
+        description="Условия использования, политики и плашка cookies. Markdown: ## заголовки, списки, ссылки."
       />
 
       {error ? (
@@ -84,100 +89,138 @@ export function LegalModule() {
           <div className="space-y-4 p-5">
             <AdminTabBar
               tabs={[
-                { id: "banner", label: "Плашка cookies" },
+                { id: "terms", label: "Условия" },
                 { id: "privacy", label: "Конфиденциальность" },
                 { id: "cookies", label: "Cookies" },
+                { id: "banner", label: "Плашка cookies" },
               ]}
               value={tab}
               onChange={setTab}
             />
 
             {tab === "banner" ? (
-          <div className="space-y-4">
-            <label className="block space-y-1">
-              <span className="text-xs text-ink-muted">Заголовок</span>
-              <input
-                value={legal.bannerTitle}
-                onChange={(e) =>
-                  setLegal({ ...legal, bannerTitle: e.target.value })
-                }
-                className="w-full rounded-2xl border border-line bg-input px-3 py-2.5 text-sm outline-none focus:border-accent"
-              />
-            </label>
-            <label className="block space-y-1">
-              <span className="text-xs text-ink-muted">Текст</span>
-              <textarea
-                value={legal.bannerBody}
-                onChange={(e) =>
-                  setLegal({ ...legal, bannerBody: e.target.value })
-                }
-                rows={3}
-                className="w-full rounded-2xl border border-line bg-input px-3 py-2.5 text-sm outline-none focus:border-accent"
-              />
-            </label>
-          </div>
+              <div className="space-y-4">
+                <label className="block space-y-1">
+                  <span className="text-xs text-ink-muted">Заголовок</span>
+                  <input
+                    value={legal.bannerTitle}
+                    onChange={(e) =>
+                      setLegal({ ...legal, bannerTitle: e.target.value })
+                    }
+                    className="w-full rounded-2xl border border-line bg-input px-3 py-2.5 text-sm outline-none focus:border-accent"
+                  />
+                </label>
+                <label className="block space-y-1">
+                  <span className="text-xs text-ink-muted">Текст</span>
+                  <textarea
+                    value={legal.bannerBody}
+                    onChange={(e) =>
+                      setLegal({ ...legal, bannerBody: e.target.value })
+                    }
+                    rows={3}
+                    className="w-full rounded-2xl border border-line bg-input px-3 py-2.5 text-sm outline-none focus:border-accent"
+                  />
+                </label>
+              </div>
+            ) : null}
+
+            {tab === "terms" ? (
+              <div className="space-y-4">
+                <label className="block space-y-1">
+                  <span className="text-xs text-ink-muted">Заголовок</span>
+                  <input
+                    value={legal.termsTitle}
+                    onChange={(e) =>
+                      setLegal({ ...legal, termsTitle: e.target.value })
+                    }
+                    className="w-full rounded-2xl border border-line bg-input px-3 py-2.5 text-sm outline-none focus:border-accent"
+                  />
+                </label>
+                <label className="block space-y-1">
+                  <span className="text-xs text-ink-muted">
+                    Текст (markdown)
+                    {legal.termsUpdatedAt
+                      ? ` · ред. ${new Date(legal.termsUpdatedAt).toLocaleString("ru-RU")}`
+                      : ""}
+                  </span>
+                  <textarea
+                    value={legal.termsBody}
+                    onChange={(e) =>
+                      setLegal({ ...legal, termsBody: e.target.value })
+                    }
+                    rows={22}
+                    className="w-full rounded-2xl border border-line bg-input px-3 py-2.5 font-mono text-sm outline-none focus:border-accent"
+                  />
+                </label>
+                <p className="text-xs text-ink-muted">
+                  Публичная страница:{" "}
+                  <a href="/terms" className="text-accent hover:underline">
+                    /terms
+                  </a>
+                </p>
+              </div>
             ) : null}
 
             {tab === "privacy" ? (
-          <div className="space-y-4">
-            <label className="block space-y-1">
-              <span className="text-xs text-ink-muted">Заголовок</span>
-              <input
-                value={legal.privacyTitle}
-                onChange={(e) =>
-                  setLegal({ ...legal, privacyTitle: e.target.value })
-                }
-                className="w-full rounded-2xl border border-line bg-input px-3 py-2.5 text-sm outline-none focus:border-accent"
-              />
-            </label>
-            <label className="block space-y-1">
-              <span className="text-xs text-ink-muted">
-                Текст (markdown)
-                {legal.privacyUpdatedAt
-                  ? ` · ред. ${new Date(legal.privacyUpdatedAt).toLocaleString("ru-RU")}`
-                  : ""}
-              </span>
-              <textarea
-                value={legal.privacyBody}
-                onChange={(e) =>
-                  setLegal({ ...legal, privacyBody: e.target.value })
-                }
-                rows={16}
-                className="w-full rounded-2xl border border-line bg-input px-3 py-2.5 font-mono text-sm outline-none focus:border-accent"
-              />
-            </label>
-          </div>
+              <div className="space-y-4">
+                <label className="block space-y-1">
+                  <span className="text-xs text-ink-muted">Заголовок</span>
+                  <input
+                    value={legal.privacyTitle}
+                    onChange={(e) =>
+                      setLegal({ ...legal, privacyTitle: e.target.value })
+                    }
+                    className="w-full rounded-2xl border border-line bg-input px-3 py-2.5 text-sm outline-none focus:border-accent"
+                  />
+                </label>
+                <label className="block space-y-1">
+                  <span className="text-xs text-ink-muted">
+                    Текст (markdown)
+                    {legal.privacyUpdatedAt
+                      ? ` · ред. ${new Date(legal.privacyUpdatedAt).toLocaleString("ru-RU")}`
+                      : ""}
+                  </span>
+                  <textarea
+                    value={legal.privacyBody}
+                    onChange={(e) =>
+                      setLegal({ ...legal, privacyBody: e.target.value })
+                    }
+                    rows={16}
+                    className="w-full rounded-2xl border border-line bg-input px-3 py-2.5 font-mono text-sm outline-none focus:border-accent"
+                  />
+                </label>
+              </div>
             ) : null}
 
             {tab === "cookies" ? (
-          <div className="space-y-4">
-            <label className="block space-y-1">
-              <span className="text-xs text-ink-muted">Заголовок</span>
-              <input
-                value={legal.cookieTitle}
-                onChange={(e) =>
-                  setLegal({ ...legal, cookieTitle: e.target.value })
-                }
-                className="w-full rounded-2xl border border-line bg-input px-3 py-2.5 text-sm outline-none focus:border-accent"
-              />
-            </label>
-            <label className="block space-y-1">
-              <span className="text-xs text-ink-muted">
-                Текст (markdown)
-                {legal.cookieUpdatedAt
-                  ? ` · ред. ${new Date(legal.cookieUpdatedAt).toLocaleString("ru-RU")}`
-                  : ""}
-              </span>
-              <textarea
-                value={legal.cookieBody}
-                onChange={(e) =>
-                  setLegal({ ...legal, cookieBody: e.target.value })
-                }
-                rows={16}
-                className="w-full rounded-2xl border border-line bg-input px-3 py-2.5 font-mono text-sm outline-none focus:border-accent"
-              />
-            </label>
-          </div>
+              <div className="space-y-4">
+                <label className="block space-y-1">
+                  <span className="text-xs text-ink-muted">Заголовок</span>
+                  <input
+                    value={legal.cookieTitle}
+                    onChange={(e) =>
+                      setLegal({ ...legal, cookieTitle: e.target.value })
+                    }
+                    className="w-full rounded-2xl border border-line bg-input px-3 py-2.5 text-sm outline-none focus:border-accent"
+                  />
+                </label>
+                <label className="block space-y-1">
+                  <span className="text-xs text-ink-muted">
+                    Текст (markdown)
+                    {legal.cookieUpdatedAt
+                      ? ` · ред. ${new Date(legal.cookieUpdatedAt).toLocaleString("ru-RU")}`
+                      : ""}
+                  </span>
+                  <textarea
+                    value={legal.cookieBody}
+                    onChange={(e) =>
+                      setLegal({ ...legal, cookieBody: e.target.value })
+                    }
+                    rows={16}
+                    className="w-full rounded-2xl border border-line bg-input px-3 py-2.5 font-mono text-sm outline-none focus:border-accent"
+                  />
+                </label>
+              </div>
             ) : null}
           </div>
         </AdminSection>
