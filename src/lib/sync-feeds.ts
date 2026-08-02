@@ -184,8 +184,6 @@ async function fetchViaProxy(
       headers: FEED_HEADERS,
       signal: controller.signal,
       dispatcher: agent,
-      // undici follows redirects; initial URL already passed SSRF checks
-      maxRedirections: MAX_REDIRECTS,
     });
     return await readFeedBody(res);
   } catch (error) {
