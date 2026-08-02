@@ -36,8 +36,21 @@ SITE_URL=https://YOUR_DOMAIN
 GAPSNAP_ROLE=worker
 PORT=3001
 GAPSNAP_RUN_MIGRATIONS=0
+# Push mirrored news covers to the public web node:
+# WEB_INTERNAL_URL=http://WEB_PRIVATE_IP:3000
+# (same WORKER_INTERNAL_SECRET as on web)
 # Proxy pool / FEED_* / CODEX_* live here
 ```
+
+### News covers (`.data/news-covers`)
+
+Cover images are files on disk, not in Postgres. On split deploy:
+
+- Web serves `/api/news-covers/*` from local `.data/news-covers`
+- Worker mirrors new covers while syncing news, then **pushes** them to web (`WEB_INTERNAL_URL`)
+- If web is missing a file, it **pulls** once from worker (`WORKER_URL`)
+
+When migrating hosts, copy `/var/www/gapsnap/.data/news-covers` (and optionally `.data/bestchange`) onto **both** web and worker.
 
 ## Boot
 

@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { readNewsCoverFile } from "@/lib/news/mirror-cover";
+import {
+  pullNewsCoverFromWorker,
+  readNewsCoverFile,
+} from "@/lib/news/mirror-cover";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,7 +11,11 @@ type Params = { params: Promise<{ name: string }> };
 
 export async function GET(_request: Request, { params }: Params) {
   const { name } = await params;
-  const file = await readNewsCoverFile(decodeURIComponent(name));
+  const decoded = decodeURIComponent(name);
+  let file = await readNewsCoverFile(decoded);
+  if (!file) {
+    file = await pullNewsCoverFromWorker(decoded);
+  }
   if (!file) {
     return new NextResponse("Not found", { status: 404 });
   }

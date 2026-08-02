@@ -23,6 +23,101 @@ export function newsCoverPublicPath(filename: string): string {
   return `/api/news-covers/${encodeURIComponent(filename)}`;
 }
 
+export function newsCoverFilenameFromPublicUrl(url: string): string | null {
+  const u = url.trim();
+  const m = u.match(/^\/api\/news-covers\/([^/?#]+)$/);
+  if (!m?.[1]) return null;
+  try {
+    return decodeURIComponent(m[1]);
+  } catch {
+    return m[1];
+  }
+}
+
+export async function writeNewsCoverFile(
+  filename: string,
+  bytes: Buffer,
+): Promise<boolean> {
+  if (!/^[a-zA-Z0-9._-]+$/.test(filename)) return false;
+  if (!bytes.length || bytes.length > MAX_BYTES) return false;
+  const dir = coversDir();
+  await fs.mkdir(dir, { recursive: true });
+  await fs.writeFile(path.join(dir, filename), bytes);
+  return true;
+}
+
+/**
+ * After worker mirrors a cover, push bytes to the public web node so
+ * `/api/news-covers/*` resolves there too.
+ */
+export async function pushNewsCoverToWeb(input: {
+  filename: string;
+  bytes: Buffer;
+}): Promise<void> {
+  const base = (process.env.WEB_INTERNAL_URL?.trim() || "").replace(/\/$/, "");
+  const secret = process.env.WORKER_INTERNAL_SECRET?.trim() || "";
+  if (!base || !secret) return;
+  if (!/^[a-zA-Z0-9._-]+$/.test(input.filename)) return;
+
+  try {
+    const res = await fetch(`${base}/api/internal/news-cover`, {
+      method: "PUT",
+      headers: {
+        "x-gapsnap-worker-secret": secret,
+        "content-type": "application/octet-stream",
+        "x-gapsnap-cover-name": input.filename,
+      },
+      body: new Uint8Array(input.bytes),
+      signal: AbortSignal.timeout(30_000),
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      console.warn(
+        `[gapsnap] news cover push to web HTTP ${res.status} ${input.filename}`,
+      );
+    }
+  } catch (err) {
+    console.warn(`[gapsnap] news cover push to web failed`, err);
+  }
+}
+
+/** On web: if local file missing, pull from worker and cache. */
+export async function pullNewsCoverFromWorker(
+  filename: string,
+): Promise<{ bytes: Buffer; contentType: string } | null> {
+  const base = (process.env.WORKER_URL?.trim() || "").replace(/\/$/, "");
+  const secret = process.env.WORKER_INTERNAL_SECRET?.trim() || "";
+  if (!base || !secret) return null;
+  if (!/^[a-zA-Z0-9._-]+$/.test(filename)) return null;
+
+  try {
+    const res = await fetch(
+      `${base}/api/internal/news-cover?name=${encodeURIComponent(filename)}`,
+      {
+        headers: { "x-gapsnap-worker-secret": secret },
+        signal: AbortSignal.timeout(30_000),
+        cache: "no-store",
+      },
+    );
+    if (!res.ok) return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (!buf.length || buf.length > MAX_BYTES) return null;
+    await writeNewsCoverFile(filename, buf);
+    const lower = filename.toLowerCase();
+    const contentType = lower.endsWith(".png")
+      ? "image/png"
+      : lower.endsWith(".webp")
+        ? "image/webp"
+        : lower.endsWith(".gif")
+          ? "image/gif"
+          : "image/jpeg";
+    return { bytes: buf, contentType };
+  } catch (err) {
+    console.warn(`[gapsnap] news cover pull from worker failed`, err);
+    return null;
+  }
+}
+
 function safeKey(raw: string): string {
   const cleaned = raw
     .trim()
@@ -136,7 +231,11 @@ export async function mirrorNewsCover(input: {
     const filename = `${safeKey(input.key)}${ext}`;
     const dir = coversDir();
     await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(path.join(dir, filename), buf);
+    const full = path.join(dir, filename);
+    await fs.writeFile(full, buf);
+
+    // Keep web node in sync when pollers run on a dedicated worker.
+    void pushNewsCoverToWeb({ filename, bytes: buf });
 
     const publicUrl = newsCoverPublicPath(filename);
     console.info(`[gapsnap] news cover mirrored → ${publicUrl}`);
