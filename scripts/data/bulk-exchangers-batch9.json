@@ -1,0 +1,93 @@
+[
+  {
+    "name": "FastWM",
+    "website": "https://fastwm.biz/",
+    "feedUrl": "https://fastwm.biz/courses.xml",
+    "status": "active",
+    "contact": "",
+    "description": "Автоматический обменник криптовалют и электронных валют FastWM.",
+    "notes": "OK ~5192 pairs from prod"
+  },
+  {
+    "name": "Mint-Change",
+    "website": "https://mint-change.ru/",
+    "feedUrl": "https://mint-change.ru/exports/valuta.xml",
+    "status": "active",
+    "contact": "",
+    "description": "Онлайн-обменник Mint-Change. Криптовалюта, банки РФ, электронные валюты.",
+    "notes": "OK ~84 pairs from prod"
+  },
+  {
+    "name": "Changee",
+    "website": "https://changee.com/",
+    "feedUrl": "https://changee.com/api/rates",
+    "status": "active",
+    "contact": "",
+    "description": "Автоматический обменник криптовалют Changee.",
+    "notes": "OK ~898 pairs; /api/rates returns BestChange XML"
+  },
+  {
+    "name": "BeeSwap",
+    "website": "https://beeswap.gg/",
+    "feedUrl": "https://beeswap.gg/service/export/xml",
+    "status": "active",
+    "contact": "",
+    "description": "Онлайн-обменник электронных валют BeeSwap.",
+    "notes": "OK ~41 pairs from prod"
+  },
+  {
+    "name": "PureChange",
+    "website": "https://purechange.net/",
+    "feedUrl": "https://purechange.net/exports/rates.xml",
+    "status": "active",
+    "contact": "",
+    "description": "Онлайн-обменник PureChange.",
+    "skipFeedCheck": true,
+    "notes": "Feed URL returns HTTP 200 empty body (0 pairs) as of 2026-08-03; other paths 404"
+  },
+  {
+    "name": "JohnnyDo",
+    "website": "https://johnny.do/",
+    "feedUrl": "https://johnny.do/export.xml",
+    "status": "active",
+    "contact": "",
+    "description": "Автоматический обменник криптовалют JohnnyDo.",
+    "notes": "OK ~373 pairs from prod"
+  },
+  {
+    "name": "Quantex",
+    "website": "https://quantex.pro/",
+    "feedUrl": "https://quantex.pro/service/export/xml",
+    "status": "active",
+    "contact": "",
+    "description": "Онлайн-обменник Quantex. Криптовалюта и фиат.",
+    "notes": "OK ~6988 pairs from prod"
+  },
+  {
+    "name": "PocketBank",
+    "website": "https://pocketbank.net/",
+    "feedUrl": "https://pocketbank.net/service/export/xml",
+    "status": "active",
+    "contact": "",
+    "description": "Онлайн-обменник PocketBank.",
+    "notes": "OK ~1192 pairs from prod"
+  },
+  {
+    "name": "Sharky",
+    "website": "https://sharky.one/",
+    "feedUrl": "https://sharky.one/export.xml",
+    "status": "active",
+    "contact": "",
+    "description": "Автоматический обменник криптовалют Sharky.",
+    "notes": "OK ~374 pairs from prod"
+  },
+  {
+    "name": "Dvizh",
+    "website": "https://dvizh.com/",
+    "feedUrl": "https://dvizh.com/service/export/xml",
+    "status": "active",
+    "contact": "",
+    "description": "Онлайн-обменник Dvizh.",
+    "notes": "OK ~697 pairs from prod"
+  }
+]
