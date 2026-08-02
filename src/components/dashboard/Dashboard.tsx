@@ -274,13 +274,6 @@ export function Dashboard({
     setOffers([]);
   }
 
-  function onPairChange(nextFrom: string, nextTo: string) {
-    setFrom(nextFrom);
-    setTo(nextTo);
-    setAmount(defaultAmountFor(nextFrom));
-    setOffers([]);
-  }
-
   function onSwap() {
     setFrom(to);
     setTo(from);
@@ -297,11 +290,6 @@ export function Dashboard({
         to={to}
         currencies={currencies}
         cities={cities}
-        popularPairs={
-          mode === "cash"
-            ? catalog.popularCashPairs
-            : catalog.popularOnlinePairs
-        }
         bestRate={bestRate}
         offerCount={offers.length}
         amount={amount}
@@ -310,7 +298,6 @@ export function Dashboard({
         onCityChange={onCityChange}
         onFromChange={onFromChange}
         onToChange={onToChange}
-        onPairChange={onPairChange}
         onSwap={onSwap}
       />
 
