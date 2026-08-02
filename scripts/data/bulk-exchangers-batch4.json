@@ -1,0 +1,104 @@
+[
+  {
+    "name": "Mine.Exchange",
+    "website": "https://mine.exchange/en/",
+    "feedUrl": "https://mine.exchange/rates.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "contact": "info@mine.exchange",
+    "description": "Обменник криптовалют с 2016 года: фиат (USD, UAH, KZT и др.) и цифровые активы. Быстрый и безопасный обмен.",
+    "skipFeedCheck": true,
+    "notes": "Feed OK ~252 pairs from workstation; prod IP gets HTTP 403 intermittently; email from site"
+  },
+  {
+    "name": "CoinDrop",
+    "website": "https://coindrop.trade/en/",
+    "feedUrl": "https://coindrop.trade/ratesxml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "contact": "support@coindrop.trade",
+    "description": "Быстрый и безопасный обмен электронных валют с низкими комиссиями и поддержкой онлайн.",
+    "notes": "OK ~1736 pairs; email+TG from contacts"
+  },
+  {
+    "name": "365Cash",
+    "website": "https://365cash.co/en/",
+    "feedUrl": "https://365cash.co/bestchange.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "contact": "hello@365cash.co",
+    "description": "Автоматический биткоин-обменник с выгодными курсами. Более 10 000 отзывов и 50 000 постоянных клиентов.",
+    "notes": "OK ~630 pairs; email from contacts"
+  },
+  {
+    "name": "NixExchange",
+    "website": "https://nixexchange.net/",
+    "feedUrl": "https://nixexchange.net/export.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "contact": "support@nixexchange.com",
+    "description": "Быстрый обмен электронных валют: NixMoney, Perfect Money, банки РФ, Украины и Казахстана. Работа 9:00–23:00 МСК.",
+    "notes": "OK ~134 pairs; email from /contact"
+  },
+  {
+    "name": "CoinCat",
+    "website": "https://coincat.in/en/",
+    "feedUrl": "https://coincat.in/monitoring-export/estandarts.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "contact": "support@coincat.in",
+    "description": "Обменник Bitcoin и криптовалют на фиат. Поддержка и Telegram @coincatexchange.",
+    "notes": "OK ~2168 pairs; email from contacts"
+  },
+  {
+    "name": "Daeo",
+    "website": "https://daeo.pro/",
+    "feedUrl": "https://daeo.pro/request-exportxml.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "contact": "support@daeo.pro",
+    "description": "Автоматический обмен криптовалют с низкой комиссией: продажа, перевод в банк, обмен на рубли.",
+    "notes": "OK ~142 pairs; email from site"
+  },
+  {
+    "name": "Obmenko",
+    "website": "https://obmenko.org/en/",
+    "feedUrl": "https://obmenko.org/export.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "contact": "info@obmenko.org",
+    "description": "Надёжный обменник: выгодный курс без скрытых комиссий, круглосуточная поддержка, 10 000+ положительных отзывов на BestChange.",
+    "notes": "OK ~1819 pairs; email from site"
+  },
+  {
+    "name": "E-Change",
+    "website": "https://e-change.io/",
+    "feedUrl": "https://e-change.io/courses.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "contact": "support@e-change.io",
+    "description": "Обмен криптовалют на фиат или другую криптовалюту. Покупка криптовалюты с минимальной комиссией.",
+    "notes": "OK ~5522 pairs; email from site"
+  },
+  {
+    "name": "Receive-Money",
+    "website": "https://www.receive-money.biz/en/",
+    "feedUrl": "https://www.receive-money.biz/service/export/xml/:code",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "contact": "express@receive-money.com",
+    "description": "Онлайн-обменник электронных валют. Поддержка ежедневно 9:00–22:00 (Киев), Telegram @receivemoney_news.",
+    "skipFeedCheck": true,
+    "notes": "Feed OK ~6073 pairs via browser (www + :code); Cloudflare often blocks non-browser clients"
+  },
+  {
+    "name": "XChange",
+    "website": "https://xchange.pub/",
+    "feedUrl": "https://xchange.pub/valuta.xml",
+    "exchangeUrlTemplate": "",
+    "status": "active",
+    "contact": "",
+    "description": "Онлайн-обменник электронных валют и криптовалют.",
+    "notes": "User gave valuta.json (currencies list); XML valuta.xml works ~27922 pairs. Site pages currently 404; no public email found"
+  }
+]
