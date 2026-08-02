@@ -17,12 +17,14 @@ export type CurrencyOption = {
 };
 
 type Props = {
-  label: string;
+  label?: string;
   value: string;
   exclude?: string;
   options: CurrencyOption[];
   onChange: (code: string) => void;
   placeholder?: string;
+  /** field = bordered input; plain = borderless for embedding in a ticket row */
+  variant?: "field" | "plain";
 };
 
 function normalize(value: string): string {
@@ -53,6 +55,7 @@ export function CurrencyAutocomplete({
   options,
   onChange,
   placeholder = "Начните вводить валюту…",
+  variant = "field",
 }: Props) {
   const listId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -131,78 +134,89 @@ export function CurrencyAutocomplete({
     }
   }
 
+  const inputClass =
+    variant === "plain"
+      ? "min-h-10 w-full bg-transparent px-0 py-1 text-base font-semibold text-ink outline-none placeholder:font-medium placeholder:text-ink-muted sm:text-sm"
+      : "min-h-11 w-full rounded-xl border border-line bg-input px-3 py-2.5 text-base font-medium text-ink outline-none focus:border-accent sm:text-sm";
+
+  const body = (
+    <div ref={rootRef} className="relative min-w-0">
+      <input
+        type="text"
+        role="combobox"
+        aria-expanded={open}
+        aria-controls={listId}
+        aria-autocomplete="list"
+        aria-label={label || "Валюта"}
+        autoComplete="off"
+        spellCheck={false}
+        placeholder={placeholder}
+        value={query}
+        onFocus={() => {
+          setOpen(true);
+          setActiveIndex(0);
+          requestAnimationFrame(() => {
+            const el = rootRef.current?.querySelector("input");
+            el?.select();
+          });
+        }}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+          setActiveIndex(0);
+        }}
+        onKeyDown={onKeyDown}
+        className={inputClass}
+      />
+
+      {open ? (
+        <ul
+          id={listId}
+          role="listbox"
+          className="absolute z-30 mt-1.5 max-h-60 w-full min-w-[16rem] overflow-auto rounded-xl border border-line bg-bg-elevated py-1 shadow-[var(--card-shadow)]"
+        >
+          {suggestions.length === 0 ? (
+            <li className="px-3 py-2.5 text-sm text-ink-muted">
+              Ничего не найдено
+            </li>
+          ) : (
+            suggestions.map((option, index) => (
+              <li
+                key={option.code}
+                role="option"
+                aria-selected={index === activeIndex}
+              >
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => pick(option)}
+                  className={`flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-sm transition ${
+                    index === activeIndex
+                      ? "bg-accent-soft text-accent-deep"
+                      : "text-ink hover:bg-accent-soft/60"
+                  }`}
+                >
+                  <span className="min-w-0 truncate">{option.name}</span>
+                  <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
+                    {option.code}
+                  </span>
+                </button>
+              </li>
+            ))
+          )}
+        </ul>
+      ) : null}
+    </div>
+  );
+
+  if (!label) return body;
+
   return (
     <label className="block min-w-0 space-y-1">
       <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-muted">
         {label}
       </span>
-      <div ref={rootRef} className="relative">
-        <input
-          type="text"
-          role="combobox"
-          aria-expanded={open}
-          aria-controls={listId}
-          aria-autocomplete="list"
-          autoComplete="off"
-          spellCheck={false}
-          placeholder={placeholder}
-          value={query}
-          onFocus={() => {
-            setOpen(true);
-            setActiveIndex(0);
-            // Select all so typing replaces immediately
-            requestAnimationFrame(() => {
-              const el = rootRef.current?.querySelector("input");
-              el?.select();
-            });
-          }}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setOpen(true);
-            setActiveIndex(0);
-          }}
-          onKeyDown={onKeyDown}
-          className="min-h-11 w-full rounded-xl border border-line bg-input px-3 py-2.5 text-base font-medium text-ink outline-none focus:border-accent sm:text-sm"
-        />
-
-        {open ? (
-          <ul
-            id={listId}
-            role="listbox"
-            className="absolute z-30 mt-1.5 max-h-60 w-full overflow-auto rounded-xl border border-line bg-bg-elevated py-1 shadow-[var(--card-shadow)]"
-          >
-            {suggestions.length === 0 ? (
-              <li className="px-3 py-2.5 text-sm text-ink-muted">
-                Ничего не найдено
-              </li>
-            ) : (
-              suggestions.map((option, index) => (
-                <li
-                  key={option.code}
-                  role="option"
-                  aria-selected={index === activeIndex}
-                >
-                  <button
-                    type="button"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => pick(option)}
-                    className={`flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-sm transition ${
-                      index === activeIndex
-                        ? "bg-accent-soft text-accent-deep"
-                        : "text-ink hover:bg-accent-soft/60"
-                    }`}
-                  >
-                    <span className="min-w-0 truncate">{option.name}</span>
-                    <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
-                      {option.code}
-                    </span>
-                  </button>
-                </li>
-              ))
-            )}
-          </ul>
-        ) : null}
-      </div>
+      {body}
     </label>
   );
 }
