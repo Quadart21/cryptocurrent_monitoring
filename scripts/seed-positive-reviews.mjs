@@ -92,7 +92,7 @@ function newReviewId() {
 }
 
 function randomOrderId() {
-  return String(randInt(100000, 99999999));
+  return String(randInt(540, 10000));
 }
 
 function randomCreatedAt() {
