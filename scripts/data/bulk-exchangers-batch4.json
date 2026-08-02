@@ -83,13 +83,12 @@
   {
     "name": "Receive-Money",
     "website": "https://www.receive-money.biz/en/",
-    "feedUrl": "https://www.receive-money.biz/service/export/xml/:code",
+    "feedUrl": "https://www.receive-money.com/service/export/xml/:code",
     "exchangeUrlTemplate": "",
     "status": "active",
     "contact": "express@receive-money.com",
     "description": "Онлайн-обменник электронных валют. Поддержка ежедневно 9:00–22:00 (Киев), Telegram @receivemoney_news.",
-    "skipFeedCheck": true,
-    "notes": "Feed OK ~6073 pairs via browser (www + :code); Cloudflare often blocks non-browser clients"
+    "notes": "Feed on .biz blocked by Cloudflare from DC IPs; use .com export (~6073 pairs)"
   },
   {
     "name": "XChange",
