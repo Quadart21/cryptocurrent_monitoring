@@ -1,0 +1,11 @@
+[
+  {
+    "name": "БарскийДворОбмен",
+    "website": "https://barskiydvorobmen.com/",
+    "feedUrl": "https://barskiydvorobmen.com/service/export/xml",
+    "status": "active",
+    "contact": "support@barskiydvorobmen.com",
+    "description": "Онлайн-обменник БарскийДворОбмен. Telegram @BarskiyDvorOperator.",
+    "notes": "OK ~5018 pairs from prod"
+  }
+]
