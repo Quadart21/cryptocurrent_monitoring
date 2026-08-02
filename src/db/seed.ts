@@ -72,6 +72,49 @@ export const seedQualityTags: ReviewQualityTag[] = [
   },
   { id: "q_rate", label: "Выгодный курс", active: true, createdAt: SEED_AT },
   { id: "q_trust", label: "Надёжный", active: true, createdAt: SEED_AT },
+  {
+    id: "q_fees",
+    label: "Прозрачные комиссии",
+    active: true,
+    createdAt: SEED_AT,
+  },
+  { id: "q_ui", label: "Удобный сайт", active: true, createdAt: SEED_AT },
+  {
+    id: "q_pairs",
+    label: "Большой выбор пар",
+    active: true,
+    createdAt: SEED_AT,
+  },
+  {
+    id: "q_reserve",
+    label: "Стабильные резервы",
+    active: true,
+    createdAt: SEED_AT,
+  },
+  {
+    id: "q_fair_rate",
+    label: "Курс без подмены",
+    active: true,
+    createdAt: SEED_AT,
+  },
+  {
+    id: "q_kyc",
+    label: "Простая верификация",
+    active: true,
+    createdAt: SEED_AT,
+  },
+  {
+    id: "q_limits",
+    label: "Удобные лимиты",
+    active: true,
+    createdAt: SEED_AT,
+  },
+  {
+    id: "q_recommend",
+    label: "Рекомендую",
+    active: true,
+    createdAt: SEED_AT,
+  },
 ];
 
 export const seedExchanger: FeedExchanger = {
