@@ -183,6 +183,13 @@
       "when": 1785490000000,
       "tag": "0025_legal_terms",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1785500000000,
+      "tag": "0026_exchanger_invite_email",
+      "breakpoints": true
     }
   ]
 }

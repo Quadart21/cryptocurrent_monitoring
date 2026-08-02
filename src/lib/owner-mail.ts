@@ -248,3 +248,34 @@ export async function sendComplaintConfirmEmail(input: {
     },
   });
 }
+
+/** Prefer public contact email, fall back to owner cabinet email. */
+export function resolveExchangerInviteEmail(ex: {
+  contact: string;
+  ownerEmail?: string | null;
+}): string | null {
+  return extractEmail(ex.contact) || extractEmail(ex.ownerEmail) || null;
+}
+
+export async function sendExchangerInviteEmail(input: {
+  to: string;
+  exchangerName: string;
+  exchangerSlug: string;
+  website: string;
+}): Promise<{ sent: boolean; skipped?: string }> {
+  const seo = await getSeoSettings();
+  const base = siteBaseUrl(seo.siteUrl);
+  return sendTemplatedEmail({
+    templateId: "exchanger_invite",
+    to: input.to,
+    tag: "exchanger-invite",
+    gate: "notifyExchangerInvite",
+    vars: {
+      exchangerName: input.exchangerName,
+      website: input.website || base,
+      exchangerUrl: `${base}/exchangers/${encodeURIComponent(input.exchangerSlug)}`,
+      cabinetUrl: `${base}/cabinet`,
+      contactEmail: input.to,
+    },
+  });
+}

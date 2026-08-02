@@ -55,7 +55,8 @@ export function ExchangerDetailModule() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const id = decodeURIComponent(params.id ?? "");
-  const { overview, busy, setBusy, refresh } = useAdmin();
+  const { overview, busy, setBusy, refresh, can } = useAdmin();
+  const canWrite = can("exchangers.write");
 
   const ex = useMemo(
     () => overview?.exchangers.find((e) => e.id === id) ?? null,
@@ -76,6 +77,7 @@ export function ExchangerDetailModule() {
   const [ownerError, setOwnerError] = useState<string | null>(null);
   const [ownerOk, setOwnerOk] = useState(false);
   const [bannerMsg, setBannerMsg] = useState<string | null>(null);
+  const [inviteMsg, setInviteMsg] = useState<string | null>(null);
   const [tab, setTab] = useState<DetailTab>("overview");
 
   useEffect(() => {
@@ -88,8 +90,44 @@ export function ExchangerDetailModule() {
       setOwnerError(null);
       setOwnerOk(false);
       setBannerMsg(null);
+      setInviteMsg(null);
     }
   }, [ex]);
+
+  async function sendInvite(force: boolean) {
+    if (!ex || !canWrite) return;
+    if (
+      force &&
+      !window.confirm(
+        "Отправить приглашение повторно? Предыдущая отметка сохранится с новой датой.",
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    setInviteMsg(null);
+    try {
+      const res = await fetch("/api/admin/exchangers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "invite", id: ex.id, force }),
+      });
+      const data = (await res.json()) as {
+        error?: string;
+        to?: string;
+      };
+      if (!res.ok) {
+        setInviteMsg(data.error || "Не удалось отправить");
+        return;
+      }
+      setInviteMsg(`Отправлено на ${data.to ?? "email"}`);
+      await refresh();
+    } catch {
+      setInviteMsg("Сеть недоступна");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function checkBannerNow() {
     setBusy(true);
@@ -636,6 +674,72 @@ export function ExchangerDetailModule() {
             </div>
           ))}
         </dl>
+
+        <div className="mt-6 rounded-2xl border border-line bg-bg-soft/40 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-ink-muted">
+                Приглашение
+              </p>
+              {ex.inviteEmailSentAt ? (
+                <>
+                  <p className="mt-1 text-sm font-semibold text-ok">
+                    Отправлено{" "}
+                    {new Date(ex.inviteEmailSentAt).toLocaleString("ru-RU")}
+                  </p>
+                  {ex.inviteEmailTo ? (
+                    <p className="mt-1 break-all text-xs text-ink-muted">
+                      → {ex.inviteEmailTo}
+                    </p>
+                  ) : null}
+                </>
+              ) : /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(ex.contact) ||
+                (ex.ownerEmail && /@/.test(ex.ownerEmail)) ? (
+                <p className="mt-1 text-sm font-semibold text-warn">
+                  Ещё не отправлялось
+                </p>
+              ) : (
+                <p className="mt-1 text-sm font-semibold text-ink-muted">
+                  Нет email в contact / ownerEmail
+                </p>
+              )}
+              {inviteMsg ? (
+                <p className="mt-2 text-xs text-ink-muted">{inviteMsg}</p>
+              ) : null}
+            </div>
+            {canWrite ? (
+              <div className="flex flex-wrap gap-2 sm:shrink-0">
+                {ex.inviteEmailSentAt ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void sendInvite(true)}
+                    className="rounded-xl border border-line px-3 py-2 text-xs font-semibold text-ink-muted disabled:opacity-60"
+                  >
+                    Отправить повторно
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={
+                      busy ||
+                      !(
+                        /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(
+                          ex.contact,
+                        ) ||
+                        (ex.ownerEmail && /@/.test(ex.ownerEmail))
+                      )
+                    }
+                    onClick={() => void sendInvite(false)}
+                    className="rounded-xl bg-accent/20 px-3 py-2 text-xs font-semibold text-accent disabled:opacity-60"
+                  >
+                    Отправить приглашение
+                  </button>
+                )}
+              </div>
+            ) : null}
+          </div>
+        </div>
       </div>
       ) : null}
 

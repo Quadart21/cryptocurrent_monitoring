@@ -171,6 +171,8 @@ function mapExchanger(row: ExchangerRow): FeedExchanger {
     ownerEmail: row.ownerEmail ?? null,
     ownerTotpSecret: row.ownerTotpSecret ?? null,
     ownerTotpEnabled: Boolean(row.ownerTotpEnabled),
+    inviteEmailSentAt: row.inviteEmailSentAt ?? null,
+    inviteEmailTo: row.inviteEmailTo ?? "",
     apiId: row.apiId ?? null,
   };
 }
@@ -1400,6 +1402,24 @@ export async function updateExchanger(
     await db.delete(rates).where(eq(rates.exchangerId, id));
   }
 
+  return row ? mapExchanger(row) : null;
+}
+
+/** Record that an invite email was sent (or re-sent) to this exchanger. */
+export async function markExchangerInviteSent(
+  id: string,
+  to: string,
+  sentAt: string = new Date().toISOString(),
+): Promise<FeedExchanger | null> {
+  const db = getDb();
+  const [row] = await db
+    .update(exchangers)
+    .set({
+      inviteEmailSentAt: sentAt,
+      inviteEmailTo: to.trim().toLowerCase(),
+    })
+    .where(eq(exchangers.id, id))
+    .returning();
   return row ? mapExchanger(row) : null;
 }
 

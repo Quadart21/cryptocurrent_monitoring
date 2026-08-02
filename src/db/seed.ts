@@ -117,6 +117,8 @@ export const seedExchanger: FeedExchanger = {
   ownerEmail: "seed@gapsnap.local",
   ownerTotpSecret: null,
   ownerTotpEnabled: false,
+  inviteEmailSentAt: null,
+  inviteEmailTo: "",
   apiId: 1,
 };
 

@@ -656,6 +656,10 @@ export function EmailModule() {
                   "API-ключ одобрен",
                   settings.notifyApiKeyApproved,
                 ],
+                [
+                  "Приглашение обменника",
+                  settings.notifyExchangerInvite,
+                ],
               ].map(([label, on]) => (
                 <li
                   key={String(label)}
@@ -968,6 +972,14 @@ export function EmailModule() {
                 checked={settings.notifyApiKeyApproved}
                 onChange={(v) =>
                   setSettings({ ...settings, notifyApiKeyApproved: v })
+                }
+              />
+              <Toggle
+                label="Приглашение обменника"
+                hint="Ручная/массовая рассылка знакомства из раздела Обменники"
+                checked={settings.notifyExchangerInvite}
+                onChange={(v) =>
+                  setSettings({ ...settings, notifyExchangerInvite: v })
                 }
               />
             </div>

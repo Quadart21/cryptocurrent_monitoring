@@ -67,6 +67,10 @@ export type FeedExchanger = {
   /** TOTP secret (base32), если 2FA включена */
   ownerTotpSecret: string | null;
   ownerTotpEnabled: boolean;
+  /** Когда отправлено пригласительное письмо GapSnap */
+  inviteEmailSentAt: string | null;
+  /** Адрес, на который ушло приглашение */
+  inviteEmailTo: string;
   /** Numeric ID for BestChange-compatible public API. */
   apiId: number | null;
 };

@@ -4,6 +4,8 @@ import { validateExchangeUrlTemplate } from "@/lib/exchange-link";
 import { hashOwnerPassword } from "@/lib/owner-auth";
 import {
   extractEmail,
+  resolveExchangerInviteEmail,
+  sendExchangerInviteEmail,
   sendOwnerApprovedEmail,
 } from "@/lib/owner-mail";
 import {
@@ -13,6 +15,7 @@ import {
   getExchangerById,
   getSeoSettings,
   listExchangers,
+  markExchangerInviteSent,
   provisionOwnerAccessOnApproval,
   replaceExchangerRates,
   setOwnerCredentials,
@@ -63,12 +66,16 @@ export async function GET() {
   });
 }
 
-/** Manual create from admin (no public apply / owner password required). */
+/** Manual create from admin, or invite actions. */
 export async function POST(request: Request) {
   const denied = await assertAdminResource("exchangers", request.method);
   if (denied) return denied;
 
   const body = (await request.json()) as {
+    action?: string;
+    id?: string;
+    force?: boolean;
+    limit?: number;
     name?: string;
     website?: string;
     exchangeUrlTemplate?: string;
@@ -82,6 +89,15 @@ export async function POST(request: Request) {
     skipFeedCheck?: boolean;
     sync?: boolean;
   };
+
+  if (body.action === "invite") {
+    return inviteOne(body.id, Boolean(body.force));
+  }
+  if (body.action === "invite-pending") {
+    return invitePending(
+      typeof body.limit === "number" ? body.limit : undefined,
+    );
+  }
 
   const name = String(body.name ?? "").trim();
   const website = String(body.website ?? "").trim();
@@ -401,6 +417,121 @@ export async function PATCH(request: Request) {
       ownerTotpEnabled: updated.ownerTotpEnabled,
     },
     mailWarning,
+  });
+}
+
+async function inviteOne(idRaw: string | undefined, force: boolean) {
+  const id = String(idRaw ?? "").trim();
+  if (!id) {
+    return NextResponse.json({ error: "id required" }, { status: 400 });
+  }
+  const ex = await getExchangerById(id);
+  if (!ex) {
+    return NextResponse.json({ error: "not found" }, { status: 404 });
+  }
+  const to = resolveExchangerInviteEmail(ex);
+  if (!to) {
+    return NextResponse.json(
+      { error: "Нет email (contact / ownerEmail)" },
+      { status: 400 },
+    );
+  }
+  if (ex.inviteEmailSentAt && !force) {
+    return NextResponse.json(
+      {
+        error: "Приглашение уже отправлялось",
+        inviteEmailSentAt: ex.inviteEmailSentAt,
+        inviteEmailTo: ex.inviteEmailTo,
+      },
+      { status: 409 },
+    );
+  }
+
+  const result = await sendExchangerInviteEmail({
+    to,
+    exchangerName: ex.name,
+    exchangerSlug: ex.slug,
+    website: ex.website,
+  });
+  if (!result.sent) {
+    return NextResponse.json(
+      {
+        error:
+          result.skipped === "notifyExchangerInvite"
+            ? "Отправка приглашений выключена в настройках Email"
+            : result.skipped === "template_disabled"
+              ? "Шаблон приглашения выключен"
+              : "Не удалось отправить письмо",
+        skipped: result.skipped,
+      },
+      { status: 422 },
+    );
+  }
+
+  const updated = await markExchangerInviteSent(ex.id, to);
+  return NextResponse.json({
+    ok: true,
+    to,
+    exchanger: updated ? toPublicExchanger(updated) : null,
+  });
+}
+
+async function invitePending(limitRaw?: number) {
+  const limit =
+    typeof limitRaw === "number" && Number.isFinite(limitRaw)
+      ? Math.min(200, Math.max(1, Math.floor(limitRaw)))
+      : 100;
+  const list = await listExchangers();
+  const pending = list.filter(
+    (ex) =>
+      ex.status === "active" &&
+      !ex.inviteEmailSentAt &&
+      resolveExchangerInviteEmail(ex),
+  );
+  const batch = pending.slice(0, limit);
+
+  let sent = 0;
+  let failed = 0;
+  let skipped = 0;
+  const errors: string[] = [];
+
+  for (const ex of batch) {
+    const to = resolveExchangerInviteEmail(ex);
+    if (!to) {
+      skipped += 1;
+      continue;
+    }
+    try {
+      const result = await sendExchangerInviteEmail({
+        to,
+        exchangerName: ex.name,
+        exchangerSlug: ex.slug,
+        website: ex.website,
+      });
+      if (!result.sent) {
+        skipped += 1;
+        errors.push(`${ex.slug}: skipped (${result.skipped ?? "unknown"})`);
+        continue;
+      }
+      await markExchangerInviteSent(ex.id, to);
+      sent += 1;
+    } catch (err) {
+      failed += 1;
+      const msg = err instanceof Error ? err.message : String(err);
+      errors.push(`${ex.slug}: ${msg}`);
+    }
+    await new Promise((r) => setTimeout(r, 150));
+  }
+
+  return NextResponse.json({
+    ok: true,
+    pendingTotal: pending.length,
+    attempted: batch.length,
+    sent,
+    failed,
+    skipped,
+    remaining: Math.max(0, pending.length - sent),
+    errors: errors.slice(0, 30),
   });
 }
 

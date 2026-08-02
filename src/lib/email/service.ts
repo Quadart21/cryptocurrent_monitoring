@@ -60,6 +60,7 @@ async function ensureEmailDefaults(): Promise<void> {
       notifyReviewThreadOwner: DEFAULT_EMAIL_SETTINGS.notifyReviewThreadOwner,
       notifyComplaintConfirm: DEFAULT_EMAIL_SETTINGS.notifyComplaintConfirm,
       notifyApiKeyApproved: DEFAULT_EMAIL_SETTINGS.notifyApiKeyApproved,
+      notifyExchangerInvite: DEFAULT_EMAIL_SETTINGS.notifyExchangerInvite,
       updatedAt: new Date().toISOString(),
     });
   }
@@ -113,6 +114,7 @@ function mapSettings(
     notifyReviewThreadOwner: row.notifyReviewThreadOwner ?? true,
     notifyComplaintConfirm: row.notifyComplaintConfirm ?? true,
     notifyApiKeyApproved: row.notifyApiKeyApproved ?? true,
+    notifyExchangerInvite: row.notifyExchangerInvite ?? true,
     updatedAt: row.updatedAt,
   };
 }
@@ -199,6 +201,10 @@ export async function updateEmailSettings(
       typeof patch.notifyApiKeyApproved === "boolean"
         ? patch.notifyApiKeyApproved
         : current.notifyApiKeyApproved,
+    notifyExchangerInvite:
+      typeof patch.notifyExchangerInvite === "boolean"
+        ? patch.notifyExchangerInvite
+        : current.notifyExchangerInvite,
     updatedAt: new Date().toISOString(),
   };
   const db = getDb();
@@ -337,7 +343,8 @@ export type SendTemplatedInput = {
     | "notifyReviewThreadAuthor"
     | "notifyReviewThreadOwner"
     | "notifyComplaintConfirm"
-    | "notifyApiKeyApproved";
+    | "notifyApiKeyApproved"
+    | "notifyExchangerInvite";
 };
 
 export async function sendTemplatedEmail(

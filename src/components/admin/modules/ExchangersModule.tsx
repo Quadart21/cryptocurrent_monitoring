@@ -26,6 +26,37 @@ const FILTERS: Array<{ id: "all" | FeedExchangerStatus; label: string }> = [
   { id: "rejected", label: "Отклонённые" },
 ];
 
+type InviteFilter = "all" | "pending" | "sent" | "noemail";
+
+const INVITE_FILTERS: Array<{ id: InviteFilter; label: string }> = [
+  { id: "all", label: "Приглашение: все" },
+  { id: "pending", label: "Ещё не слали" },
+  { id: "sent", label: "Отправлено" },
+  { id: "noemail", label: "Нет email" },
+];
+
+function hasInviteEmail(ex: {
+  contact: string;
+  ownerEmail?: string | null;
+}): boolean {
+  return (
+    /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(ex.contact) ||
+    Boolean(ex.ownerEmail && /@/.test(ex.ownerEmail))
+  );
+}
+
+function inviteStatus(
+  ex: {
+    contact: string;
+    ownerEmail?: string | null;
+    inviteEmailSentAt?: string | null;
+  },
+): "sent" | "pending" | "noemail" {
+  if (ex.inviteEmailSentAt) return "sent";
+  if (hasInviteEmail(ex)) return "pending";
+  return "noemail";
+}
+
 const EMPTY_FORM = {
   name: "",
   website: "",
@@ -43,18 +74,23 @@ export function ExchangersModule() {
   const router = useRouter();
   const { overview, busy, setBusy, refresh, can } = useAdmin();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("all");
+  const [inviteFilter, setInviteFilter] = useState<InviteFilter>("all");
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const [form, setForm] = useState(EMPTY_FORM);
   const [createError, setCreateError] = useState<string | null>(null);
   const [createWarning, setCreateWarning] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [inviteMsg, setInviteMsg] = useState<string | null>(null);
 
   const canWrite = can("exchangers.write");
 
   const rows = useMemo(() => {
     let list = overview?.exchangers ?? [];
     if (filter !== "all") list = list.filter((e) => e.status === filter);
+    if (inviteFilter !== "all") {
+      list = list.filter((e) => inviteStatus(e) === inviteFilter);
+    }
     const needle = q.trim().toLowerCase();
     if (needle) {
       list = list.filter(
@@ -62,11 +98,18 @@ export function ExchangersModule() {
           e.name.toLowerCase().includes(needle) ||
           e.slug.toLowerCase().includes(needle) ||
           e.feedUrl.toLowerCase().includes(needle) ||
-          e.contact.toLowerCase().includes(needle),
+          e.contact.toLowerCase().includes(needle) ||
+          (e.inviteEmailTo || "").toLowerCase().includes(needle),
       );
     }
     return list;
-  }, [overview, filter, q]);
+  }, [overview, filter, inviteFilter, q]);
+
+  const invitePendingCount = useMemo(() => {
+    return (overview?.exchangers ?? []).filter(
+      (e) => e.status === "active" && inviteStatus(e) === "pending",
+    ).length;
+  }, [overview]);
 
   const paginatedRows = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE;
@@ -75,7 +118,47 @@ export function ExchangersModule() {
 
   useEffect(() => {
     setPage(1);
-  }, [filter, q]);
+  }, [filter, inviteFilter, q]);
+
+  async function invitePendingAll() {
+    if (!canWrite) return;
+    if (
+      !window.confirm(
+        `Отправить приглашение ${invitePendingCount} обменникам без письма?`,
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    setInviteMsg(null);
+    try {
+      const res = await fetch("/api/admin/exchangers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "invite-pending", limit: 100 }),
+      });
+      const data = (await res.json()) as {
+        error?: string;
+        sent?: number;
+        failed?: number;
+        skipped?: number;
+        remaining?: number;
+        pendingTotal?: number;
+      };
+      if (!res.ok) {
+        setInviteMsg(data.error || "Не удалось отправить приглашения");
+        return;
+      }
+      setInviteMsg(
+        `Отправлено: ${data.sent ?? 0}, пропущено: ${data.skipped ?? 0}, ошибок: ${data.failed ?? 0}. Осталось без письма: ${data.remaining ?? 0}.`,
+      );
+      await refresh();
+    } catch {
+      setInviteMsg("Сеть недоступна");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function onCreate(e: FormEvent) {
     e.preventDefault();
@@ -139,19 +222,37 @@ export function ExchangersModule() {
         description="Добавьте обменник вручную или откройте карточку, чтобы править данные, ачивки и смотреть трафик."
         actions={
           canWrite ? (
-            <button
-              type="button"
-              onClick={() => {
-                setShowCreate((v) => !v);
-                setCreateError(null);
-              }}
-              className="rounded-2xl border border-line px-3 py-2 text-sm font-semibold text-ink hover:bg-bg-soft"
-            >
-              {showCreate ? "Скрыть форму" : "Добавить вручную"}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              {invitePendingCount > 0 ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void invitePendingAll()}
+                  className="rounded-2xl bg-accent/15 px-3 py-2 text-sm font-semibold text-accent disabled:opacity-60"
+                >
+                  Пригласить без письма ({invitePendingCount})
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCreate((v) => !v);
+                  setCreateError(null);
+                }}
+                className="rounded-2xl border border-line px-3 py-2 text-sm font-semibold text-ink hover:bg-bg-soft"
+              >
+                {showCreate ? "Скрыть форму" : "Добавить вручную"}
+              </button>
+            </div>
           ) : null
         }
       />
+
+      {inviteMsg ? (
+        <p className="rounded-2xl border border-accent/30 bg-accent-soft px-4 py-3 text-sm text-accent-deep">
+          {inviteMsg}
+        </p>
+      ) : null}
 
       {createWarning ? (
         <p className="rounded-2xl border border-accent/30 bg-accent-soft px-4 py-3 text-sm text-accent-deep">
@@ -342,22 +443,40 @@ export function ExchangersModule() {
         </AdminSection>
       ) : null}
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Поиск: имя, slug, фид, контакт"
-          className="w-full rounded-2xl border border-line bg-input px-3 py-2.5 text-sm outline-none focus:border-accent sm:max-w-md"
-        />
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Поиск: имя, slug, фид, контакт"
+            className="w-full rounded-2xl border border-line bg-input px-3 py-2.5 text-sm outline-none focus:border-accent sm:max-w-md"
+          />
+          <div className="flex flex-wrap gap-2">
+            {FILTERS.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setFilter(f.id)}
+                className={`rounded-2xl px-3 py-2 text-xs font-semibold ${
+                  filter === f.id
+                    ? "bg-accent/20 text-accent ring-1 ring-accent/40"
+                    : "border border-line text-ink-muted"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="flex flex-wrap gap-2">
-          {FILTERS.map((f) => (
+          {INVITE_FILTERS.map((f) => (
             <button
               key={f.id}
               type="button"
-              onClick={() => setFilter(f.id)}
+              onClick={() => setInviteFilter(f.id)}
               className={`rounded-2xl px-3 py-2 text-xs font-semibold ${
-                filter === f.id
-                  ? "bg-accent/20 text-accent ring-1 ring-accent/40"
+                inviteFilter === f.id
+                  ? "bg-ok/15 text-ok ring-1 ring-ok/30"
                   : "border border-line text-ink-muted"
               }`}
             >
@@ -389,6 +508,7 @@ export function ExchangersModule() {
           ) : (
             paginatedRows.map((ex) => {
               const logoSrc = logoPublicUrl(ex.id, ex.logo);
+              const inv = inviteStatus(ex);
               return (
                 <Link
                   key={ex.id}
@@ -413,6 +533,21 @@ export function ExchangersModule() {
                         <p className="font-semibold text-ink">{ex.name}</p>
                         <StatusPill status={ex.status} />
                         {ex.verified ? <StatusPill status="verified" /> : null}
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                            inv === "sent"
+                              ? "bg-ok/15 text-ok"
+                              : inv === "pending"
+                                ? "bg-warn/15 text-warn"
+                                : "bg-ink-muted/10 text-ink-muted"
+                          }`}
+                        >
+                          {inv === "sent"
+                            ? "Приглашён"
+                            : inv === "pending"
+                              ? "Без письма"
+                              : "Нет email"}
+                        </span>
                       </div>
                       <p className="mt-1 truncate text-xs text-ink-muted">
                         {ex.slug} · {ex.pairCount} пар · ★{" "}
@@ -427,6 +562,17 @@ export function ExchangersModule() {
                           ex.traffic ?? { pageViews: 0, siteClicks: 0 },
                         )}
                       </p>
+                      {inv === "sent" ? (
+                        <p className="mt-1 text-xs text-ok">
+                          Письмо{" "}
+                          {ex.inviteEmailSentAt
+                            ? new Date(ex.inviteEmailSentAt).toLocaleDateString(
+                                "ru-RU",
+                              )
+                            : ""}
+                          {ex.inviteEmailTo ? ` → ${ex.inviteEmailTo}` : ""}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                   <span className="text-sm font-semibold text-accent sm:shrink-0">

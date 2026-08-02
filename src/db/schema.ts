@@ -85,6 +85,10 @@ export const exchangers = pgTable(
     ownerEmail: text("owner_email"),
     ownerTotpSecret: text("owner_totp_secret"),
     ownerTotpEnabled: boolean("owner_totp_enabled").notNull().default(false),
+    /** When GapSnap invite/intro email was last sent to the exchanger. */
+    inviteEmailSentAt: text("invite_email_sent_at"),
+    /** Address the invite email was sent to (audit). */
+    inviteEmailTo: text("invite_email_to").notNull().default(""),
     /** Stable numeric ID for BestChange-compatible public API (`changers` / rates). */
     apiId: integer("api_id"),
   },
@@ -452,6 +456,9 @@ export const emailSettings = pgTable("email_settings", {
     .notNull()
     .default(true),
   notifyApiKeyApproved: boolean("notify_api_key_approved")
+    .notNull()
+    .default(true),
+  notifyExchangerInvite: boolean("notify_exchanger_invite")
     .notNull()
     .default(true),
   updatedAt: text("updated_at").notNull(),

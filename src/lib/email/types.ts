@@ -8,7 +8,8 @@ export type EmailTemplateId =
   | "review_owner_replied"
   | "review_author_replied"
   | "complaint_confirm"
-  | "api_key_approved";
+  | "api_key_approved"
+  | "exchanger_invite";
 
 export type EmailContactSource = "exchanger" | "review" | "manual";
 
@@ -35,6 +36,7 @@ export type EmailSettings = {
   notifyReviewThreadOwner: boolean;
   notifyComplaintConfirm: boolean;
   notifyApiKeyApproved: boolean;
+  notifyExchangerInvite: boolean;
   updatedAt: string;
 };
 
@@ -147,5 +149,14 @@ export const EMAIL_TEMPLATE_VARS: Record<string, string[]> = {
     "apiKey",
     "docsUrl",
     "exampleUrl",
+  ],
+  exchanger_invite: [
+    "siteName",
+    "siteUrl",
+    "exchangerName",
+    "website",
+    "exchangerUrl",
+    "cabinetUrl",
+    "contactEmail",
   ],
 };

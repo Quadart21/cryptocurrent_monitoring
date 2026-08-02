@@ -19,6 +19,7 @@ export const DEFAULT_EMAIL_SETTINGS: EmailSettings = {
   notifyReviewThreadOwner: true,
   notifyComplaintConfirm: true,
   notifyApiKeyApproved: true,
+  notifyExchangerInvite: true,
   updatedAt: NOW,
 };
 
@@ -380,6 +381,53 @@ HTML для вставки:
       ctaHref: "{{docsUrl}}",
       ctaAlt: "Документация API",
       ctaKind: "action",
+    }),
+    enabled: true,
+    updatedAt: NOW,
+  },
+  {
+    id: "exchanger_invite",
+    name: "Приглашение обменника",
+    description: "Знакомство: обменник добавлен в мониторинг GapSnap",
+    subject: "{{siteName}}: ваш обменник «{{exchangerName}}» добавлен в мониторинг",
+    text: `Здравствуйте!
+
+Мы добавили обменник «{{exchangerName}}» в мониторинг курсов {{siteName}}.
+
+Страница на {{siteName}}: {{exchangerUrl}}
+Сайт обменника: {{website}}
+
+Что дальше:
+1. Проверьте данные на публичной странице.
+2. При желании войдите в кабинет владельца: {{cabinetUrl}}
+3. Разместите на сайте небольшой баннер GapSnap (HTML-код в кабинете) — так пользователи смогут переходить к вам с мониторинга.
+
+Если это письмо попало не туда или нужно уточнить контакты — ответьте на него.
+Это письмо отправлено на {{contactEmail}}.
+
+Команда {{siteName}}
+{{siteUrl}}`,
+    html: wrapEmailHtml({
+      body: [
+        p("Здравствуйте!"),
+        p(
+          `Мы добавили обменник <strong>{{exchangerName}}</strong> в мониторинг курсов <strong style="color:#6d28d9">{{siteName}}</strong>.`,
+        ),
+        emailHighlight(
+          `Страница на {{siteName}}:<br/><a href="{{exchangerUrl}}" style="color:#6d28d9">{{exchangerUrl}}</a><br/>Сайт: <a href="{{website}}" style="color:#6d28d9">{{website}}</a>`,
+        ),
+        p("<strong>Что дальше</strong>"),
+        muted(
+          `1. Проверьте данные на публичной странице.<br/>2. При желании войдите в кабинет владельца.<br/>3. Разместите на сайте небольшой баннер GapSnap (HTML-код в кабинете) — так пользователи смогут переходить к вам с мониторинга.`,
+        ),
+        muted(
+          `Если письмо попало не туда или нужно уточнить контакты — просто ответьте на него.<br/>Отправлено на <code>{{contactEmail}}</code>.`,
+        ),
+      ].join("\n              "),
+      ctaHref: "{{exchangerUrl}}",
+      ctaAlt: "Открыть страницу на GapSnap",
+      ctaKind: "action",
+      afterCta: `<p style="margin:16px 0 0;font-size:13px;color:#6a6578">Кабинет владельца: <a href="{{cabinetUrl}}" style="color:#6d28d9">{{cabinetUrl}}</a></p>`,
     }),
     enabled: true,
     updatedAt: NOW,
