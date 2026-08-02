@@ -8,6 +8,7 @@ import {
 import { getCatalogSnapshot } from "@/lib/bestchange/catalog-store";
 import { runCatalogDiscovery } from "@/lib/bestchange/sync-catalogs";
 import { syncAllFeeds } from "@/lib/sync-feeds";
+import { maybeProxyToWorker } from "@/lib/worker-proxy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -79,10 +80,6 @@ export async function POST(request: Request) {
   }
 
   try {
-    if (action === "catalogs") {
-      const result = await runCatalogDiscovery();
-      return NextResponse.json({ action: "catalogs", ...result });
-    }
     if (action === "proposal") {
       if (!proposalId) {
         return NextResponse.json({ error: "id required" }, { status: 400 });
@@ -92,6 +89,20 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "not found" }, { status: 404 });
       }
       return NextResponse.json({ proposal });
+    }
+
+    if (action === "catalogs") {
+      const proxied = await maybeProxyToWorker("catalogs");
+      if (proxied.mode === "proxied") {
+        return NextResponse.json(proxied.data, { status: proxied.status });
+      }
+      const result = await runCatalogDiscovery();
+      return NextResponse.json({ action: "catalogs", ...result });
+    }
+
+    const proxied = await maybeProxyToWorker("feeds");
+    if (proxied.mode === "proxied") {
+      return NextResponse.json(proxied.data, { status: proxied.status });
     }
     const result = await syncAllFeeds();
     return NextResponse.json({ action: "feeds", ...result });

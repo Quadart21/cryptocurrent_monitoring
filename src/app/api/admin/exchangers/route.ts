@@ -19,7 +19,8 @@ import {
   updateExchanger,
 } from "@/lib/store";
 import { assertSafeOutboundUrl } from "@/lib/security/ssrf";
-import { syncExchangerFeed, validateFeedUrl } from "@/lib/sync-feeds";
+import { validateFeedUrl } from "@/lib/sync-feeds";
+import { syncExchangerFeedRouted } from "@/lib/worker-proxy";
 import type { ParsedRateItem } from "@/lib/xml/parse-rates";
 import {
   generateOwnerTempPassword,
@@ -197,7 +198,7 @@ export async function POST(request: Request) {
       const refreshed = await getExchangerById(exchanger.id);
       if (refreshed) exchanger = refreshed;
     } else if ((body.sync || status === "active") && body.skipFeedCheck) {
-      const synced = await syncExchangerFeed(exchanger.id);
+      const synced = await syncExchangerFeedRouted(exchanger.id);
       if (!synced.ok && synced.error) {
         feedWarning = synced.error;
       }
@@ -380,7 +381,7 @@ export async function PATCH(request: Request) {
   }
 
   if (body.sync || becomingActive) {
-    const synced = await syncExchangerFeed(updated.id);
+    const synced = await syncExchangerFeedRouted(updated.id);
     const refreshed = await getExchangerById(updated.id);
     if (refreshed) updated = refreshed;
     if (!synced.ok && synced.error && !mailWarning) {

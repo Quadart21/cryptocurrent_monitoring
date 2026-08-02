@@ -5,6 +5,7 @@ import {
   unpublishForMissingBanner,
   warnOwnerBannerMissing,
 } from "@/lib/banner-check";
+import { maybeProxyToWorker } from "@/lib/worker-proxy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,6 +43,21 @@ export async function POST(request: Request) {
 
   try {
     if (action === "check") {
+      const proxied = await maybeProxyToWorker("banners", {
+        exchangerId,
+      });
+      if (proxied.mode === "proxied") {
+        const data = proxied.data as Record<string, unknown>;
+        if (proxied.status >= 400) {
+          return NextResponse.json(data, { status: proxied.status });
+        }
+        return NextResponse.json({
+          success: true,
+          action,
+          via: "worker",
+          ...data,
+        });
+      }
       const result = await runBannerChecks({ exchangerId });
       return NextResponse.json({ success: true, action, ...result });
     }

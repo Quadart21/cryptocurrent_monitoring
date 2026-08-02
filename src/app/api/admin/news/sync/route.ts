@@ -4,6 +4,7 @@ import {
   getNewsSyncStatus,
   startNewsSync,
 } from "@/lib/news/sync-news";
+import { maybeProxyToWorker } from "@/lib/worker-proxy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,6 +25,27 @@ export async function POST() {
   const denied = await assertAdminResource("blog", "POST");
   if (denied) return denied;
   try {
+    const proxied = await maybeProxyToWorker("news", { force: true });
+    if (proxied.mode === "proxied") {
+      const data = proxied.data as {
+        alreadyRunning?: boolean;
+        error?: string;
+      };
+      if (proxied.status >= 400) {
+        return NextResponse.json(data, { status: proxied.status });
+      }
+      return NextResponse.json({
+        ok: true,
+        started: true,
+        alreadyRunning: Boolean(data.alreadyRunning),
+        inFlight: true,
+        via: "worker",
+        message: data.alreadyRunning
+          ? "Синхронизация уже выполняется"
+          : "Синхронизация запущена на worker",
+      });
+    }
+
     const started = await startNewsSync({ force: true });
     return NextResponse.json({
       ok: true,

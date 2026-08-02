@@ -15,7 +15,7 @@
   <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-16+-4169E1?style=flat-square&logo=postgresql&logoColor=white" />
   <img alt="Drizzle" src="https://img.shields.io/badge/ORM-Drizzle-C5F74F?style=flat-square" />
   <img alt="Node" src="https://img.shields.io/badge/Node.js-22+-339933?style=flat-square&logo=nodedotjs&logoColor=white" />
-  <img alt="Version" src="https://img.shields.io/badge/version-2.25.1-0ea5e9?style=flat-square" />
+  <img alt="Version" src="https://img.shields.io/badge/version-2.39.0-0ea5e9?style=flat-square" />
 </p>
 
 ---
@@ -41,6 +41,8 @@
 - [Почта](#почта)
 - [Безопасность](#безопасность)
 - [Структура репозитория](#структура-репозитория)
+
+> Разнесение на DB / worker / web: [docs/multi-server.md](docs/multi-server.md).
 
 ---
 
@@ -99,31 +101,43 @@ GapSnap собирает курсы обменников из публичных
 
 ```mermaid
 flowchart LR
-  subgraph Public
+  subgraph Clients
     U[Пользователи]
-    W[Сайт / курсы]
-    C[Кабинет]
   end
-  subgraph App
-    N[Next.js]
-    A[Админка]
+  subgraph Face["Сервер A · web"]
+    N[Next.js GAPSNAP_ROLE=web]
+    Ng[Nginx / HTTPS]
   end
-  subgraph Data
-    P[(PostgreSQL)]
-    F[XML-фиды]
+  subgraph Worker["Сервер B · worker"]
+    W[Next.js GAPSNAP_ROLE=worker]
+    P[Поллеры: feeds · news · banners · catalogs]
   end
-  U --> W
-  U --> C
-  W --> N
-  C --> N
-  A --> N
-  N --> P
-  N --> F
+  subgraph Data["Сервер C · DB"]
+    PG[(PostgreSQL)]
+  end
+  subgraph Ext[Внешнее]
+    F[XML-фиды / прокси]
+  end
+  U --> Ng --> N
+  N --> PG
+  W --> PG
+  N -.->|WORKER_URL + secret| W
+  W --> P --> F
 ```
+
+| Роль | Где | Что делает |
+|------|-----|------------|
+| **web** | Публичный VPS | Страницы, API чтения/записи, админка. **Без** фоновых поллеров |
+| **worker** | Внутренний VPS | Feed sync, каталоги, баннеры, новости, ачивки. Не светить в интернет |
+| **db** | Отдельный хост / managed | Только PostgreSQL; оба приложения на `DATABASE_URL` |
+| **all** | Один сервер (по умолчанию) | Монолит как раньше |
+
+Переменные: `GAPSNAP_ROLE`, на web ещё `WORKER_URL` + `WORKER_INTERNAL_SECRET`.  
+PM2: `ecosystem.config.cjs` (`gapsnap-web` / `gapsnap-worker` / `gapsnap`).
 
 **Стек:** Next.js · React · PostgreSQL · Drizzle ORM · PM2 · Nginx
 
-Хранилище — **только PostgreSQL** (в том числе логотипы и SVG ачивок). Миграции в `drizzle/` применяются при старте приложения.
+Хранилище — **только PostgreSQL** (в том числе логотипы и SVG ачивок). Миграции в `drizzle/` применяются при старте **web** (или `GAPSNAP_RUN_MIGRATIONS=1`).
 
 ---
 
@@ -288,19 +302,30 @@ SITE_URL=https://YOUR_DOMAIN
 <details>
 <summary><strong>5. Сборка и PM2</strong></summary>
 
+### Один сервер (монолит)
+
 ```bash
 cd /var/www/gapsnap && \
 npm run sync:catalogs && \
 npm run build && \
-pm2 start npm --name gapsnap -- start && \
+pm2 start ecosystem.config.cjs --only gapsnap && \
 pm2 save && \
 pm2 startup systemd -u root --hp /root
 ```
 
-Миграции применятся при старте. Вручную: `npm run db:migrate`.
+### Три сервера (DB · worker · web)
+
+1. **DB** — PostgreSQL, слушает приватный IP; `pg_hba.conf` только с IP web/worker.  
+2. **Worker** — клон репо, `.env` с `GAPSNAP_ROLE=worker`, `DATABASE_URL=…@DB…`, тот же `WORKER_INTERNAL_SECRET`.  
+   `pm2 start ecosystem.config.cjs --only gapsnap-worker` · порт **3001**, UFW: только с IP web.  
+3. **Web** — `.env` с `GAPSNAP_ROLE=web`, `WORKER_URL=http://WORKER_PRIVATE_IP:3001`, `WORKER_INTERNAL_SECRET=…`, `DATABASE_URL=…@DB…`.  
+   `pm2 start ecosystem.config.cjs --only gapsnap-web` · Nginx на 80/443 → `127.0.0.1:3000`.
+
+Миграции: при старте web, или вручную `npm run db:migrate` на web перед первым запуском worker.
 
 ```bash
-pm2 status && pm2 logs gapsnap --lines 50
+pm2 status && pm2 logs gapsnap-web --lines 50
+curl -s http://127.0.0.1:3000/api/health
 ```
 
 </details>

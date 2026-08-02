@@ -56,6 +56,24 @@ function withNoIndex(res: NextResponse): NextResponse {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const role = (process.env.GAPSNAP_ROLE ?? "all").trim().toLowerCase();
+  const isWorkerOnly =
+    role === "worker" || role === "poller" || role === "jobs";
+
+  // Dedicated worker: only internal API + health (no public site surface).
+  if (isWorkerOnly) {
+    if (
+      pathname === "/api/health" ||
+      pathname === "/api/internal/worker" ||
+      pathname.startsWith("/api/internal/")
+    ) {
+      return NextResponse.next();
+    }
+    return new NextResponse("Worker node — not a public origin", {
+      status: 404,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
 
   // Custom public admin URL → rewrite to internal /trulala app routes
   if (ADMIN_PATH !== ADMIN_INTERNAL_PATH && isAdminPublicPath(pathname)) {

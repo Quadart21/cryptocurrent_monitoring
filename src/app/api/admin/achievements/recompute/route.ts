@@ -5,6 +5,7 @@ import {
   countAchievementRuleMatches,
   recomputeAllAchievements,
 } from "@/lib/achievements-auto";
+import { maybeProxyToWorker } from "@/lib/worker-proxy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,6 +30,13 @@ export async function POST(request: Request) {
     }
     const matches = await countAchievementRuleMatches(rule);
     return NextResponse.json({ matches });
+  }
+
+  if (body.dryRun !== true) {
+    const proxied = await maybeProxyToWorker("achievements");
+    if (proxied.mode === "proxied") {
+      return NextResponse.json(proxied.data, { status: proxied.status });
+    }
   }
 
   const result = await recomputeAllAchievements({
