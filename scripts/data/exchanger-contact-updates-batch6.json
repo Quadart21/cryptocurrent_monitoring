@@ -1,0 +1,11 @@
+[
+  { "domain": "nordex.cc", "description": "Надёжный сервис по обмену криптовалют. Поддержка 24/7, Telegram @nordexcc.", "email": "info@nordex.cc", "telegram": "nordexcc" },
+  { "domain": "2rbina.net", "description": "Онлайн-обменник криптовалют и фиата. Поддержка в чате на сайте и по email.", "email": "2rbina.official@gmail.com" },
+  { "domain": "btc2pay.org", "description": "Обмен криптовалют онлайн: быстрые транзакции, выгодные курсы, безопасные операции. Telegram @BTC2PAY_CHATBOT.", "email": "official@btc2pay.org", "telegram": "BTC2PAY_CHATBOT" },
+  { "domain": "yesobmen.com", "description": "Круглосуточный онлайн-обменник криптовалют. Поддержка 24/7, Telegram @YESobmen.", "email": "info@yesobmen.com", "telegram": "YESobmen" },
+  { "domain": "wx.money", "description": "Онлайн-обменник электронных валют и криптовалют WxMoney.", "email": "wx.money.official@gmail.com" },
+  { "domain": "cash-bit.com", "description": "Круглосуточный обменник криптовалют. Быстрая покупка и продажа. Telegram @trans_bit_bot.", "email": "info@cash-bit.com", "telegram": "trans_bit_bot" },
+  { "domain": "fehupay.com", "description": "Обменный сервис онлайн: быстрый обмен с низкими комиссиями. График 9:00–23:00 МСК.", "email": "support@fehupay.com" },
+  { "domain": "first-btc.io", "description": "Онлайн-обменник криптовалют First-BTC. Telegram @firstbtc.", "email": "firstbtcinfo@gmail.com", "telegram": "firstbtc" },
+  { "domain": "4ex.cash", "description": "Сервис автоматического обмена криптовалют. Поддержка Telegram @cash4ex / @four_exchange_bot.", "telegram": "cash4ex" }
+]

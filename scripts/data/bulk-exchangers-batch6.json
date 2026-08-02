@@ -1,0 +1,83 @@
+[
+  {
+    "name": "Nordex",
+    "website": "https://nordex.cc/",
+    "feedUrl": "https://nordex.cc/export.xml",
+    "status": "active",
+    "contact": "info@nordex.cc",
+    "description": "Надёжный сервис по обмену криптовалют. Поддержка 24/7, Telegram @nordexcc.",
+    "notes": "OK ~947 pairs from prod"
+  },
+  {
+    "name": "2rbina",
+    "website": "https://2rbina.net/",
+    "feedUrl": "https://2rbina.net/export.xml",
+    "status": "active",
+    "contact": "2rbina.official@gmail.com",
+    "description": "Онлайн-обменник криптовалют и фиата. Поддержка в чате на сайте и по email.",
+    "notes": "OK ~13315 pairs from prod"
+  },
+  {
+    "name": "BTC2PAY",
+    "website": "https://btc2pay.org/",
+    "feedUrl": "https://btc2pay.org/export.xml",
+    "status": "active",
+    "contact": "official@btc2pay.org",
+    "description": "Обмен криптовалют онлайн: быстрые транзакции, выгодные курсы, безопасные операции. Telegram @BTC2PAY_CHATBOT.",
+    "notes": "OK ~9676 pairs from prod"
+  },
+  {
+    "name": "YesObmen",
+    "website": "https://yesobmen.com/",
+    "feedUrl": "https://yesobmen.com/export.xml",
+    "status": "active",
+    "contact": "info@yesobmen.com",
+    "description": "Круглосуточный онлайн-обменник криптовалют. Поддержка 24/7, Telegram @YESobmen.",
+    "notes": "OK ~1516 pairs from prod"
+  },
+  {
+    "name": "WxMoney",
+    "website": "https://wx.money/",
+    "feedUrl": "https://wx.money/export.xml",
+    "status": "active",
+    "contact": "wx.money.official@gmail.com",
+    "description": "Онлайн-обменник электронных валют и криптовалют WxMoney.",
+    "notes": "OK ~6218 pairs from prod"
+  },
+  {
+    "name": "Cash-Bit",
+    "website": "https://cash-bit.com/",
+    "feedUrl": "https://cash-bit.com/rates.xml",
+    "status": "active",
+    "contact": "info@cash-bit.com",
+    "description": "Круглосуточный обменник криптовалют. Быстрая покупка и продажа. Telegram @trans_bit_bot.",
+    "notes": "OK ~3757 pairs from prod"
+  },
+  {
+    "name": "FehuPay",
+    "website": "https://fehupay.com/",
+    "feedUrl": "https://fehupay.com/export.xml",
+    "status": "active",
+    "contact": "support@fehupay.com",
+    "description": "Обменный сервис онлайн: быстрый обмен с низкими комиссиями. График 9:00–23:00 МСК.",
+    "notes": "OK ~134 pairs from prod"
+  },
+  {
+    "name": "First-BTC",
+    "website": "https://first-btc.io/",
+    "feedUrl": "https://first-btc.io/export.xml",
+    "status": "active",
+    "contact": "firstbtcinfo@gmail.com",
+    "description": "Онлайн-обменник криптовалют First-BTC. Telegram @firstbtc.",
+    "notes": "OK ~11555 pairs from prod"
+  },
+  {
+    "name": "4ex.cash",
+    "website": "https://4ex.cash/",
+    "feedUrl": "https://4ex.cash/rates.html?sType=xml",
+    "status": "active",
+    "contact": "",
+    "description": "Сервис автоматического обмена криптовалют. Поддержка Telegram @cash4ex / @four_exchange_bot.",
+    "notes": "OK ~4 pairs from prod; no public email"
+  }
+]
