@@ -1,3 +1,9 @@
+import { ProxyAgent, fetch as undiciFetch } from "undici";
+import {
+  nextProxyEndpoint,
+  proxyAuthConfigured,
+  type ProxyEndpoint,
+} from "@/lib/ai/proxy-pool";
 import {
   listExchangers,
   replaceExchangerRatesBatch,
@@ -47,12 +53,85 @@ const FEED_RETRY_DELAY_MS = Math.max(
   200,
   Math.min(10_000, Number(process.env.FEED_RETRY_DELAY_MS) || 1_200),
 );
+/** Rotate through the Codex/news residential pool when Cloudflare blocks DC IP. */
+const FEED_PROXY_ATTEMPTS = Math.max(
+  0,
+  Math.min(40, Number(process.env.FEED_PROXY_ATTEMPTS) || 12),
+);
+const FEED_PROXY_MODE = (
+  process.env.FEED_PROXY_MODE?.trim().toLowerCase() || "auto"
+) as "auto" | "always" | "never";
+
+const FEED_HEADERS: Record<string, string> = {
+  Accept: "application/xml, text/xml, */*",
+  "Accept-Language": "ru,en;q=0.8",
+  "User-Agent": "GapSnapMonitor/1.0 (+https://gapsnap.org)",
+  "Cache-Control": "no-cache",
+};
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function fetchWithSsrfGuard(feedUrl: string): Promise<Response> {
+function looksLikeRatesXml(text: string): boolean {
+  return text.includes("<") && /<rates[\s>]/i.test(text);
+}
+
+function isCloudflareChallenge(text: string): boolean {
+  return /just a moment|cf-browser-verification|attention required|cdn-cgi\/challenge|cloudflare/i.test(
+    text,
+  );
+}
+
+function timeoutError(): Error {
+  return new Error(
+    `Таймаут загрузки фида (${Math.round(FETCH_TIMEOUT_MS / 1000)} с). Крупные XML могут грузиться дольше — попробуйте ещё раз.`,
+  );
+}
+
+function asAbortError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error.name === "AbortError" || /aborted/i.test(error.message))
+  );
+}
+
+async function readFeedBody(res: {
+  ok: boolean;
+  status: number;
+  headers: { get(name: string): string | null };
+  arrayBuffer(): Promise<ArrayBuffer>;
+}): Promise<string> {
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status} при запросе фида`);
+  }
+
+  const lengthHeader = res.headers.get("content-length");
+  if (lengthHeader && Number(lengthHeader) > MAX_BODY_BYTES) {
+    throw new Error("Фид слишком большой (лимит 12 МБ)");
+  }
+
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (buf.length > MAX_BODY_BYTES) {
+    throw new Error("Фид слишком большой (лимит 12 МБ)");
+  }
+  if (buf.length === 0) {
+    throw new Error("Пустой ответ фида (0 байт)");
+  }
+
+  const text = buf.toString("utf8");
+  if (!looksLikeRatesXml(text)) {
+    if (isCloudflareChallenge(text)) {
+      throw new Error(`HTTP ${res.status || 403} при запросе фида`);
+    }
+    throw new Error(
+      "Ответ не похож на XML-фид курсов (нужен корневой тег rates)",
+    );
+  }
+  return text;
+}
+
+async function fetchDirect(feedUrl: string): Promise<string> {
   let current = await assertSafeOutboundUrl(feedUrl, { allowHttp: true });
 
   for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
@@ -62,12 +141,7 @@ async function fetchWithSsrfGuard(feedUrl: string): Promise<Response> {
       const res = await fetch(current.toString(), {
         signal: controller.signal,
         redirect: "manual",
-        headers: {
-          Accept: "application/xml, text/xml, */*",
-          "Accept-Language": "ru,en;q=0.8",
-          "User-Agent": "GapSnapMonitor/1.0 (+https://gapsnap.org)",
-          "Cache-Control": "no-cache",
-        },
+        headers: FEED_HEADERS,
         cache: "no-store",
       });
 
@@ -84,16 +158,9 @@ async function fetchWithSsrfGuard(feedUrl: string): Promise<Response> {
         continue;
       }
 
-      return res;
+      return await readFeedBody(res);
     } catch (error) {
-      if (
-        error instanceof Error &&
-        (error.name === "AbortError" || /aborted/i.test(error.message))
-      ) {
-        throw new Error(
-          `Таймаут загрузки фида (${Math.round(FETCH_TIMEOUT_MS / 1000)} с). Крупные XML могут грузиться дольше — попробуйте ещё раз.`,
-        );
-      }
+      if (asAbortError(error)) throw timeoutError();
       throw error;
     } finally {
       clearTimeout(timer);
@@ -103,41 +170,88 @@ async function fetchWithSsrfGuard(feedUrl: string): Promise<Response> {
   throw new Error("Не удалось загрузить фид");
 }
 
-function looksLikeRatesXml(text: string): boolean {
-  return text.includes("<") && /<rates[\s>]/i.test(text);
+async function fetchViaProxy(
+  feedUrl: string,
+  proxy: ProxyEndpoint,
+): Promise<string> {
+  await assertSafeOutboundUrl(feedUrl, { allowHttp: true });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  const agent = new ProxyAgent(proxy.url);
+  try {
+    const res = await undiciFetch(feedUrl, {
+      method: "GET",
+      headers: FEED_HEADERS,
+      signal: controller.signal,
+      dispatcher: agent,
+      // undici follows redirects; initial URL already passed SSRF checks
+      maxRedirections: MAX_REDIRECTS,
+    });
+    return await readFeedBody(res);
+  } catch (error) {
+    if (asAbortError(error)) throw timeoutError();
+    throw error;
+  } finally {
+    clearTimeout(timer);
+    await agent.close().catch(() => undefined);
+  }
+}
+
+function shouldTryProxy(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    /HTTP 403/i.test(message) ||
+    /HTTP 429/i.test(message) ||
+    /HTTP 503/i.test(message) ||
+    /не похож на XML/i.test(message) ||
+    /таймаут/i.test(message) ||
+    /fetch failed/i.test(message) ||
+    /ECONNRESET|ETIMEDOUT|EAI_AGAIN|ENOTFOUND|UND_ERR/i.test(message)
+  );
 }
 
 async function fetchFeedXmlOnce(feedUrl: string): Promise<string> {
   const resolved = resolveFeedUrl(feedUrl);
   await assertSafeOutboundUrl(resolved, { allowHttp: true });
-  const res = await fetchWithSsrfGuard(resolved);
 
-  if (!res.ok) {
-    throw new Error(`HTTP ${res.status} при запросе фида`);
+  let lastError: unknown;
+
+  if (FEED_PROXY_MODE !== "always") {
+    try {
+      return await fetchDirect(resolved);
+    } catch (error) {
+      lastError = error;
+      if (FEED_PROXY_MODE === "never" || !shouldTryProxy(error)) {
+        throw error;
+      }
+    }
   }
 
-  const lengthHeader = res.headers.get("content-length");
-  if (lengthHeader && Number(lengthHeader) > MAX_BODY_BYTES) {
-    throw new Error("Фид слишком большой (лимит 12 МБ)");
+  if (FEED_PROXY_ATTEMPTS <= 0 || !(await proxyAuthConfigured())) {
+    throw lastError instanceof Error
+      ? lastError
+      : new Error("Не удалось загрузить фид");
   }
 
-  const buf = Buffer.from(await res.arrayBuffer());
-  if (buf.length > MAX_BODY_BYTES) {
-    throw new Error("Фид слишком большой (лимит 12 МБ)");
+  for (let i = 0; i < FEED_PROXY_ATTEMPTS; i += 1) {
+    const proxy = await nextProxyEndpoint();
+    if (!proxy) break;
+    try {
+      const xml = await fetchViaProxy(resolved, proxy);
+      if (i > 0 || FEED_PROXY_MODE === "always" || lastError) {
+        console.info(
+          `[gapsnap] feed via proxy ${proxy.host} ok (${resolved.slice(0, 64)})`,
+        );
+      }
+      return xml;
+    } catch (error) {
+      lastError = error;
+    }
   }
 
-  if (buf.length === 0) {
-    throw new Error("Пустой ответ фида (0 байт)");
-  }
-
-  const text = buf.toString("utf8");
-  if (!looksLikeRatesXml(text)) {
-    throw new Error(
-      "Ответ не похож на XML-фид курсов (нужен корневой тег rates)",
-    );
-  }
-
-  return text;
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Не удалось загрузить фид");
 }
 
 function isRetryableFeedError(error: unknown): boolean {

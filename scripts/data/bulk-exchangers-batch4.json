@@ -8,7 +8,7 @@
     "contact": "info@mine.exchange",
     "description": "Обменник криптовалют с 2016 года: фиат (USD, UAH, KZT и др.) и цифровые активы. Быстрый и безопасный обмен.",
     "skipFeedCheck": true,
-    "notes": "Feed OK ~252 pairs from workstation; prod IP gets HTTP 403 intermittently; email from site"
+    "notes": "Feed OK from workstation; prod DC IP Cloudflare 403 — sync uses residential proxy fallback"
   },
   {
     "name": "CoinDrop",

@@ -79,7 +79,7 @@
     "contact": "support@fiatex.pro",
     "description": "Онлайн-обменник электронных валют и криптовалют FiatEx.",
     "skipFeedCheck": true,
-    "notes": "42; Cloudflare 403 from server; email from contacts"
+    "notes": "42; Cloudflare 403 from server; sync uses residential proxy fallback; email from contacts"
   },
   {
     "name": "Co1n",
@@ -224,6 +224,6 @@
     "contact": "support@cryptoxchange.cc",
     "description": "100 000+ успешных обменов за 4 года. Быстрая поддержка и популярные направления.",
     "skipFeedCheck": true,
-    "notes": "L2-10; feed 403 from server IP; email from site"
+    "notes": "L2-10; feed 403 from server IP; sync uses residential proxy fallback; email from site"
   }
 ]

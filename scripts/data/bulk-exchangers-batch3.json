@@ -99,6 +99,6 @@
     "contact": "mail@lionchange.com",
     "description": "Быстрый онлайн-обменник электронных валют и криптовалют. Telegram @LNEXC, режим работы 10:00–20:00.",
     "skipFeedCheck": true,
-    "notes": "Feed OK ~1275 pairs from workstation (:code→gapsnap); prod IP gets Cloudflare 403 intermittently; email+TG from /en/contacts"
+    "notes": "Feed OK ~1275 pairs from workstation (:code→gapsnap); prod IP Cloudflare 403 — sync uses residential proxy fallback; email+TG from /en/contacts"
   }
 ]
