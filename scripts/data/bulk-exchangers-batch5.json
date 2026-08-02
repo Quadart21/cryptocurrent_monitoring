@@ -1,0 +1,229 @@
+[
+  {
+    "name": "ExchangeX",
+    "website": "https://exchangex.biz/en",
+    "feedUrl": "https://rates.exchangex.biz/exported_rates.php?format=2",
+    "status": "active",
+    "contact": "exchangexbiz@gmail.com",
+    "description": "Пункт обмена электронных валют. Обмены только через сайт.",
+    "notes": "31; OK ~247 pairs"
+  },
+  {
+    "name": "Poteme",
+    "website": "https://www.poteme.com/",
+    "feedUrl": "https://www.poteme.com/service/export/xml/:code",
+    "status": "active",
+    "contact": "support@poteme.com",
+    "description": "Онлайн-обменник электронных валют и криптовалют. Поддержка 9:00–23:00 МСК, Telegram @PoTemeSupportBot.",
+    "notes": "32; OK ~6974 pairs"
+  },
+  {
+    "name": "CoinTok",
+    "website": "https://cointok.net/en/",
+    "feedUrl": "https://cointok.net/request-exportxml.xml?lang=en",
+    "status": "active",
+    "contact": "info@cointok.net",
+    "description": "Автоматический онлайн-обменник: покупка Bitcoin и других криптовалют картами банков.",
+    "notes": "33; OK ~782 pairs"
+  },
+  {
+    "name": "Ant.Exchange",
+    "website": "https://ant.exchange/",
+    "feedUrl": "https://ant.exchange/rates-export/xml",
+    "status": "active",
+    "contact": "support@ant.exchange",
+    "description": "Онлайн-обменник (KZT и другие направления). Поддержка Telegram @antx_support.",
+    "notes": "34 KZT; OK ~5747 pairs"
+  },
+  {
+    "name": "Crypto007",
+    "website": "https://www.crypto007.net/en/",
+    "feedUrl": "https://www.crypto007.net/service/export/xml/:code",
+    "status": "active",
+    "contact": "",
+    "description": "Быстрый обмен криптовалют и фиата за ~10 минут. Надёжно, безопасно, конкурентные курсы (KGS).",
+    "notes": "35 KGS; OK ~822 pairs; no public email on contacts"
+  },
+  {
+    "name": "Moneta365",
+    "website": "https://www.moneta365.com/en/",
+    "feedUrl": "https://www.moneta365.com/service/export/xml/:code",
+    "status": "active",
+    "contact": "support@moneta365.com",
+    "description": "Онлайн-обменник электронных валют Moneta365 (KZT). Операторы пн–пт 10:00–22:00 (Киев).",
+    "notes": "37 KZT; OK ~1077 pairs"
+  },
+  {
+    "name": "BTCChange24",
+    "website": "https://www.btcchange24.com/en/",
+    "feedUrl": "https://www.btcchange24.com/service/export/xml/:code",
+    "status": "active",
+    "contact": "",
+    "description": "Мгновенные и безопасные обмены криптовалют: Bitcoin, Ethereum и другие. Telegram @btcchange24_official.",
+    "notes": "38 + L2-8; OK ~9234 pairs"
+  },
+  {
+    "name": "XeBit",
+    "website": "https://xebit.me/",
+    "feedUrl": "https://xebit.me/export-rates-xml",
+    "status": "active",
+    "contact": "",
+    "description": "Онлайн-обменник электронных валют и криптовалют XeBit.",
+    "notes": "41; OK ~90 pairs"
+  },
+  {
+    "name": "FiatEx",
+    "website": "https://www.fiatex.pro/",
+    "feedUrl": "https://www.fiatex.pro/service/export/xml/:code",
+    "status": "active",
+    "contact": "support@fiatex.pro",
+    "description": "Онлайн-обменник электронных валют и криптовалют FiatEx.",
+    "skipFeedCheck": true,
+    "notes": "42; Cloudflare 403 from server; email from contacts"
+  },
+  {
+    "name": "Co1n",
+    "website": "https://www.co1n.exchange/en/",
+    "feedUrl": "https://www.co1n.exchange/service/export/xml/:code",
+    "status": "active",
+    "contact": "support@co1n.exchange",
+    "description": "Онлайн-обменник Co1n.Exchange (KZT). Поддержка support@ / info@co1n.exchange.",
+    "notes": "43 KZT; OK ~49 pairs"
+  },
+  {
+    "name": "Kykyshka",
+    "website": "https://kykyshka.com/en/",
+    "feedUrl": "https://kykyshka.com/exports/rates.xml",
+    "status": "active",
+    "contact": "support@kykyshka.com",
+    "description": "Онлайн-обменник электронных валют и криптовалют.",
+    "notes": "44; OK ~272 pairs"
+  },
+  {
+    "name": "RWind",
+    "website": "https://rwind.cc/en/",
+    "feedUrl": "https://rwind.cc/exports/rates.xml",
+    "status": "active",
+    "contact": "support@rwind.cc",
+    "description": "Онлайн-обменник электронных валют и криптовалют RWind.",
+    "notes": "45; OK ~453 pairs"
+  },
+  {
+    "name": "Swop",
+    "website": "https://swop.is",
+    "feedUrl": "https://swop.is/valuta.xml",
+    "status": "active",
+    "contact": "",
+    "description": "Онлайн-обменник электронных валют и криптовалют Swop.",
+    "notes": "46; OK ~2822 pairs; site Cloudflare-blocked for scrape"
+  },
+  {
+    "name": "MultiXChange",
+    "website": "https://multixchange.net/en/",
+    "feedUrl": "https://multixchange.net/valuta.xml",
+    "status": "active",
+    "contact": "",
+    "description": "Надёжный обмен криптовалют и платёжных систем: банки, QIWI, Bitcoin, Ethereum и др.",
+    "notes": "48; OK ~10351 pairs"
+  },
+  {
+    "name": "MonetaGo",
+    "website": "https://monetago.exchange/en/",
+    "feedUrl": "https://monetago.exchange/exports/exchangerate.xml",
+    "status": "active",
+    "contact": "support@monetago.exchange",
+    "description": "Быстрый и удобный обмен валют: прозрачные условия, актуальные курсы и поддержка клиентов.",
+    "notes": "49; OK ~579 pairs"
+  },
+  {
+    "name": "Crypto-Zapravka",
+    "website": "https://crypto-zapravka.com/en/",
+    "feedUrl": "https://crypto-zapravka.com/exports/xml-cz.xml",
+    "status": "active",
+    "contact": "info@crypto-zapravka.com",
+    "description": "Онлайн-обменник криптовалют Crypto-Zapravka. Telegram @Crypto_Zapravka.",
+    "notes": "50; OK ~262 pairs"
+  },
+  {
+    "name": "Master-Change",
+    "website": "https://master-change.io/",
+    "feedUrl": "https://master-change.io/export.xml",
+    "status": "active",
+    "contact": "",
+    "description": "Онлайн-обменник электронных валют Master-Change.",
+    "notes": "L2-1; OK ~187 pairs"
+  },
+  {
+    "name": "1WM",
+    "website": "https://1wm.io/",
+    "feedUrl": "https://1wm.io/export.xml",
+    "status": "active",
+    "contact": "info@1wm.io",
+    "description": "Обменник First Way Money. Поддержка и Telegram @Chat_FirstWayMoney.",
+    "notes": "L2-2; OK ~11516 pairs"
+  },
+  {
+    "name": "Best-Obmen",
+    "website": "https://best-obmen.io/",
+    "feedUrl": "https://best-obmen.io/export.xml",
+    "status": "active",
+    "contact": "support@best-obmen.com",
+    "description": "Сервис обмена электронных и цифровых валют. Telegram @best_obmen_news.",
+    "notes": "L2-3; OK ~16456 pairs"
+  },
+  {
+    "name": "CatChange",
+    "website": "https://catchange.org/",
+    "feedUrl": "https://catchange.org/service/export/xml",
+    "status": "active",
+    "contact": "",
+    "description": "Онлайн-обменник электронных валют CatChange.",
+    "notes": "L2-4; OK ~3721 pairs"
+  },
+  {
+    "name": "ImExchanger",
+    "website": "https://imexchanger.pro/",
+    "feedUrl": "https://imexchanger.pro/export/xml",
+    "status": "active",
+    "contact": "",
+    "description": "Онлайн-обменник электронных валют ImExchanger.",
+    "notes": "L2-5; OK ~438 pairs"
+  },
+  {
+    "name": "CryptoBox",
+    "website": "https://cryptobox.pro/",
+    "feedUrl": "https://cryptobox.pro/export.xml",
+    "status": "active",
+    "contact": "",
+    "description": "Онлайн-обменник электронных валют и криптовалют CryptoBox.",
+    "notes": "L2-6; OK ~195 pairs"
+  },
+  {
+    "name": "EExchanger",
+    "website": "https://eexchanger.co/",
+    "feedUrl": "https://eexchanger.co/rates.xml",
+    "status": "active",
+    "contact": "",
+    "description": "Интернет-обменник электронных валют. Безопасный онлайн-обмен.",
+    "notes": "L2-7; OK ~575 pairs"
+  },
+  {
+    "name": "OpenChange",
+    "website": "https://openchange.is/",
+    "feedUrl": "https://openchange.is/export/xml",
+    "status": "active",
+    "contact": "client@openchange.is",
+    "description": "Онлайн-обменник электронных валют OpenChange.",
+    "notes": "L2-9; OK ~423 pairs"
+  },
+  {
+    "name": "CryptoXChange",
+    "website": "https://cryptoxchange.cc/",
+    "feedUrl": "https://cryptoxchange.cc/export.xml",
+    "status": "active",
+    "contact": "support@cryptoxchange.cc",
+    "description": "100 000+ успешных обменов за 4 года. Быстрая поддержка и популярные направления.",
+    "skipFeedCheck": true,
+    "notes": "L2-10; feed 403 from server IP; email from site"
+  }
+]
