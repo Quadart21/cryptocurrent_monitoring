@@ -1,0 +1,92 @@
+[
+  {
+    "name": "ProtonPlus",
+    "website": "https://protonplus.co/",
+    "feedUrl": "https://protonplus.co/export/xml",
+    "status": "active",
+    "contact": "help@protonplus.co",
+    "description": "Онлайн-обменник ProtonPlus. Поддержка help@protonplus.co.",
+    "notes": "OK ~370 pairs"
+  },
+  {
+    "name": "MafinCash",
+    "website": "https://mafincash.com/",
+    "feedUrl": "https://mafincash.com/exports/kurs.xml",
+    "status": "active",
+    "contact": "support@mafincash.com · @MafinCashSupport",
+    "description": "Автоматический обмен электронных валют MafinCash. Telegram @MafinCashSupport.",
+    "notes": "OK ~1694 pairs"
+  },
+  {
+    "name": "Xgram",
+    "website": "https://xgram.io/",
+    "feedUrl": "https://xgram.io/api/rates",
+    "status": "active",
+    "contact": "support@xgram.io · @Xgram_team",
+    "description": "Обменник криптовалют Xgram. Поддержка support@xgram.io, Telegram @Xgram_team.",
+    "notes": "OK ~859 pairs; /api/rates returns BestChange XML"
+  },
+  {
+    "name": "Bulldog",
+    "website": "https://bulldog.exchange/",
+    "feedUrl": "https://bulldog.exchange/service/export/xml",
+    "status": "active",
+    "contact": "support@bulldog.exchange · @exchange_bulldog",
+    "description": "Онлайн-обменник Bulldog Exchange. Telegram @exchange_bulldog / @bulldogexchange_bot.",
+    "notes": "OK ~135 pairs"
+  },
+  {
+    "name": "OPGSwap",
+    "website": "https://opgswap.com/",
+    "feedUrl": "https://opgswap.com/service/export/xml",
+    "status": "active",
+    "contact": "support@opgswap.com · @OPG_Swap",
+    "description": "Быстрый обменник OPGswap. Telegram @OPG_Swap.",
+    "notes": "OK ~36 pairs"
+  },
+  {
+    "name": "Vmex",
+    "website": "https://vmex.info/",
+    "feedUrl": "https://vmex.info/service/export/xml",
+    "status": "active",
+    "contact": "rus@vmex.info · @vmex",
+    "description": "Обменный пункт Vmex. Контакт rus@vmex.info.",
+    "notes": "OK ~10 pairs"
+  },
+  {
+    "name": "EliteObmen",
+    "website": "https://eliteobmen.com/",
+    "feedUrl": "https://eliteobmen.com/service/export/xml",
+    "status": "active",
+    "contact": "help@eliteobmen.com · @eliteobmen_com",
+    "description": "Онлайн-обменник EliteObmen. Telegram @eliteobmen_com.",
+    "notes": "OK ~6150 pairs"
+  },
+  {
+    "name": "Drakkar",
+    "website": "https://drakkar.exchange/",
+    "feedUrl": "https://drakkar.exchange/service/export/xml",
+    "status": "active",
+    "contact": "support@drakkar.exchange · @drakkar_exchange",
+    "description": "Онлайн-обменник Drakkar Exchange. Telegram @drakkar_exchange / @drakkarexchange_bot.",
+    "notes": "OK ~135 pairs"
+  },
+  {
+    "name": "BitcoinObmennik",
+    "website": "https://bitcoinobmennik.com/",
+    "feedUrl": "https://bitcoinobmennik.com/service/export/xml",
+    "status": "active",
+    "contact": "support@bitcoinobmennik.com",
+    "description": "Обменник BitcoinObmennik. Поддержка 10:00–22:00 (Киев).",
+    "notes": "OK ~5624 pairs"
+  },
+  {
+    "name": "HamsterBit",
+    "website": "https://hamsterbit.pro/",
+    "feedUrl": "https://hamsterbit.pro/rates.xml",
+    "status": "active",
+    "contact": "help@hamsterbit.pro",
+    "description": "Обменный пункт электронных валют HamsterBit. Операторы с 6:00 до 00:00.",
+    "notes": "OK ~27 pairs"
+  }
+]
