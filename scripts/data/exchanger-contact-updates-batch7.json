@@ -1,0 +1,12 @@
+[
+  { "domain": "vobmenka.com", "description": "Онлайн-обменник криптовалют и фиата Vobmenka. Telegram @vobmenka_chat / @vobmenka_news.", "email": "vobmenka@gmail.com" },
+  { "domain": "digichanger.pro", "description": "Быстрый онлайн-обмен валют DigiChanger. Поддержка 24/7, Telegram @DigiChangerSupport_bot.", "email": "support@digichanger.pro" },
+  { "domain": "111obmen.com", "description": "Безопасный сервис обмена фиата и криптовалют. Общение только в чате на сайте и официальном Telegram." },
+  { "domain": "anonex.cash", "description": "Онлайн криптообменник Anonex Cash с минимальной комиссией.", "email": "support@anonex.cash" },
+  { "domain": "crypto-trans.com", "description": "Онлайн-обменник CryptoTrans. Telegram @trans_bit_bot.", "email": "administrator@crypto-trans.com" },
+  { "domain": "izi.exchange", "description": "Онлайн-обменник электронных валют IZI.Exchange." },
+  { "domain": "e-obmen.net", "description": "Обменный сервис E-Obmen: Visa/MasterCard, BTC, LTC, XMR, USDT, Volet, Payeer.", "email": "rus@e-obmen.cc" },
+  { "domain": "ff.io", "description": "Мгновенный автоматический обмен криптовалют FixedFloat (ff.io). Поддержка 24/7, Telegram @FixedFloatBot.", "email": "support@fixedfloat.com" },
+  { "domain": "bitcoinbox.io", "description": "Быстрый онлайн-обменник BitcoinBox. Обмен только через сайт.", "email": "support@bitcoinbox.io" },
+  { "domain": "carlos-exchange.com", "description": "Сервис быстрого и безопасного обмена электронных валют. Telegram @aml_carlos_exchange_bot.", "email": "info@carlos-exchange.com" }
+]

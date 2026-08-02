@@ -1,0 +1,93 @@
+[
+  {
+    "name": "Vobmenka",
+    "website": "https://vobmenka.com/",
+    "feedUrl": "https://vobmenka.com/export.xml",
+    "status": "active",
+    "contact": "vobmenka@gmail.com",
+    "description": "Онлайн-обменник криптовалют и фиата Vobmenka. Telegram @vobmenka_chat / @vobmenka_news.",
+    "notes": "OK ~14687 pairs from prod"
+  },
+  {
+    "name": "DigiChanger",
+    "website": "https://www.digichanger.pro/en/",
+    "feedUrl": "https://digichanger.pro/service/export/xml",
+    "status": "active",
+    "contact": "support@digichanger.pro",
+    "description": "Быстрый онлайн-обмен валют DigiChanger. Поддержка 24/7, Telegram @DigiChangerSupport_bot.",
+    "notes": "OK ~677 pairs from prod; site HTML CF-blocked from DC IP"
+  },
+  {
+    "name": "111Obmen",
+    "website": "https://111obmen.com/",
+    "feedUrl": "https://111obmen.com/service/export/xml",
+    "status": "active",
+    "contact": "",
+    "description": "Безопасный сервис обмена фиата и криптовалют. Общение только в чате на сайте и официальном Telegram.",
+    "notes": "OK ~93 pairs from prod; no public email on contacts"
+  },
+  {
+    "name": "Anonex Cash",
+    "website": "https://anonex.cash/",
+    "feedUrl": "https://anonex.cash/service/export/xml",
+    "status": "active",
+    "contact": "support@anonex.cash",
+    "description": "Онлайн криптообменник Anonex Cash с минимальной комиссией.",
+    "notes": "OK ~63 pairs from prod"
+  },
+  {
+    "name": "CryptoTrans",
+    "website": "https://crypto-trans.com/",
+    "feedUrl": "https://crypto-trans.com/rates.xml",
+    "status": "active",
+    "contact": "Administrator@crypto-trans.com",
+    "description": "Онлайн-обменник CryptoTrans. Telegram @trans_bit_bot.",
+    "notes": "OK ~3680 pairs from prod"
+  },
+  {
+    "name": "IZI.Exchange",
+    "website": "https://izi.exchange/",
+    "feedUrl": "https://izi.exchange/service/export/xml",
+    "status": "active",
+    "contact": "",
+    "description": "Онлайн-обменник электронных валют IZI.Exchange.",
+    "skipFeedCheck": true,
+    "notes": "OK ~2024 pairs from workstation/proxy; prod DC IP Cloudflare 403 — sync uses residential proxy fallback"
+  },
+  {
+    "name": "E-Obmen",
+    "website": "https://e-obmen.net/",
+    "feedUrl": "https://e-obmen.net/service/export/xml",
+    "status": "active",
+    "contact": "rus@e-obmen.cc",
+    "description": "Обменный сервис E-Obmen: Visa/MasterCard, BTC, LTC, XMR, USDT, Volet, Payeer.",
+    "notes": "OK ~144 pairs from prod"
+  },
+  {
+    "name": "FixedFloat",
+    "website": "https://ff.io/",
+    "feedUrl": "https://ff.io/rates.xml",
+    "status": "active",
+    "contact": "support@fixedfloat.com",
+    "description": "Мгновенный автоматический обмен криптовалют FixedFloat (ff.io). Поддержка 24/7, Telegram @FixedFloatBot.",
+    "notes": "OK ~5040 pairs from prod"
+  },
+  {
+    "name": "BitcoinBox",
+    "website": "https://bitcoinbox.io/",
+    "feedUrl": "https://bitcoinbox.io/service/export/xml",
+    "status": "active",
+    "contact": "support@bitcoinbox.io",
+    "description": "Быстрый онлайн-обменник BitcoinBox. Обмен только через сайт.",
+    "notes": "OK ~9561 pairs from prod"
+  },
+  {
+    "name": "Carlos-Exchange",
+    "website": "https://carlos-exchange.com/",
+    "feedUrl": "https://carlos-exchange.com/exports/rates.xml",
+    "status": "active",
+    "contact": "info@carlos-exchange.com",
+    "description": "Сервис быстрого и безопасного обмена электронных валют. Telegram @aml_carlos_exchange_bot.",
+    "notes": "OK ~342 pairs; user URL rates.XML 404 — lowercase rates.xml works"
+  }
+]
