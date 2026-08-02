@@ -4,8 +4,8 @@
     "website": "https://fastwm.biz/",
     "feedUrl": "https://fastwm.biz/courses.xml",
     "status": "active",
-    "contact": "",
-    "description": "Автоматический обменник криптовалют и электронных валют FastWM.",
+    "contact": "info@fastwm.biz",
+    "description": "Автоматический обменник криптовалют и электронных валют FastWM. Telegram @fastwm_bot.",
     "notes": "OK ~5192 pairs from prod"
   },
   {
@@ -13,8 +13,8 @@
     "website": "https://mint-change.ru/",
     "feedUrl": "https://mint-change.ru/exports/valuta.xml",
     "status": "active",
-    "contact": "",
-    "description": "Онлайн-обменник Mint-Change. Криптовалюта, банки РФ, электронные валюты.",
+    "contact": "support@mint-change.ru",
+    "description": "Онлайн-обменник Mint-Change. Криптовалюта, банки РФ, электронные валюты. Telegram @mintchange.",
     "notes": "OK ~84 pairs from prod"
   },
   {
@@ -22,8 +22,8 @@
     "website": "https://changee.com/",
     "feedUrl": "https://changee.com/api/rates",
     "status": "active",
-    "contact": "",
-    "description": "Автоматический обменник криптовалют Changee.",
+    "contact": "support@changee.com",
+    "description": "Автоматический обменник криптовалют Changee. Telegram @changee_support1.",
     "notes": "OK ~898 pairs; /api/rates returns BestChange XML"
   },
   {
@@ -31,8 +31,8 @@
     "website": "https://beeswap.gg/",
     "feedUrl": "https://beeswap.gg/service/export/xml",
     "status": "active",
-    "contact": "",
-    "description": "Онлайн-обменник электронных валют BeeSwap.",
+    "contact": "support@beeswap.gg",
+    "description": "Онлайн-обменник электронных валют BeeSwap. Telegram @BeeSwap_gg.",
     "notes": "OK ~41 pairs from prod"
   },
   {
@@ -40,8 +40,8 @@
     "website": "https://purechange.net/",
     "feedUrl": "https://purechange.net/exports/rates.xml",
     "status": "active",
-    "contact": "",
-    "description": "Онлайн-обменник PureChange.",
+    "contact": "support@purechange.net",
+    "description": "Онлайн-обменник PureChange. Telegram @purechange_support.",
     "skipFeedCheck": true,
     "notes": "Feed URL returns HTTP 200 empty body (0 pairs) as of 2026-08-03; other paths 404"
   },
@@ -51,16 +51,16 @@
     "feedUrl": "https://johnny.do/export.xml",
     "status": "active",
     "contact": "",
-    "description": "Автоматический обменник криптовалют JohnnyDo.",
-    "notes": "OK ~373 pairs from prod"
+    "description": "Автоматический обменник криптовалют JohnnyDo. Поддержка 24/7 через чат на сайте.",
+    "notes": "OK ~373 pairs from prod; public email not listed (on-site chat only)"
   },
   {
     "name": "Quantex",
     "website": "https://quantex.pro/",
     "feedUrl": "https://quantex.pro/service/export/xml",
     "status": "active",
-    "contact": "",
-    "description": "Онлайн-обменник Quantex. Криптовалюта и фиат.",
+    "contact": "help@quantex.pro",
+    "description": "Онлайн-обменник Quantex. Криптовалюта и фиат. Telegram @quantex_support_bot.",
     "notes": "OK ~6988 pairs from prod"
   },
   {
@@ -68,8 +68,8 @@
     "website": "https://pocketbank.net/",
     "feedUrl": "https://pocketbank.net/service/export/xml",
     "status": "active",
-    "contact": "",
-    "description": "Онлайн-обменник PocketBank.",
+    "contact": "support@pocketbank.net",
+    "description": "Онлайн-обменник PocketBank. Telegram @PocketBankBot.",
     "notes": "OK ~1192 pairs from prod"
   },
   {
@@ -77,8 +77,8 @@
     "website": "https://sharky.one/",
     "feedUrl": "https://sharky.one/export.xml",
     "status": "active",
-    "contact": "",
-    "description": "Автоматический обменник криптовалют Sharky.",
+    "contact": "info@sharky.one",
+    "description": "Автоматический обменник криптовалют Sharky. Поддержка 24/7 через чат на сайте.",
     "notes": "OK ~374 pairs from prod"
   },
   {
@@ -86,8 +86,8 @@
     "website": "https://dvizh.com/",
     "feedUrl": "https://dvizh.com/service/export/xml",
     "status": "active",
-    "contact": "",
-    "description": "Онлайн-обменник Dvizh.",
+    "contact": "support@dvizh.com",
+    "description": "Онлайн-обменник Dvizh. Telegram @dvizh_crypto_bot.",
     "notes": "OK ~697 pairs from prod"
   }
 ]

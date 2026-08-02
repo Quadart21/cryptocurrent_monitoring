@@ -1,0 +1,51 @@
+[
+  {
+    "domain": "fastwm.biz",
+    "description": "Автоматический обменник криптовалют и электронных валют FastWM. Telegram @fastwm_bot.",
+    "email": "info@fastwm.biz"
+  },
+  {
+    "domain": "mint-change.ru",
+    "description": "Онлайн-обменник Mint-Change. Криптовалюта, банки РФ, электронные валюты. Telegram @mintchange.",
+    "email": "support@mint-change.ru"
+  },
+  {
+    "domain": "changee.com",
+    "description": "Автоматический обменник криптовалют Changee. Telegram @changee_support1.",
+    "email": "support@changee.com"
+  },
+  {
+    "domain": "beeswap.gg",
+    "description": "Онлайн-обменник электронных валют BeeSwap. Telegram @BeeSwap_gg.",
+    "email": "support@beeswap.gg"
+  },
+  {
+    "domain": "purechange.net",
+    "description": "Онлайн-обменник PureChange. Telegram @purechange_support.",
+    "email": "support@purechange.net"
+  },
+  {
+    "domain": "johnny.do",
+    "description": "Автоматический обменник криптовалют JohnnyDo. Поддержка 24/7 через чат на сайте."
+  },
+  {
+    "domain": "quantex.pro",
+    "description": "Онлайн-обменник Quantex. Криптовалюта и фиат. Telegram @quantex_support_bot.",
+    "email": "help@quantex.pro"
+  },
+  {
+    "domain": "pocketbank.net",
+    "description": "Онлайн-обменник PocketBank. Telegram @PocketBankBot.",
+    "email": "support@pocketbank.net"
+  },
+  {
+    "domain": "sharky.one",
+    "description": "Автоматический обменник криптовалют Sharky. Поддержка 24/7 через чат на сайте.",
+    "email": "info@sharky.one"
+  },
+  {
+    "domain": "dvizh.com",
+    "description": "Онлайн-обменник Dvizh. Telegram @dvizh_crypto_bot.",
+    "email": "support@dvizh.com"
+  }
+]
