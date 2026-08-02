@@ -1,0 +1,11 @@
+[
+  { "domain": "topcash24.me", "description": "Автоматический обмен крипто и электронных валют TopCash. Операторы пн–пт 09:00–20:00 UTC+2.", "email": "support@topcash24.me" },
+  { "domain": "payex24.com", "description": "Обмен электронных и фиатных активов Payex24. Режим 10:00–22:00 (UTC+3). Telegram @payex24_support_bot.", "email": "support@payex24.com" },
+  { "domain": "818.finance", "description": "Онлайн-обменник 818.finance. Поддержка Telegram @f818_support / @exchange818_bot." },
+  { "domain": "coins.black", "description": "Обмен криптовалют BTC, ETH, USDT на банковские карты и СБП.", "email": "info@coins.black" },
+  { "domain": "coincraddle.com", "description": "Автоматический обменник криптовалют CoinCraddle.", "email": "support@coincraddle.com" },
+  { "domain": "moneyport.world", "description": "Международные переводы и криптообмен MoneyPort. Telegram @mpexchange.", "email": "exchange@moneyport.world" },
+  { "domain": "swap-line.com", "description": "Онлайн-обменник криптовалют Swap-Line. Поддержка Telegram @swaplinecom. Выплаты 08:00–00:00 Киев.", "email": "admin@swap-line.com" },
+  { "domain": "bucksbunny.me", "description": "Онлайн-обменник электронных валют BucksBunny." },
+  { "domain": "bro.guru", "description": "Онлайн-обменник электронных валют Bro.Guru." }
+]

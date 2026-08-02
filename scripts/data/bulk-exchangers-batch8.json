@@ -1,0 +1,86 @@
+[
+  {
+    "name": "TopCash",
+    "website": "https://topcash24.me/",
+    "feedUrl": "https://topcash24.me/rates.xml",
+    "status": "active",
+    "contact": "support@topcash24.me",
+    "description": "Автоматический обмен крипто и электронных валют TopCash. Операторы пн–пт 09:00–20:00 UTC+2.",
+    "notes": "OK ~28 pairs from prod"
+  },
+  {
+    "name": "Payex24",
+    "website": "https://payex24.com/",
+    "feedUrl": "https://payex24.com/service/export/xml",
+    "status": "active",
+    "contact": "support@payex24.com",
+    "description": "Обмен электронных и фиатных активов Payex24. Режим 10:00–22:00 (UTC+3). Telegram @payex24_support_bot.",
+    "skipFeedCheck": true,
+    "notes": "OK ~7235 pairs via proxy/workstation; prod DC IP 403"
+  },
+  {
+    "name": "818 Finance",
+    "website": "https://818.finance/",
+    "feedUrl": "https://818.finance/service/export/xml",
+    "status": "active",
+    "contact": "",
+    "description": "Онлайн-обменник 818.finance. Поддержка Telegram @f818_support / @exchange818_bot.",
+    "skipFeedCheck": true,
+    "notes": "OK ~2639 pairs via proxy/workstation; prod DC IP Cloudflare 403"
+  },
+  {
+    "name": "Coins.Black",
+    "website": "https://coins.black/",
+    "feedUrl": "https://coins.black/rates.xml",
+    "status": "active",
+    "contact": "info@coins.black",
+    "description": "Обмен криптовалют BTC, ETH, USDT на банковские карты и СБП.",
+    "notes": "OK ~7 pairs from prod"
+  },
+  {
+    "name": "CoinCraddle",
+    "website": "https://coincraddle.com/",
+    "feedUrl": "https://coincraddle.com/api/rates",
+    "status": "active",
+    "contact": "support@coincraddle.com",
+    "description": "Автоматический обменник криптовалют CoinCraddle.",
+    "notes": "OK ~878 pairs; URL /api/rates returns BestChange XML"
+  },
+  {
+    "name": "MoneyPort",
+    "website": "https://moneyport.world/",
+    "feedUrl": "https://moneyport.world/exports/moneyport.xml",
+    "status": "active",
+    "contact": "exchange@moneyport.world",
+    "description": "Международные переводы и криптообмен MoneyPort. Telegram @mpexchange.",
+    "notes": "OK ~92 pairs from prod"
+  },
+  {
+    "name": "Swap-Line",
+    "website": "https://swap-line.com/",
+    "feedUrl": "https://swap-line.com/service/export/xml",
+    "status": "active",
+    "contact": "admin@swap-line.com",
+    "description": "Онлайн-обменник криптовалют Swap-Line. Поддержка Telegram @swaplinecom. Выплаты 08:00–00:00 Киев.",
+    "skipFeedCheck": true,
+    "notes": "OK ~1639 pairs via proxy/workstation; prod DC IP Cloudflare 403"
+  },
+  {
+    "name": "BucksBunny",
+    "website": "https://bucksbunny.me/",
+    "feedUrl": "https://bucksbunny.me/export/xml",
+    "status": "active",
+    "contact": "",
+    "description": "Онлайн-обменник электронных валют BucksBunny.",
+    "notes": "OK ~348 pairs from prod; no public email"
+  },
+  {
+    "name": "Bro.Guru",
+    "website": "https://bro.guru/",
+    "feedUrl": "https://bro.guru/export/xml",
+    "status": "active",
+    "contact": "",
+    "description": "Онлайн-обменник электронных валют Bro.Guru.",
+    "notes": "OK ~372 pairs from prod; no public email"
+  }
+]
