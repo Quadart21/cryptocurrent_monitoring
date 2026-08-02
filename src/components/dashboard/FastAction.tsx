@@ -5,11 +5,9 @@ import {
   CityAutocomplete,
   type CityOption,
 } from "@/components/dashboard/CityAutocomplete";
+import { CurrencyAutocomplete } from "@/components/dashboard/CurrencyAutocomplete";
 import { amountPresetsFor } from "@/lib/bestchange/catalog-client-amount";
-import {
-  currencyOptionLabel,
-  groupCurrencyOptions,
-} from "@/lib/currency-display";
+import { currencyOptionLabel } from "@/lib/currency-display";
 import { formatCurrencyAmount, formatRate } from "@/lib/format";
 
 export type ExchangeMode = "online" | "cash";
@@ -38,52 +36,6 @@ type Props = {
   onToChange: (code: string) => void;
   onSwap: () => void;
 };
-
-function CurrencySelect({
-  label,
-  value,
-  exclude,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  exclude: string;
-  options: CurrencyOption[];
-  onChange: (code: string) => void;
-}) {
-  const filtered = options.filter((c) => c.code !== exclude);
-  const groups = groupCurrencyOptions(filtered);
-  const selected = filtered.some((c) => c.code === value)
-    ? value
-    : (filtered[0]?.code ?? "");
-
-  return (
-    <label className="block min-w-0 space-y-1">
-      <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-muted">
-        {label}
-      </span>
-      <select
-        value={selected}
-        onChange={(e) => onChange(e.target.value)}
-        className="min-h-11 w-full rounded-xl border border-line bg-input px-3 py-2.5 text-base font-medium text-ink outline-none focus:border-accent sm:text-sm"
-      >
-        {groups.map((group) => (
-          <optgroup
-            key={`${group.groupId}-${group.groupName}`}
-            label={group.groupName}
-          >
-            {group.items.map((c) => (
-              <option key={c.code} value={c.code}>
-                {c.name}
-              </option>
-            ))}
-          </optgroup>
-        ))}
-      </select>
-    </label>
-  );
-}
 
 export function FastAction({
   mode,
@@ -198,12 +150,13 @@ export function FastAction({
         ) : null}
 
         <div className="relative grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-end">
-          <CurrencySelect
+          <CurrencyAutocomplete
             label="Отдаёте"
             value={from}
             exclude={to}
             options={options}
             onChange={onFromChange}
+            placeholder="BTC, биткоин, Сбер…"
           />
 
           <div className="relative z-10 -my-0.5 flex justify-center sm:my-0 sm:pb-0.5">
@@ -218,12 +171,13 @@ export function FastAction({
             </button>
           </div>
 
-          <CurrencySelect
+          <CurrencyAutocomplete
             label="Получаете"
             value={to}
             exclude={from}
             options={options}
             onChange={onToChange}
+            placeholder="USDT, доллар, Тинькофф…"
           />
         </div>
 
