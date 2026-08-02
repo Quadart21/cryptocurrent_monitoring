@@ -56,7 +56,7 @@ const FEED_RETRY_DELAY_MS = Math.max(
 /** Rotate through the Codex/news residential pool when Cloudflare blocks DC IP. */
 const FEED_PROXY_ATTEMPTS = Math.max(
   0,
-  Math.min(40, Number(process.env.FEED_PROXY_ATTEMPTS) || 12),
+  Math.min(40, Number(process.env.FEED_PROXY_ATTEMPTS) || 24),
 );
 const FEED_PROXY_MODE = (
   process.env.FEED_PROXY_MODE?.trim().toLowerCase() || "auto"
