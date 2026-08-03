@@ -125,6 +125,7 @@ async function mapPool<T, R>(
 
 export async function checkExchangerBanner(
   exchanger: FeedExchanger,
+  options?: { siteUrl?: string },
 ): Promise<BannerCheckJson> {
   const ensured = (await ensureBannerToken(exchanger.id)) ?? exchanger;
   const token = ensured.bannerToken;
@@ -163,7 +164,14 @@ export async function checkExchangerBanner(
 
   try {
     const html = await fetchHtml(ensured.website);
-    if (htmlHasGapSnapBanner(html, token)) {
+    const siteUrl =
+      options?.siteUrl ?? siteBaseUrl((await getSeoSettings()).siteUrl);
+    if (
+      htmlHasGapSnapBanner(html, token, {
+        slug: ensured.slug,
+        siteUrl,
+      })
+    ) {
       const next: BannerCheckJson = {
         status: "ok",
         lastCheckAt: now,
@@ -269,9 +277,10 @@ export async function runBannerChecks(options?: {
       if (options?.exchangerId) return e.id === options.exchangerId;
       return e.status === "active";
     });
+    const siteUrl = siteBaseUrl((await getSeoSettings()).siteUrl);
 
     await mapPool(targets, FETCH_CONCURRENCY, async (ex) => {
-      await checkExchangerBanner(ex);
+      await checkExchangerBanner(ex, { siteUrl });
     });
 
     const refreshed = await listExchangers();

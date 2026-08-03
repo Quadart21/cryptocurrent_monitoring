@@ -69,15 +69,71 @@ export function bannerEmbedHtml(input: {
   return `<a href="${href}" target="_blank" rel="noopener noreferrer" data-gapsnap-badge="${input.token}"><img src="${img}" alt="GapSnap" width="88" height="31" /></a>`;
 }
 
-/** True if HTML of partner site contains our badge marker. */
-export function htmlHasGapSnapBanner(html: string, token: string): boolean {
-  if (!html || !token) return false;
+export type GapSnapBannerMatchOptions = {
+  /** Exchanger public slug — matches links to /exchangers/{slug}. */
+  slug?: string | null;
+  /** GapSnap site origin(s), e.g. https://gapsnap.org */
+  siteUrl?: string | null;
+};
+
+function hostCandidates(siteUrl?: string | null): string[] {
+  const hosts = new Set<string>(["gapsnap.org", "www.gapsnap.org"]);
+  const raw = (siteUrl ?? "").trim();
+  if (raw) {
+    try {
+      const host = new URL(raw.includes("://") ? raw : `https://${raw}`).hostname
+        .toLowerCase()
+        .replace(/^www\./, "");
+      if (host) {
+        hosts.add(host);
+        hosts.add(`www.${host}`);
+      }
+    } catch {
+      /* ignore bad siteUrl */
+    }
+  }
+  return [...hosts];
+}
+
+/**
+ * True if partner HTML contains our official badge token, or a clear GapSnap
+ * partner link (e.g. self-hosted 88×31 pointing at /exchangers/{slug}).
+ */
+export function htmlHasGapSnapBanner(
+  html: string,
+  token: string,
+  options?: GapSnapBannerMatchOptions,
+): boolean {
+  if (!html) return false;
   const needle = token.trim();
-  if (!needle) return false;
-  if (html.includes(`data-gapsnap-badge="${needle}"`)) return true;
-  if (html.includes(`data-gapsnap-badge='${needle}'`)) return true;
-  if (html.includes(`/badge/${needle}`)) return true;
-  return false;
+  if (needle) {
+    if (html.includes(`data-gapsnap-badge="${needle}"`)) return true;
+    if (html.includes(`data-gapsnap-badge='${needle}'`)) return true;
+    if (html.includes(`/badge/${needle}`)) return true;
+  }
+
+  const slug = (options?.slug ?? "").trim().toLowerCase();
+  if (!slug) return false;
+
+  const escapedSlug = slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const hosts = hostCandidates(options?.siteUrl)
+    .map((h) => h.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("|");
+  if (!hosts) return false;
+
+  // https://gapsnap.org/exchangers/harbex  (optional trailing slash / query / utm)
+  const exchangerLink = new RegExp(
+    `https?:\\/\\/(?:${hosts})\\/exchangers\\/${escapedSlug}(?:[/?#"'\\s>]|$)`,
+    "i",
+  );
+  if (exchangerLink.test(html)) return true;
+
+  // Official badge CTA: /?utm_source=badge&...&utm_campaign={slug}
+  const badgeCampaign = new RegExp(
+    `https?:\\/\\/(?:${hosts})\\/[^"'\\s>]*utm_source=badge[^"'\\s>]*utm_campaign=${escapedSlug}(?:[&#"'\\s>]|$)`,
+    "i",
+  );
+  return badgeCampaign.test(html);
 }
 
 export function bannerStatusLabel(status: BannerCheckStatus): string {
