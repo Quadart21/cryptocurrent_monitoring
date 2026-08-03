@@ -116,7 +116,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (pathname === "/api/admin/login" || pathname === "/api/owner/login") {
+  if (
+    pathname === "/api/admin/login" ||
+    pathname === "/api/owner/login" ||
+    pathname === "/api/owner/remind-access"
+  ) {
     return NextResponse.next();
   }
 
