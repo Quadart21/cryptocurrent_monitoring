@@ -114,6 +114,7 @@ export async function tgSendMessage(
     parseMode?: TelegramParseMode;
     disablePreview?: boolean;
     silent?: boolean;
+    replyMarkup?: Record<string, unknown>;
   },
 ): Promise<TelegramMessage> {
   return callTelegram<TelegramMessage>(token, "sendMessage", {
@@ -122,6 +123,7 @@ export async function tgSendMessage(
     parse_mode: input.parseMode || undefined,
     disable_web_page_preview: input.disablePreview ?? false,
     disable_notification: input.silent ?? false,
+    reply_markup: input.replyMarkup || undefined,
   });
 }
 
@@ -133,6 +135,7 @@ export async function tgSendPhoto(
     caption?: string;
     parseMode?: TelegramParseMode;
     silent?: boolean;
+    replyMarkup?: Record<string, unknown>;
   },
 ): Promise<TelegramMessage> {
   return callTelegram<TelegramMessage>(token, "sendPhoto", {
@@ -141,6 +144,7 @@ export async function tgSendPhoto(
     caption: input.caption || undefined,
     parse_mode: input.parseMode || undefined,
     disable_notification: input.silent ?? false,
+    reply_markup: input.replyMarkup || undefined,
   });
 }
 
@@ -152,6 +156,7 @@ export async function tgEditMessageText(
     text: string;
     parseMode?: TelegramParseMode;
     disablePreview?: boolean;
+    replyMarkup?: Record<string, unknown>;
   },
 ): Promise<TelegramMessage | true> {
   return callTelegram<TelegramMessage | true>(token, "editMessageText", {
@@ -160,6 +165,7 @@ export async function tgEditMessageText(
     text: input.text,
     parse_mode: input.parseMode || undefined,
     disable_web_page_preview: input.disablePreview ?? false,
+    reply_markup: input.replyMarkup,
   });
 }
 
@@ -170,6 +176,7 @@ export async function tgEditMessageCaption(
     messageId: number;
     caption: string;
     parseMode?: TelegramParseMode;
+    replyMarkup?: Record<string, unknown>;
   },
 ): Promise<TelegramMessage | true> {
   return callTelegram<TelegramMessage | true>(token, "editMessageCaption", {
@@ -177,6 +184,7 @@ export async function tgEditMessageCaption(
     message_id: input.messageId,
     caption: input.caption,
     parse_mode: input.parseMode || undefined,
+    reply_markup: input.replyMarkup,
   });
 }
 

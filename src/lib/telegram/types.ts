@@ -1,5 +1,14 @@
 export type TelegramParseMode = "HTML" | "MarkdownV2" | "Markdown";
 
+/** URL inline button (callback buttons need a webhook — not used in channels). */
+export type TelegramUrlButton = {
+  text: string;
+  url: string;
+};
+
+/** One keyboard row of URL buttons. */
+export type TelegramButtonRow = TelegramUrlButton[];
+
 export type TelegramSettings = {
   botToken: string;
   channelId: string;
@@ -33,6 +42,7 @@ export type TelegramPost = {
   disablePreview: boolean;
   silent: boolean;
   photoUrl: string;
+  buttons: TelegramButtonRow[];
   status: TelegramPostStatus;
   error: string | null;
   adminLogin: string;

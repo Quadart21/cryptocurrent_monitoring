@@ -14,10 +14,12 @@ import {
   AdminTabBar,
 } from "@/components/admin/ui";
 import type {
+  TelegramButtonRow,
   TelegramConnectionInfo,
   TelegramParseMode,
   TelegramPost,
   TelegramSettingsPublic,
+  TelegramUrlButton,
 } from "@/lib/telegram/types";
 
 type TabId = "compose" | "history" | "settings";
@@ -31,6 +33,8 @@ type Snapshot = {
   models: Array<{ id: string; ownedBy?: string }>;
   modelsError: string | null;
   newsModel: string;
+  siteUrl: string;
+  siteName: string;
 };
 
 const TABS: Array<{ id: TabId; label: string }> = [
@@ -259,6 +263,201 @@ function Pill({
   );
 }
 
+function emptyButton(): TelegramUrlButton {
+  return { text: "", url: "" };
+}
+
+function ButtonsEditor({
+  rows,
+  onChange,
+  siteUrl,
+  disabled,
+}: {
+  rows: TelegramButtonRow[];
+  onChange: (rows: TelegramButtonRow[]) => void;
+  siteUrl: string;
+  disabled?: boolean;
+}) {
+  const base = siteUrl.replace(/\/+$/, "") || "https://gapsnap.org";
+
+  const updateButton = (
+    rowIdx: number,
+    btnIdx: number,
+    patch: Partial<TelegramUrlButton>,
+  ) => {
+    onChange(
+      rows.map((row, ri) =>
+        ri !== rowIdx
+          ? row
+          : row.map((b, bi) => (bi === btnIdx ? { ...b, ...patch } : b)),
+      ),
+    );
+  };
+
+  const removeButton = (rowIdx: number, btnIdx: number) => {
+    const next = rows
+      .map((row, ri) =>
+        ri !== rowIdx ? row : row.filter((_, bi) => bi !== btnIdx),
+      )
+      .filter((row) => row.length > 0);
+    onChange(next);
+  };
+
+  const addButton = (rowIdx: number) => {
+    onChange(
+      rows.map((row, ri) =>
+        ri === rowIdx && row.length < 8 ? [...row, emptyButton()] : row,
+      ),
+    );
+  };
+
+  const addRow = () => {
+    if (rows.length >= 8) return;
+    onChange([...rows, [emptyButton()]]);
+  };
+
+  const addPreset = (text: string, url: string) => {
+    if (!rows.length) {
+      onChange([[{ text, url }]]);
+      return;
+    }
+    const last = rows[rows.length - 1]!;
+    if (last.length < 8) {
+      onChange(
+        rows.map((row, i) =>
+          i === rows.length - 1 ? [...row, { text, url }] : row,
+        ),
+      );
+    } else if (rows.length < 8) {
+      onChange([...rows, [{ text, url }]]);
+    }
+  };
+
+  return (
+    <div className="space-y-3 rounded-xl border border-line bg-bg-soft/30 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <p className="text-[13px] font-medium text-ink">Кнопки (URL)</p>
+          <p className="mt-0.5 text-xs text-ink-muted">
+            Inline-кнопки со ссылками. Для канала это основной тип.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => addPreset("Сравнить курсы", `${base}/`)}
+            className="rounded-lg border border-line px-2.5 py-1 text-[11px] font-medium text-ink-muted transition hover:border-accent/40 hover:text-ink disabled:opacity-60"
+          >
+            + Курсы
+          </button>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() =>
+              addPreset("Каталог обменников", `${base}/exchangers`)
+            }
+            className="rounded-lg border border-line px-2.5 py-1 text-[11px] font-medium text-ink-muted transition hover:border-accent/40 hover:text-ink disabled:opacity-60"
+          >
+            + Каталог
+          </button>
+        </div>
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="text-sm text-ink-muted">Кнопок нет</p>
+      ) : (
+        <div className="space-y-3">
+          {rows.map((row, rowIdx) => (
+            <div
+              key={`row-${rowIdx}`}
+              className="space-y-2 rounded-lg border border-line/70 bg-bg p-3"
+            >
+              <p className="text-[11px] font-medium uppercase tracking-wide text-ink-muted">
+                Ряд {rowIdx + 1}
+              </p>
+              {row.map((btn, btnIdx) => (
+                <div
+                  key={`b-${rowIdx}-${btnIdx}`}
+                  className="grid gap-2 sm:grid-cols-[1fr_1.4fr_auto]"
+                >
+                  <input
+                    className={inputClass}
+                    value={btn.text}
+                    onChange={(e) =>
+                      updateButton(rowIdx, btnIdx, { text: e.target.value })
+                    }
+                    placeholder="Текст"
+                    maxLength={64}
+                    disabled={disabled}
+                  />
+                  <input
+                    className={inputClass}
+                    value={btn.url}
+                    onChange={(e) =>
+                      updateButton(rowIdx, btnIdx, { url: e.target.value })
+                    }
+                    placeholder="https://…"
+                    disabled={disabled}
+                  />
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => removeButton(rowIdx, btnIdx)}
+                    className="rounded-xl border border-danger/30 px-3 py-2 text-xs font-medium text-danger transition hover:bg-danger/5 disabled:opacity-60"
+                  >
+                    Удалить
+                  </button>
+                </div>
+              ))}
+              {row.length < 8 ? (
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => addButton(rowIdx)}
+                  className="text-xs font-medium text-ink-muted underline-offset-2 hover:text-ink hover:underline disabled:opacity-60"
+                >
+                  + кнопка в этот ряд
+                </button>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {rows.length < 8 ? (
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={addRow}
+          className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink transition hover:border-accent/40 disabled:opacity-60"
+        >
+          + ряд кнопок
+        </button>
+      ) : null}
+
+      {rows.some((r) => r.some((b) => b.text.trim() && b.url.trim())) ? (
+        <div className="flex flex-wrap gap-2 pt-1">
+          {rows.map((row, ri) => (
+            <div key={`prev-${ri}`} className="flex flex-wrap gap-1.5">
+              {row
+                .filter((b) => b.text.trim() && b.url.trim())
+                .map((b, bi) => (
+                  <span
+                    key={`pb-${ri}-${bi}`}
+                    className="rounded-lg border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent-deep"
+                  >
+                    {b.text}
+                  </span>
+                ))}
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function TelegramModule() {
   const { busy, setBusy, can } = useAdmin();
   const canWrite = can("telegram.write");
@@ -282,6 +481,7 @@ export function TelegramModule() {
   const [testing, setTesting] = useState(false);
   const [topic, setTopic] = useState("");
   const [composing, setComposing] = useState(false);
+  const [buttonRows, setButtonRows] = useState<TelegramButtonRow[]>([]);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -497,6 +697,7 @@ export function TelegramModule() {
                 text,
                 parseMode,
                 disablePreview,
+                buttons: buttonRows,
               }
             : {
                 action: "publish",
@@ -505,6 +706,7 @@ export function TelegramModule() {
                 parseMode,
                 disablePreview,
                 silent,
+                buttons: buttonRows,
               },
         ),
       });
@@ -516,6 +718,7 @@ export function TelegramModule() {
       await load();
       setText("");
       setPhotoUrl("");
+      setButtonRows([]);
       setEditingId(null);
       flash(editingId ? "Пост обновлён" : "Опубликовано в канал");
       setTab("history");
@@ -535,6 +738,11 @@ export function TelegramModule() {
     setParseMode(post.parseMode);
     setDisablePreview(post.disablePreview);
     setSilent(post.silent);
+    setButtonRows(
+      post.buttons?.length
+        ? post.buttons.map((row) => row.map((b) => ({ ...b })))
+        : [],
+    );
     setTab("compose");
   };
 
@@ -555,6 +763,7 @@ export function TelegramModule() {
         setEditingId(null);
         setText("");
         setPhotoUrl("");
+        setButtonRows([]);
       }
       await load();
       flash("Сообщение удалено");
@@ -642,6 +851,7 @@ export function TelegramModule() {
                     setEditingId(null);
                     setText("");
                     setPhotoUrl("");
+                    setButtonRows([]);
                   }}
                 >
                   Отменить
@@ -736,6 +946,13 @@ export function TelegramModule() {
               </Field>
             ) : null}
 
+            <ButtonsEditor
+              rows={buttonRows}
+              onChange={setButtonRows}
+              siteUrl={data.siteUrl}
+              disabled={!canWrite || busy}
+            />
+
             <div className="grid gap-3 sm:grid-cols-2">
               <Toggle
                 label="Без превью ссылок"
@@ -812,10 +1029,34 @@ export function TelegramModule() {
                     {post.photoUrl ? (
                       <span className="text-xs text-ink-muted">· фото</span>
                     ) : null}
+                    {post.buttons?.length ? (
+                      <span className="text-xs text-ink-muted">
+                        · {post.buttons.reduce((n, r) => n + r.length, 0)} кн.
+                      </span>
+                    ) : null}
                   </div>
                   <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-bg-soft/60 p-3 font-mono text-[12px] leading-relaxed text-ink">
                     {post.text || "(без текста)"}
                   </pre>
+                  {post.buttons?.length ? (
+                    <div className="flex flex-col gap-1.5">
+                      {post.buttons.map((row, ri) => (
+                        <div key={`${post.id}-r-${ri}`} className="flex flex-wrap gap-1.5">
+                          {row.map((b, bi) => (
+                            <a
+                              key={`${post.id}-b-${ri}-${bi}`}
+                              href={b.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="rounded-lg border border-accent/30 bg-accent/10 px-2.5 py-1 text-[11px] font-semibold text-accent-deep hover:underline"
+                            >
+                              {b.text}
+                            </a>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                   {post.error ? (
                     <p className="text-xs text-danger">{post.error}</p>
                   ) : null}

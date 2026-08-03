@@ -709,6 +709,10 @@ export const telegramPosts = pgTable(
     disablePreview: boolean("disable_preview").notNull().default(false),
     silent: boolean("silent").notNull().default(false),
     photoUrl: text("photo_url").notNull().default(""),
+    buttons: jsonb("buttons")
+      .$type<Array<Array<{ text: string; url: string }>>>()
+      .notNull()
+      .default([]),
     status: text("status").notNull().default("sent"),
     error: text("error"),
     adminLogin: text("admin_login").notNull().default(""),

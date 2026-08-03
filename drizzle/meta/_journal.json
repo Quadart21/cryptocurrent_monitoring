@@ -204,6 +204,13 @@
       "when": 1785520000000,
       "tag": "0028_telegram_compose_ai",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1785530000000,
+      "tag": "0029_telegram_buttons",
+      "breakpoints": true
     }
   ]
 }

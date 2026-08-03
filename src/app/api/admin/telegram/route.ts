@@ -15,7 +15,10 @@ import {
   updateTelegramSettings,
 } from "@/lib/telegram/service";
 import { DEFAULT_TELEGRAM_COMPOSE_PROMPT } from "@/lib/telegram/default-prompt";
-import type { TelegramParseMode } from "@/lib/telegram/types";
+import type {
+  TelegramButtonRow,
+  TelegramParseMode,
+} from "@/lib/telegram/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -67,6 +70,7 @@ export async function PUT(request: Request) {
     parseMode?: TelegramParseMode;
     disablePreview?: boolean;
     silent?: boolean;
+    buttons?: TelegramButtonRow[];
     id?: string;
     topic?: string;
     model?: string;
@@ -105,6 +109,7 @@ export async function PUT(request: Request) {
           parseMode: body.parseMode,
           disablePreview: body.disablePreview,
           silent: body.silent,
+          buttons: body.buttons,
           adminLogin: session.user.login,
         });
         return NextResponse.json({ post });
@@ -125,6 +130,7 @@ export async function PUT(request: Request) {
         text: body.text ?? "",
         parseMode: body.parseMode,
         disablePreview: body.disablePreview,
+        buttons: body.buttons,
       });
       return NextResponse.json({ post });
     }

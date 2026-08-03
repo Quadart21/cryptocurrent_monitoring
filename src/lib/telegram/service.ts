@@ -14,7 +14,13 @@ import {
   tgSendMessage,
   tgSendPhoto,
 } from "@/lib/telegram/client";
+import {
+  normalizeTelegramButtons,
+  telegramReplyMarkup,
+  telegramReplyMarkupOrClear,
+} from "@/lib/telegram/buttons";
 import type {
+  TelegramButtonRow,
   TelegramConnectionInfo,
   TelegramParseMode,
   TelegramPost,
@@ -85,6 +91,7 @@ function mapPost(row: typeof telegramPosts.$inferSelect): TelegramPost {
     disablePreview: Boolean(row.disablePreview),
     silent: Boolean(row.silent),
     photoUrl: row.photoUrl ?? "",
+    buttons: normalizeTelegramButtons(row.buttons ?? []),
     status:
       status === "failed" || status === "deleted" || status === "sent"
         ? status
@@ -226,6 +233,8 @@ export async function getTelegramAdminSnapshot(): Promise<{
   models: Array<{ id: string; ownedBy?: string }>;
   modelsError: string | null;
   newsModel: string;
+  siteUrl: string;
+  siteName: string;
 }> {
   const { DEFAULT_TELEGRAM_COMPOSE_PROMPT } = await import(
     "@/lib/telegram/default-prompt"
@@ -261,8 +270,6 @@ export async function getTelegramAdminSnapshot(): Promise<{
     composeModel: settings.composeModel.trim() || news?.model?.trim() || "",
   };
 
-  void seo; // available if we later want siteName in snapshot
-
   return {
     settings: publicSettings,
     posts,
@@ -275,6 +282,10 @@ export async function getTelegramAdminSnapshot(): Promise<{
     models,
     modelsError,
     newsModel: news?.model?.trim() || "",
+    siteUrl: (seo?.siteUrl ?? process.env.SITE_URL ?? "https://gapsnap.org")
+      .trim()
+      .replace(/\/+$/, ""),
+    siteName: seo?.siteName?.trim() || "GapSnap",
   };
 }
 
@@ -383,6 +394,7 @@ export async function publishTelegramPost(input: {
   parseMode?: TelegramParseMode;
   disablePreview?: boolean;
   silent?: boolean;
+  buttons?: TelegramButtonRow[];
   adminLogin?: string;
 }): Promise<TelegramPost> {
   const settings = await getTelegramSettings();
@@ -405,6 +417,8 @@ export async function publishTelegramPost(input: {
       : settings.disablePreview;
   const silent =
     typeof input.silent === "boolean" ? input.silent : settings.silent;
+  const buttons = normalizeTelegramButtons(input.buttons ?? []);
+  const replyMarkup = telegramReplyMarkup(buttons);
   const now = new Date().toISOString();
   const id = newPostId();
   const adminLogin = (input.adminLogin ?? "").trim();
@@ -417,6 +431,7 @@ export async function publishTelegramPost(input: {
           caption: text || undefined,
           parseMode: text ? parseMode : undefined,
           silent,
+          replyMarkup,
         })
       : await tgSendMessage(settings.botToken, {
           chatId: settings.channelId,
@@ -424,6 +439,7 @@ export async function publishTelegramPost(input: {
           parseMode,
           disablePreview,
           silent,
+          replyMarkup,
         });
 
     const db = getDb();
@@ -438,6 +454,7 @@ export async function publishTelegramPost(input: {
       disablePreview,
       silent,
       photoUrl,
+      buttons,
       status: "sent",
       error: null,
       adminLogin,
@@ -464,6 +481,7 @@ export async function publishTelegramPost(input: {
       disablePreview,
       silent,
       photoUrl,
+      buttons,
       status: "failed",
       error: message,
       adminLogin,
@@ -482,6 +500,7 @@ export async function editTelegramPost(input: {
   text: string;
   parseMode?: TelegramParseMode;
   disablePreview?: boolean;
+  buttons?: TelegramButtonRow[];
 }): Promise<TelegramPost> {
   const text = input.text.trim();
   if (!text) throw new Error("Текст не может быть пустым");
@@ -505,6 +524,11 @@ export async function editTelegramPost(input: {
     typeof input.disablePreview === "boolean"
       ? input.disablePreview
       : Boolean(row.disablePreview);
+  const buttons =
+    input.buttons !== undefined
+      ? normalizeTelegramButtons(input.buttons)
+      : normalizeTelegramButtons(row.buttons ?? []);
+  const replyMarkup = telegramReplyMarkupOrClear(buttons);
 
   if (row.photoUrl) {
     await tgEditMessageCaption(settings.botToken, {
@@ -512,6 +536,7 @@ export async function editTelegramPost(input: {
       messageId: row.messageId,
       caption: text,
       parseMode,
+      replyMarkup,
     });
   } else {
     await tgEditMessageText(settings.botToken, {
@@ -520,6 +545,7 @@ export async function editTelegramPost(input: {
       text,
       parseMode,
       disablePreview,
+      replyMarkup,
     });
   }
 
@@ -530,6 +556,7 @@ export async function editTelegramPost(input: {
       text,
       parseMode,
       disablePreview,
+      buttons,
       updatedAt: now,
       error: null,
       status: "sent",
