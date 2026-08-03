@@ -9,6 +9,8 @@ export type TelegramSettings = {
   botUsername: string;
   channelTitle: string;
   lastPostAt: string | null;
+  composeModel: string;
+  composePrompt: string;
   updatedAt: string;
 };
 

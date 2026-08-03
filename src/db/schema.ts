@@ -690,6 +690,8 @@ export const telegramSettings = pgTable("telegram_settings", {
   botUsername: text("bot_username").notNull().default(""),
   channelTitle: text("channel_title").notNull().default(""),
   lastPostAt: text("last_post_at"),
+  composeModel: text("compose_model").notNull().default(""),
+  composePrompt: text("compose_prompt").notNull().default(""),
   updatedAt: text("updated_at").notNull().default(""),
 });
 

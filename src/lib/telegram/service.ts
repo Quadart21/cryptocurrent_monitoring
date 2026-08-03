@@ -48,6 +48,8 @@ function mapSettings(
     botUsername: row?.botUsername ?? "",
     channelTitle: row?.channelTitle ?? "",
     lastPostAt: row?.lastPostAt ?? null,
+    composeModel: row?.composeModel ?? "",
+    composePrompt: row?.composePrompt ?? "",
     updatedAt: row?.updatedAt ?? "",
   };
 }
@@ -62,6 +64,8 @@ function toPublic(settings: TelegramSettings): TelegramSettingsPublic {
     botUsername: settings.botUsername,
     channelTitle: settings.channelTitle,
     lastPostAt: settings.lastPostAt,
+    composeModel: settings.composeModel,
+    composePrompt: settings.composePrompt,
     updatedAt: settings.updatedAt,
     hasBotToken: Boolean(token),
     botTokenHint: maskBotToken(token),
@@ -114,6 +118,8 @@ async function ensureSettingsRow(): Promise<void> {
       botUsername: "",
       channelTitle: "",
       lastPostAt: null,
+      composeModel: "",
+      composePrompt: "",
       updatedAt: new Date().toISOString(),
     })
     .onConflictDoNothing();
@@ -143,6 +149,8 @@ export async function updateTelegramSettings(patch: {
   botUsername?: string;
   channelTitle?: string;
   lastPostAt?: string | null;
+  composeModel?: string;
+  composePrompt?: string;
 }): Promise<TelegramSettingsPublic> {
   await ensureSettingsRow();
   const current = await getTelegramSettings();
@@ -178,6 +186,14 @@ export async function updateTelegramSettings(patch: {
         : current.channelTitle,
     lastPostAt:
       patch.lastPostAt !== undefined ? patch.lastPostAt : current.lastPostAt,
+    composeModel:
+      typeof patch.composeModel === "string"
+        ? patch.composeModel.trim()
+        : current.composeModel,
+    composePrompt:
+      typeof patch.composePrompt === "string"
+        ? patch.composePrompt
+        : current.composePrompt,
     updatedAt: now,
   };
 
@@ -205,19 +221,98 @@ export async function getTelegramAdminSnapshot(): Promise<{
   settings: TelegramSettingsPublic;
   posts: TelegramPost[];
   env: { hasBotToken: boolean; hasChannelId: boolean };
+  defaultComposePrompt: string;
+  composePlaceholders: string[];
+  models: Array<{ id: string; ownedBy?: string }>;
+  modelsError: string | null;
+  newsModel: string;
 }> {
-  const [settings, posts] = await Promise.all([
+  const { DEFAULT_TELEGRAM_COMPOSE_PROMPT } = await import(
+    "@/lib/telegram/default-prompt"
+  );
+  const { getNewsSettings, getSeoSettings } = await import("@/lib/store");
+  const { codexConfigured, listCodexModels } = await import(
+    "@/lib/ai/codex-client"
+  );
+
+  const [settings, posts, news, seo] = await Promise.all([
     getTelegramSettingsPublic(),
     listTelegramPosts(50),
+    getNewsSettings().catch(() => null),
+    getSeoSettings().catch(() => null),
   ]);
+
+  let models: Array<{ id: string; ownedBy?: string }> = [];
+  let modelsError: string | null = null;
+  if (codexConfigured()) {
+    try {
+      models = await listCodexModels();
+    } catch (error) {
+      modelsError = error instanceof Error ? error.message : "models failed";
+    }
+  } else {
+    modelsError = "CODEX_API_KEY не задан";
+  }
+
+  const publicSettings: TelegramSettingsPublic = {
+    ...settings,
+    composePrompt:
+      settings.composePrompt.trim() || DEFAULT_TELEGRAM_COMPOSE_PROMPT,
+    composeModel: settings.composeModel.trim() || news?.model?.trim() || "",
+  };
+
+  void seo; // available if we later want siteName in snapshot
+
   return {
-    settings,
+    settings: publicSettings,
     posts,
     env: {
       hasBotToken: Boolean(process.env.TELEGRAM_BOT_TOKEN?.trim()),
       hasChannelId: Boolean(process.env.TELEGRAM_CHANNEL_ID?.trim()),
     },
+    defaultComposePrompt: DEFAULT_TELEGRAM_COMPOSE_PROMPT,
+    composePlaceholders: ["{{topic}}", "{{siteName}}", "{{siteUrl}}"],
+    models,
+    modelsError,
+    newsModel: news?.model?.trim() || "",
   };
+}
+
+export async function generateTelegramPostFromTopic(input: {
+  topic: string;
+  model?: string;
+}): Promise<{ text: string; parseMode: TelegramParseMode }> {
+  const { composeTelegramPost } = await import("@/lib/telegram/compose-post");
+  const { DEFAULT_TELEGRAM_COMPOSE_PROMPT } = await import(
+    "@/lib/telegram/default-prompt"
+  );
+  const { getNewsSettings, getSeoSettings } = await import("@/lib/store");
+
+  const [settings, news, seo] = await Promise.all([
+    getTelegramSettings(),
+    getNewsSettings().catch(() => null),
+    getSeoSettings(),
+  ]);
+
+  const model =
+    (input.model ?? "").trim() ||
+    settings.composeModel.trim() ||
+    news?.model?.trim() ||
+    "";
+  if (!model) {
+    throw new Error("Выберите модель ИИ в настройках Telegram или Новостей");
+  }
+
+  const prompt =
+    settings.composePrompt.trim() || DEFAULT_TELEGRAM_COMPOSE_PROMPT;
+
+  return composeTelegramPost({
+    model,
+    promptTemplate: prompt,
+    topic: input.topic,
+    siteName: seo.siteName || "GapSnap",
+    siteUrl: seo.siteUrl || process.env.SITE_URL || "https://gapsnap.org",
+  });
 }
 
 export async function testTelegramConnection(): Promise<TelegramConnectionInfo> {

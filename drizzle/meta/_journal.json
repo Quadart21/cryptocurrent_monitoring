@@ -197,6 +197,13 @@
       "when": 1785510000000,
       "tag": "0027_telegram_channel",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1785520000000,
+      "tag": "0028_telegram_compose_ai",
+      "breakpoints": true
     }
   ]
 }

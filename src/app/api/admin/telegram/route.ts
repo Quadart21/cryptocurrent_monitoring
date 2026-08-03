@@ -7,12 +7,14 @@ import {
 import {
   deleteTelegramPost,
   editTelegramPost,
+  generateTelegramPostFromTopic,
   getTelegramAdminSnapshot,
   listTelegramPosts,
   publishTelegramPost,
   testTelegramConnection,
   updateTelegramSettings,
 } from "@/lib/telegram/service";
+import { DEFAULT_TELEGRAM_COMPOSE_PROMPT } from "@/lib/telegram/default-prompt";
 import type { TelegramParseMode } from "@/lib/telegram/types";
 
 export const runtime = "nodejs";
@@ -56,6 +58,9 @@ export async function PUT(request: Request) {
       parseMode?: TelegramParseMode;
       disablePreview?: boolean;
       silent?: boolean;
+      composeModel?: string;
+      composePrompt?: string;
+      resetComposePrompt?: boolean;
     };
     text?: string;
     photoUrl?: string;
@@ -63,11 +68,18 @@ export async function PUT(request: Request) {
     disablePreview?: boolean;
     silent?: boolean;
     id?: string;
+    topic?: string;
+    model?: string;
   };
 
   try {
     if (body.action === "settings" && body.settings) {
-      const settings = await updateTelegramSettings(body.settings);
+      const patch = { ...body.settings };
+      if (body.settings.resetComposePrompt) {
+        patch.composePrompt = DEFAULT_TELEGRAM_COMPOSE_PROMPT;
+      }
+      delete (patch as { resetComposePrompt?: boolean }).resetComposePrompt;
+      const settings = await updateTelegramSettings(patch);
       return NextResponse.json({ settings });
     }
 
@@ -75,6 +87,14 @@ export async function PUT(request: Request) {
       const connection = await testTelegramConnection();
       const snapshot = await getTelegramAdminSnapshot();
       return NextResponse.json({ connection, settings: snapshot.settings });
+    }
+
+    if (body.action === "compose") {
+      const composed = await generateTelegramPostFromTopic({
+        topic: body.topic ?? "",
+        model: body.model,
+      });
+      return NextResponse.json({ composed });
     }
 
     if (body.action === "publish") {

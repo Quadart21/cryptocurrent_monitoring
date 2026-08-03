@@ -26,6 +26,11 @@ type Snapshot = {
   settings: TelegramSettingsPublic;
   posts: TelegramPost[];
   env: { hasBotToken: boolean; hasChannelId: boolean };
+  defaultComposePrompt: string;
+  composePlaceholders: string[];
+  models: Array<{ id: string; ownedBy?: string }>;
+  modelsError: string | null;
+  newsModel: string;
 };
 
 const TABS: Array<{ id: TabId; label: string }> = [
@@ -275,6 +280,8 @@ export function TelegramModule() {
   const [silent, setSilent] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
+  const [topic, setTopic] = useState("");
+  const [composing, setComposing] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -324,6 +331,8 @@ export function TelegramModule() {
             parseMode: settings.parseMode,
             disablePreview: settings.disablePreview,
             silent: settings.silent,
+            composeModel: settings.composeModel,
+            composePrompt: settings.composePrompt,
           },
         }),
       });
@@ -374,6 +383,8 @@ export function TelegramModule() {
             parseMode: settings.parseMode,
             disablePreview: settings.disablePreview,
             silent: settings.silent,
+            composeModel: settings.composeModel,
+            composePrompt: settings.composePrompt,
           },
         }),
       });
@@ -420,6 +431,54 @@ export function TelegramModule() {
       setTesting(false);
       setBusy(false);
     }
+  };
+
+  const runCompose = async () => {
+    if (!canWrite) {
+      setError("Недостаточно прав");
+      return;
+    }
+    if (!topic.trim()) {
+      setError("Опишите тему или обновление");
+      return;
+    }
+    setComposing(true);
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/telegram", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "compose",
+          topic,
+          model: settings?.composeModel || undefined,
+        }),
+      });
+      const body = (await res.json()) as {
+        composed?: { text: string; parseMode: TelegramParseMode };
+        error?: string;
+      };
+      if (!res.ok) throw new Error(body.error ?? "Не удалось сгенерировать");
+      if (body.composed) {
+        setText(body.composed.text);
+        setParseMode(body.composed.parseMode || "HTML");
+        flash("Текст сгенерирован — можно править и публиковать");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ошибка");
+    } finally {
+      setComposing(false);
+      setBusy(false);
+    }
+  };
+
+  const resetComposePrompt = async () => {
+    if (!settings || !canWrite || !data) return;
+    setSettings({
+      ...settings,
+      composePrompt: data.defaultComposePrompt,
+    });
   };
 
   const publishOrEdit = async () => {
@@ -569,7 +628,7 @@ export function TelegramModule() {
           description={
             editingId
               ? "Изменения уйдут в уже опубликованное сообщение"
-              : "HTML-разметка Telegram: <b> <i> <u> <s> <a> <code> <pre> <tg-spoiler>"
+              : "Задайте тему → ИИ напишет HTML-пост → правьте и публикуйте"
           }
         >
           <div className="space-y-4 p-5">
@@ -588,7 +647,44 @@ export function TelegramModule() {
                   Отменить
                 </button>
               </div>
-            ) : null}
+            ) : (
+              <div className="space-y-3 rounded-xl border border-line bg-bg-soft/30 p-4">
+                <Field
+                  label="Тема / обновление"
+                  hint="Например: «Добавили 10 новых обменников» или «Запустили API v2»"
+                >
+                  <textarea
+                    className={`${inputClass} min-h-[88px] resize-y`}
+                    rows={3}
+                    value={topic}
+                    onChange={(e) => setTopic(e.target.value)}
+                    placeholder="Кратко опишите, о чём пост…"
+                    disabled={!canWrite || composing}
+                  />
+                </Field>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs text-ink-muted">
+                    Модель:{" "}
+                    <strong className="text-ink">
+                      {settings.composeModel || "не выбрана"}
+                    </strong>
+                    {data.modelsError ? (
+                      <span className="text-danger"> · {data.modelsError}</span>
+                    ) : null}
+                  </p>
+                  <button
+                    type="button"
+                    disabled={
+                      busy || !canWrite || !topic.trim() || composing
+                    }
+                    onClick={() => void runCompose()}
+                    className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-60"
+                  >
+                    {composing ? "Генерирую…" : "Сгенерировать пост"}
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="flex flex-wrap gap-2">
               {PARSE_MODES.map((m) => (
@@ -827,6 +923,66 @@ export function TelegramModule() {
                   checked={settings.silent}
                   onChange={(v) => setSettings({ ...settings, silent: v })}
                 />
+              </div>
+            </div>
+          </AdminSection>
+
+          <AdminSection
+            title="ИИ для постов"
+            description="Та же модель Codex, что для новостей. Плейсхолдеры: {{topic}} {{siteName}} {{siteUrl}}"
+          >
+            <div className="space-y-4 p-5">
+              <Field label="Модель">
+                <select
+                  className={inputClass}
+                  value={settings.composeModel}
+                  onChange={(e) =>
+                    setSettings({ ...settings, composeModel: e.target.value })
+                  }
+                  disabled={!canWrite}
+                >
+                  <option value="">
+                    {data.newsModel
+                      ? `Как в Новостях (${data.newsModel})`
+                      : "Выберите модель"}
+                  </option>
+                  {settings.composeModel &&
+                  !data.models.some((m) => m.id === settings.composeModel) ? (
+                    <option value={settings.composeModel}>
+                      {settings.composeModel} (нет в списке)
+                    </option>
+                  ) : null}
+                  {data.models.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.id}
+                      {m.ownedBy ? ` · ${m.ownedBy}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              {data.modelsError ? (
+                <p className="text-xs text-danger">{data.modelsError}</p>
+              ) : null}
+              <Field label="Промпт генерации">
+                <textarea
+                  className={areaClass}
+                  rows={12}
+                  value={settings.composePrompt}
+                  onChange={(e) =>
+                    setSettings({ ...settings, composePrompt: e.target.value })
+                  }
+                  disabled={!canWrite}
+                />
+              </Field>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  disabled={!canWrite}
+                  onClick={() => void resetComposePrompt()}
+                  className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink-muted transition hover:border-accent/40 hover:text-ink disabled:opacity-60"
+                >
+                  Сбросить промпт
+                </button>
               </div>
             </div>
           </AdminSection>
