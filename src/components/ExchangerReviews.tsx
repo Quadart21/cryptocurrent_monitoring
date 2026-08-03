@@ -1,8 +1,9 @@
 "use client";
 
 import type { FormEvent } from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ExchangerLogoMark } from "@/components/ExchangerLogoMark";
+import { ReviewsPagination } from "@/components/ReviewsPagination";
 import type {
   ExchangerLogo,
   ReviewQualityTag,
@@ -33,6 +34,8 @@ type Props = {
   logo?: ExchangerLogo | null;
 };
 
+const PAGE_SIZE = 10;
+
 export function ExchangerReviews({
   exchangerId,
   exchangerName,
@@ -41,6 +44,9 @@ export function ExchangerReviews({
   const [open, setOpen] = useState(false);
   const [tags, setTags] = useState<ReviewQualityTag[]>([]);
   const [reviews, setReviews] = useState<ApprovedReview[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
   const [sentiment, setSentiment] = useState<ReviewSentiment>("positive");
   const [orderId, setOrderId] = useState("");
   const [email, setEmail] = useState("");
@@ -50,21 +56,47 @@ export function ExchangerReviews({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const loadReviews = useCallback(
+    async (nextPage: number) => {
+      setLoading(true);
+      try {
+        const url = new URL("/api/reviews", window.location.origin);
+        url.searchParams.set("exchangerId", exchangerId);
+        url.searchParams.set("page", String(nextPage));
+        url.searchParams.set("limit", String(PAGE_SIZE));
+        const res = await fetch(url.pathname + url.search, {
+          cache: "no-store",
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          reviews: ApprovedReview[];
+          tags: ReviewQualityTag[];
+          total?: number;
+          page?: number;
+        };
+        setReviews(data.reviews);
+        setTags(data.tags);
+        setTotal(data.total ?? data.reviews.length);
+        setPage(data.page ?? nextPage);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [exchangerId],
+  );
+
   useEffect(() => {
-    void (async () => {
-      const res = await fetch(
-        `/api/reviews?exchangerId=${encodeURIComponent(exchangerId)}`,
-        { cache: "no-store" },
-      );
-      if (!res.ok) return;
-      const data = (await res.json()) as {
-        reviews: ApprovedReview[];
-        tags: ReviewQualityTag[];
-      };
-      setReviews(data.reviews);
-      setTags(data.tags);
-    })();
-  }, [exchangerId]);
+    void loadReviews(1);
+  }, [loadReviews]);
+
+  function goPage(next: number) {
+    void loadReviews(next);
+    if (typeof window !== "undefined") {
+      document
+        .getElementById("exchanger-reviews-list")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
 
   function toggleTag(id: string) {
     setSelectedTags((prev) =>
@@ -119,6 +151,7 @@ export function ExchangerReviews({
             </h2>
             <p className="mt-1 text-sm text-ink-muted">
               Одобренные отзывы о {exchangerName}
+              {total > 0 ? ` · ${total}` : ""}
             </p>
           </div>
           <button
@@ -259,8 +292,10 @@ export function ExchangerReviews({
         )}
       </div>
 
-      <div className="space-y-3">
-        {reviews.length === 0 ? (
+      <div id="exchanger-reviews-list" className="space-y-3 scroll-mt-24">
+        {loading && reviews.length === 0 ? (
+          <p className="text-sm text-ink-muted">Загружаем отзывы…</p>
+        ) : reviews.length === 0 ? (
           <p className="text-sm text-ink-muted">Пока нет одобренных отзывов.</p>
         ) : (
           reviews.map((r) => (
@@ -273,7 +308,9 @@ export function ExchangerReviews({
                       : "bg-danger/15 text-danger"
                   }`}
                 >
-                  {r.sentiment === "positive" ? "Положительный" : "Отрицательный"}
+                  {r.sentiment === "positive"
+                    ? "Положительный"
+                    : "Отрицательный"}
                 </span>
                 <span className="text-xs text-ink-muted">
                   заявка {r.orderId}
@@ -374,6 +411,13 @@ export function ExchangerReviews({
             </article>
           ))
         )}
+
+        <ReviewsPagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={total}
+          onPageChange={goPage}
+        />
       </div>
     </div>
   );

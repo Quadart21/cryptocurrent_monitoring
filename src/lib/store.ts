@@ -1594,6 +1594,57 @@ export async function listReviews(options?: {
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+/** Paginated reviews (newest first). */
+export async function listReviewsPaged(options: {
+  exchangerId?: string;
+  status?: ReviewStatus;
+  limit?: number;
+  offset?: number;
+}): Promise<{ items: ExchangerReview[]; total: number }> {
+  const db = getDb();
+  const conditions = [];
+  if (options.exchangerId) {
+    conditions.push(eq(reviews.exchangerId, options.exchangerId));
+  }
+  if (options.status) {
+    conditions.push(eq(reviews.status, options.status));
+  }
+  const where =
+    conditions.length === 0
+      ? undefined
+      : conditions.length === 1
+        ? conditions[0]
+        : and(...conditions);
+
+  const limit = Math.min(
+    50,
+    Math.max(1, Math.floor(options.limit ?? 10)),
+  );
+  const offset = Math.max(0, Math.floor(options.offset ?? 0));
+
+  const [totalRow] = where
+    ? await db.select({ n: count() }).from(reviews).where(where)
+    : await db.select({ n: count() }).from(reviews);
+  const total = Number(totalRow?.n ?? 0);
+
+  const rows = where
+    ? await db
+        .select()
+        .from(reviews)
+        .where(where)
+        .orderBy(desc(reviews.createdAt))
+        .limit(limit)
+        .offset(offset)
+    : await db
+        .select()
+        .from(reviews)
+        .orderBy(desc(reviews.createdAt))
+        .limit(limit)
+        .offset(offset);
+
+  return { items: rows.map(mapReview), total };
+}
+
 export async function addReview(input: {
   exchangerId: string;
   sentiment: ReviewSentiment;

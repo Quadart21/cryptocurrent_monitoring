@@ -6,7 +6,7 @@ import {
   getExchangerBySlug,
   getSeoSettings,
   listQualityTags,
-  listReviews,
+  listReviewsPaged,
 } from "@/lib/store";
 import type { ReviewSentiment } from "@/lib/store-types";
 import { clientIp, rateLimit } from "@/lib/security/rate-limit";
@@ -18,28 +18,44 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const DEFAULT_PAGE_SIZE = 10;
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const exchangerId = searchParams.get("exchangerId") ?? undefined;
   const slug = searchParams.get("slug");
-  const limitRaw = Number(searchParams.get("limit") ?? "");
-  const limit =
+  const pageRaw = Number(searchParams.get("page") ?? "1");
+  const limitRaw = Number(searchParams.get("limit") ?? String(DEFAULT_PAGE_SIZE));
+  const page =
+    Number.isFinite(pageRaw) && pageRaw > 0 ? Math.floor(pageRaw) : 1;
+  const pageSize =
     Number.isFinite(limitRaw) && limitRaw > 0
       ? Math.min(50, Math.floor(limitRaw))
-      : undefined;
+      : DEFAULT_PAGE_SIZE;
+  const offset = (page - 1) * pageSize;
 
   let id = exchangerId;
   if (!id && slug) {
     const ex = await getExchangerBySlug(slug);
     if (!ex || ex.status !== "active") {
-      return NextResponse.json({ reviews: [], tags: [] });
+      return NextResponse.json({
+        reviews: [],
+        tags: [],
+        total: 0,
+        page: 1,
+        pageSize,
+      });
     }
     id = ex.id;
   }
 
-  const [reviews, tags] = await Promise.all([
-    listReviews({ exchangerId: id, status: "approved" }),
+  const [{ items: reviews, total }, tags] = await Promise.all([
+    listReviewsPaged({
+      exchangerId: id,
+      status: "approved",
+      limit: pageSize,
+      offset,
+    }),
     listQualityTags({ activeOnly: true }),
   ]);
 
@@ -65,8 +81,11 @@ export async function GET(request: Request) {
   }));
 
   return NextResponse.json({
-    reviews: limit ? mapped.slice(0, limit) : mapped,
+    reviews: mapped,
     tags,
+    total,
+    page,
+    pageSize,
   });
 }
 

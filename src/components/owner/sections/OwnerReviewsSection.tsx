@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { ReviewsPagination } from "@/components/ReviewsPagination";
 import type { OwnerReview } from "@/components/owner/OwnerProvider";
 import { canOwnerReply } from "@/components/owner/owner-utils";
 import {
@@ -10,6 +11,8 @@ import {
 } from "@/components/owner/OwnerUi";
 
 type ReviewFilter = "all" | "need_reply" | "pending" | "positive" | "negative";
+
+const PAGE_SIZE = 10;
 
 function ReviewCard({
   review,
@@ -178,6 +181,7 @@ export function OwnerReviewsSection({
   onSaved: () => Promise<boolean>;
 }) {
   const [filter, setFilter] = useState<ReviewFilter>("all");
+  const [page, setPage] = useState(1);
   const canReply = canOwnerReply(exchangerStatus);
 
   const filtered = useMemo(() => {
@@ -203,6 +207,17 @@ export function OwnerReviewsSection({
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
   }, [reviews, filter]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filter]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const pageItems = filtered.slice(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE,
+  );
 
   const needReplyCount = reviews.filter(needsOwnerReply).length;
 
@@ -257,7 +272,7 @@ export function OwnerReviewsSection({
         />
       ) : (
         <div className="space-y-3">
-          {filtered.map((review) => (
+          {pageItems.map((review) => (
             <ReviewCard
               key={review.id}
               review={review}
@@ -265,6 +280,12 @@ export function OwnerReviewsSection({
               onSaved={onSaved}
             />
           ))}
+          <ReviewsPagination
+            page={safePage}
+            pageSize={PAGE_SIZE}
+            total={filtered.length}
+            onPageChange={setPage}
+          />
         </div>
       )}
     </OwnerSectionCard>
