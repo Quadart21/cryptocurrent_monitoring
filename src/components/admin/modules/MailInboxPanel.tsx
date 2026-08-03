@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useAdmin } from "@/components/admin/AdminProvider";
 import { AdminSection } from "@/components/admin/ui";
 
+type Identity = { email: string; name: string };
+
 type Thread = {
   id: string;
   contactEmail: string;
@@ -39,10 +41,40 @@ function formatWhen(iso: string): string {
   });
 }
 
+function FromSelect({
+  identities,
+  value,
+  onChange,
+}: {
+  identities: Identity[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  if (identities.length === 0) return null;
+  return (
+    <label className="block space-y-1">
+      <span className="text-xs font-medium text-ink-muted">От кого</span>
+      <select
+        className={inputClass}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        {identities.map((i) => (
+          <option key={i.email} value={i.email}>
+            {i.name} &lt;{i.email}&gt;
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 export function MailInboxPanel() {
   const { busy, setBusy } = useAdmin();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [unread, setUnread] = useState(0);
+  const [identities, setIdentities] = useState<Identity[]>([]);
+  const [fromEmail, setFromEmail] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [activeThread, setActiveThread] = useState<Thread | null>(null);
@@ -55,6 +87,17 @@ export function MailInboxPanel() {
   const [composeBody, setComposeBody] = useState("");
   const [providerHint, setProviderHint] = useState<string | null>(null);
 
+  const pickFrom = useCallback(
+    (suggested: string | null | undefined, list: Identity[]) => {
+      const pool = list.length ? list : identities;
+      if (!pool.length) return;
+      const s = (suggested ?? "").trim().toLowerCase();
+      const hit = pool.find((i) => i.email === s);
+      setFromEmail(hit?.email ?? pool[0]!.email);
+    },
+    [identities],
+  );
+
   const loadThreads = useCallback(async () => {
     setError(null);
     try {
@@ -64,11 +107,13 @@ export function MailInboxPanel() {
       const json = (await res.json().catch(() => null)) as {
         threads?: Thread[];
         unread?: number;
+        identities?: Identity[];
         provider?: {
           hasApiKey?: boolean;
           hasFromEnv?: boolean;
           hasWebhookSecret?: boolean;
           fromEnv?: string | null;
+          identities?: Identity[];
         };
         error?: string;
       } | null;
@@ -78,6 +123,13 @@ export function MailInboxPanel() {
       }
       setThreads(json?.threads ?? []);
       setUnread(json?.unread ?? 0);
+      const ids =
+        json?.identities ?? json?.provider?.identities ?? [];
+      setIdentities(ids);
+      setFromEmail((prev) => {
+        if (prev && ids.some((i) => i.email === prev)) return prev;
+        return ids[0]?.email ?? prev;
+      });
       const p = json?.provider;
       if (p) {
         const bits = [
@@ -105,6 +157,8 @@ export function MailInboxPanel() {
       const json = (await res.json().catch(() => null)) as {
         thread?: Thread;
         messages?: Message[];
+        identities?: Identity[];
+        suggestedFrom?: string | null;
         error?: string;
       } | null;
       if (!res.ok) {
@@ -114,6 +168,8 @@ export function MailInboxPanel() {
       setActiveThread(json?.thread ?? null);
       setMessages(json?.messages ?? []);
       setReply("");
+      if (json?.identities?.length) setIdentities(json.identities);
+      pickFrom(json?.suggestedFrom, json?.identities ?? []);
       setThreads((prev) => {
         const was = prev.find((t) => t.id === id)?.unreadCount ?? 0;
         if (was > 0) {
@@ -126,7 +182,7 @@ export function MailInboxPanel() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Ошибка");
     }
-  }, []);
+  }, [pickFrom]);
 
   useEffect(() => {
     void loadThreads();
@@ -145,6 +201,7 @@ export function MailInboxPanel() {
           action: "reply",
           threadId: selectedId,
           text: reply,
+          from: fromEmail,
         }),
       });
       const json = (await res.json()) as { error?: string };
@@ -173,6 +230,7 @@ export function MailInboxPanel() {
           to: composeTo,
           subject: composeSubject,
           text: composeBody,
+          from: fromEmail,
         }),
       });
       const json = (await res.json()) as {
@@ -302,6 +360,11 @@ export function MailInboxPanel() {
             {composing ? (
               <div className="space-y-3 p-5">
                 <p className="text-sm font-medium text-ink">Новое письмо</p>
+                <FromSelect
+                  identities={identities}
+                  value={fromEmail}
+                  onChange={setFromEmail}
+                />
                 <input
                   className={inputClass}
                   type="email"
@@ -374,8 +437,10 @@ export function MailInboxPanel() {
                         }`}
                       >
                         <p className="mb-1 text-[11px] text-ink-muted">
-                          {mine ? "Вы" : m.fromAddress} ·{" "}
-                          {formatWhen(m.createdAt)}
+                          {mine
+                            ? `Вы · ${m.fromAddress}`
+                            : `${m.fromAddress} → ${m.toAddress}`}{" "}
+                          · {formatWhen(m.createdAt)}
                         </p>
                         <p className="whitespace-pre-wrap leading-relaxed">
                           {m.textBody ||
@@ -387,14 +452,19 @@ export function MailInboxPanel() {
                     );
                   })}
                 </div>
-                <div className="border-t border-line p-4">
+                <div className="space-y-2 border-t border-line p-4">
+                  <FromSelect
+                    identities={identities}
+                    value={fromEmail}
+                    onChange={setFromEmail}
+                  />
                   <textarea
                     className={`${inputClass} min-h-[88px] resize-y`}
                     placeholder="Ответ клиенту…"
                     value={reply}
                     onChange={(e) => setReply(e.target.value)}
                   />
-                  <div className="mt-2 flex justify-end">
+                  <div className="flex justify-end">
                     <button
                       type="button"
                       disabled={busy || !reply.trim()}

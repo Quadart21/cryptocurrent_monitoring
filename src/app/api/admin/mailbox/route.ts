@@ -8,7 +8,10 @@ import {
   replyToThread,
   startOutboundThread,
 } from "@/lib/email/mailbox";
-import { resendConfigStatus } from "@/lib/resend-mail";
+import {
+  listMailboxIdentities,
+  resendConfigStatus,
+} from "@/lib/resend-mail";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,6 +34,7 @@ export async function GET(request: Request) {
         threads,
         unread,
         provider: resendConfigStatus(),
+        identities: listMailboxIdentities(),
       });
     }
     if (view === "thread") {
@@ -42,7 +46,14 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "not found" }, { status: 404 });
       }
       await markThreadRead(id);
-      return NextResponse.json(data);
+      const lastInbound = [...data.messages]
+        .reverse()
+        .find((m) => m.direction === "inbound");
+      return NextResponse.json({
+        ...data,
+        identities: listMailboxIdentities(),
+        suggestedFrom: lastInbound?.toAddress ?? null,
+      });
     }
     return NextResponse.json({ error: "unknown view" }, { status: 400 });
   } catch (error) {
@@ -62,6 +73,7 @@ export async function POST(request: Request) {
     subject?: string;
     text?: string;
     html?: string;
+    from?: string;
   };
   try {
     body = (await request.json()) as typeof body;
@@ -78,6 +90,7 @@ export async function POST(request: Request) {
         threadId: body.threadId,
         bodyText: String(body.text ?? ""),
         bodyHtml: body.html,
+        fromEmail: body.from,
       });
       return NextResponse.json({ ok: true, message });
     }
@@ -87,6 +100,7 @@ export async function POST(request: Request) {
         subject: String(body.subject ?? ""),
         bodyText: String(body.text ?? ""),
         bodyHtml: body.html,
+        fromEmail: body.from,
       });
       return NextResponse.json({ ok: true, ...result });
     }

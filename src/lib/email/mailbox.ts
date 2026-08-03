@@ -5,7 +5,10 @@ import { getDb } from "@/db/index";
 import { runMigrations } from "@/db/migrate";
 import { mailMessages, mailThreads } from "@/db/schema";
 import { getEmailSettings } from "@/lib/email/service";
-import { sendResendEmail } from "@/lib/resend-mail";
+import {
+  resolveMailboxIdentity,
+  sendResendEmail,
+} from "@/lib/resend-mail";
 import { findExchangersByOwnerEmail } from "@/lib/store";
 
 export type MailThreadRow = {
@@ -247,6 +250,7 @@ export async function replyToThread(input: {
   threadId: string;
   bodyText: string;
   bodyHtml?: string;
+  fromEmail?: string;
 }): Promise<MailMessageRow> {
   await runMigrations();
   const db = getDb();
@@ -278,6 +282,9 @@ export async function replyToThread(input: {
     .join(" ");
 
   const settings = await getEmailSettings();
+  const identity = resolveMailboxIdentity(
+    input.fromEmail || lastInbound?.toAddress || settings.fromEmail,
+  );
   const subject = thread.subject.startsWith("Re:")
     ? thread.subject
     : `Re: ${thread.subject || "сообщение"}`;
@@ -291,7 +298,9 @@ export async function replyToThread(input: {
     subject,
     html,
     text,
-    reply: settings.replyTo || undefined,
+    from: identity.email,
+    name: identity.name,
+    reply: identity.email,
     tag: "mailbox-reply",
     inReplyTo,
     references: references || undefined,
@@ -299,11 +308,6 @@ export async function replyToThread(input: {
 
   const now = new Date().toISOString();
   const messageId = newId("msg");
-  const fromEmail =
-    settings.fromEmail ||
-    process.env.RESEND_FROM?.trim() ||
-    process.env.SMTPBZ_FROM?.trim() ||
-    "noreply@gapsnap.org";
 
   const [row] = await db
     .insert(mailMessages)
@@ -311,7 +315,7 @@ export async function replyToThread(input: {
       id: messageId,
       threadId: thread.id,
       direction: "outbound",
-      fromAddress: fromEmail,
+      fromAddress: identity.email,
       toAddress: thread.contactEmail,
       subject,
       textBody: text,
@@ -340,6 +344,7 @@ export async function startOutboundThread(input: {
   subject: string;
   bodyText: string;
   bodyHtml?: string;
+  fromEmail?: string;
 }): Promise<{ thread: MailThreadRow; message: MailMessageRow }> {
   await runMigrations();
   const db = getDb();
@@ -351,7 +356,7 @@ export async function startOutboundThread(input: {
   const text = input.bodyText.trim();
   if (text.length < 1) throw new Error("Введите текст письма");
 
-  const settings = await getEmailSettings();
+  const identity = resolveMailboxIdentity(input.fromEmail);
   const html =
     input.bodyHtml?.trim() ||
     `<div style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.55;white-space:pre-wrap">${escapeHtml(text)}</div>`;
@@ -361,7 +366,9 @@ export async function startOutboundThread(input: {
     subject,
     html,
     text,
-    reply: settings.replyTo || undefined,
+    from: identity.email,
+    name: identity.name,
+    reply: identity.email,
     tag: "mailbox-compose",
   });
 
@@ -397,12 +404,6 @@ export async function startOutboundThread(input: {
       .where(eq(mailThreads.id, thread.id));
   }
 
-  const fromEmail =
-    settings.fromEmail ||
-    process.env.RESEND_FROM?.trim() ||
-    process.env.SMTPBZ_FROM?.trim() ||
-    "noreply@gapsnap.org";
-
   const messageId = newId("msg");
   const [row] = await db
     .insert(mailMessages)
@@ -410,7 +411,7 @@ export async function startOutboundThread(input: {
       id: messageId,
       threadId: thread.id,
       direction: "outbound",
-      fromAddress: fromEmail,
+      fromAddress: identity.email,
       toAddress: to,
       subject,
       textBody: text,

@@ -37,6 +37,63 @@ export function resendConfigured(): boolean {
   );
 }
 
+export type MailboxIdentity = {
+  email: string;
+  name: string;
+};
+
+const DEFAULT_MAILBOX_IDENTITIES: MailboxIdentity[] = [
+  { email: "support@gapsnap.org", name: "Support" },
+  { email: "ceo@gapsnap.org", name: "CEO" },
+  { email: "noreply@gapsnap.org", name: "GapSnap" },
+];
+
+/**
+ * Outbound "From" choices for admin mailbox.
+ * Env: RESEND_MAILBOX_IDENTITIES=support@gapsnap.org:Support,ceo@gapsnap.org:CEO
+ */
+export function listMailboxIdentities(): MailboxIdentity[] {
+  const raw = process.env.RESEND_MAILBOX_IDENTITIES?.trim();
+  const parsed: MailboxIdentity[] = [];
+  if (raw) {
+    for (const part of raw.split(",")) {
+      const chunk = part.trim();
+      if (!chunk) continue;
+      const [emailPart, ...nameParts] = chunk.split(":");
+      const email = (emailPart ?? "").trim().toLowerCase();
+      const name = nameParts.join(":").trim() || email.split("@")[0] || email;
+      if (email.includes("@")) parsed.push({ email, name });
+    }
+  }
+  const list = parsed.length > 0 ? parsed : [...DEFAULT_MAILBOX_IDENTITIES];
+  const fallback =
+    process.env.RESEND_FROM?.trim()?.toLowerCase() ||
+    process.env.SMTPBZ_FROM?.trim()?.toLowerCase() ||
+    "";
+  if (fallback && !list.some((i) => i.email === fallback)) {
+    list.push({
+      email: fallback,
+      name:
+        process.env.RESEND_FROM_NAME?.trim() ||
+        process.env.SMTPBZ_FROM_NAME?.trim() ||
+        "GapSnap",
+    });
+  }
+  return list;
+}
+
+export function resolveMailboxIdentity(
+  email?: string | null,
+): MailboxIdentity {
+  const identities = listMailboxIdentities();
+  const needle = (email ?? "").trim().toLowerCase();
+  if (needle) {
+    const hit = identities.find((i) => i.email === needle);
+    if (hit) return hit;
+  }
+  return identities[0]!;
+}
+
 export function resendConfigStatus() {
   return {
     provider: "resend" as const,
@@ -55,6 +112,7 @@ export function resendConfigStatus() {
       process.env.SMTPBZ_FROM_NAME?.trim() ||
       null,
     hasWebhookSecret: Boolean(process.env.RESEND_WEBHOOK_SECRET?.trim()),
+    identities: listMailboxIdentities(),
   };
 }
 
