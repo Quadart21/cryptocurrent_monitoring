@@ -1,12 +1,14 @@
 /** Shared GapSnap transactional / broadcast email chrome. */
 
-export const EMAIL_LAYOUT_VERSION = "v2";
+export const EMAIL_LAYOUT_VERSION = "v3";
 
 /** Prefer same-origin assets after deploy; ibb kept as fallback in older sends. */
 export const EMAIL_BANNER_SRC = "https://gapsnap.org/email/banner.png";
 export const EMAIL_CTA_BTN_SRC = "https://gapsnap.org/email/cta-dark.png";
 export const EMAIL_DEFAULT_SITE_URL = "https://gapsnap.org";
 export const EMAIL_SUPPORT = "support@gapsnap.org";
+export const EMAIL_SUPPORT_TELEGRAM = "GapSnapSupport";
+export const EMAIL_SUPPORT_TELEGRAM_URL = `https://t.me/${EMAIL_SUPPORT_TELEGRAM}`;
 
 const MARKER = `data-gapsnap-email="${EMAIL_LAYOUT_VERSION}"`;
 
@@ -33,6 +35,11 @@ export function emailQuote(html: string): string {
 
 export function emailCodeBlock(html: string): string {
   return `<pre style="margin:0 0 20px;padding:12px;background:#f8f7fb;border:1px solid #e2e0ea;border-radius:10px;overflow:auto;font-size:12px;line-height:1.45;white-space:pre-wrap;word-break:break-all;color:#17151f">${html}</pre>`;
+}
+
+/** Plain-text support line for email templates. */
+export function emailTextSupportLine(): string {
+  return `Поддержка в Telegram: ${EMAIL_SUPPORT_TELEGRAM_URL} (@${EMAIL_SUPPORT_TELEGRAM})`;
 }
 
 export type WrapEmailOptions = {
@@ -115,6 +122,8 @@ export function wrapEmailHtml(opts: WrapEmailOptions): string {
                 <a href="${siteUrl}" style="color:#6a6578;text-decoration:none">${siteLabel}</a>
                 &nbsp;·&nbsp;
                 <a href="mailto:${support}" style="color:#6a6578;text-decoration:none">${support}</a>
+                &nbsp;·&nbsp;
+                <a href="${EMAIL_SUPPORT_TELEGRAM_URL}" style="color:#6a6578;text-decoration:none">Telegram @${EMAIL_SUPPORT_TELEGRAM}</a>
               </p>
             </td>
           </tr>

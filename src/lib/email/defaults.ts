@@ -3,10 +3,12 @@ import {
   emailCodeBlock,
   emailHighlight,
   emailQuote,
+  emailTextSupportLine,
   wrapEmailHtml,
 } from "@/lib/email/layout";
 
 const NOW = "2026-01-01T00:00:00.000Z";
+const TEXT_SUPPORT = emailTextSupportLine();
 
 export const DEFAULT_EMAIL_SETTINGS: EmailSettings = {
   fromEmail: "",
@@ -39,7 +41,9 @@ export const DEFAULT_EMAIL_TEMPLATES: EmailTemplate[] = [
 Подтвердите email: {{confirmUrl}}
 
 Заявка: {{orderId}}
-Ссылка действует 24 часа.`,
+Ссылка действует 24 часа.
+
+${TEXT_SUPPORT}`,
     html: wrapEmailHtml({
       body: [
         p("Здравствуйте!"),
@@ -75,7 +79,9 @@ otpauth: {{totpUri}}
 
 При входе: пароль + код из Authenticator.
 
-{{bannerHint}}`,
+{{bannerHint}}
+
+${TEXT_SUPPORT}`,
     html: wrapEmailHtml({
       body: [
         p("Здравствуйте!"),
@@ -116,7 +122,9 @@ otpauth: {{totpUri}}
 
 {{totpText}}
 
-Если вы не запрашивали доступ — проигнорируйте письмо.`,
+Если вы не запрашивали доступ — проигнорируйте письмо.
+
+${TEXT_SUPPORT}`,
     html: wrapEmailHtml({
       body: [
         p("Здравствуйте!"),
@@ -155,7 +163,9 @@ otpauth: {{totpUri}}
 {{reviewText}}
 
 Ответить: {{cabinetUrl}}
-Страница: {{publicUrl}}`,
+Страница: {{publicUrl}}
+
+${TEXT_SUPPORT}`,
     html: wrapEmailHtml({
       body: [
         p("Здравствуйте!"),
@@ -192,6 +202,8 @@ HTML для вставки:
 {{bannerHtml}}
 
 Пропусков подряд: {{misses}}. Если баннер не появится, обменник могут снять с публикации.
+
+${TEXT_SUPPORT}
 
 — {{siteName}}`,
     html: wrapEmailHtml({
@@ -232,6 +244,8 @@ HTML для вставки:
 
 Напишите в поддержку после размещения — мы проверим и восстановим карточку.
 
+${TEXT_SUPPORT}
+
 — {{siteName}}`,
     html: wrapEmailHtml({
       body: [
@@ -271,7 +285,9 @@ HTML для вставки:
 Ответить: {{replyUrl}}
 Страница: {{publicUrl}}
 
-Ссылка для ответа действует 14 дней.`,
+Ссылка для ответа действует 14 дней.
+
+${TEXT_SUPPORT}`,
     html: wrapEmailHtml({
       body: [
         p("Здравствуйте!"),
@@ -300,7 +316,9 @@ HTML для вставки:
 {{replyText}}
 
 Ответить в кабинете: {{cabinetUrl}}
-Страница: {{publicUrl}}`,
+Страница: {{publicUrl}}
+
+${TEXT_SUPPORT}`,
     html: wrapEmailHtml({
       body: [
         p("Здравствуйте!"),
@@ -328,7 +346,9 @@ HTML для вставки:
 
 Подтвердите email: {{confirmUrl}}
 
-Ссылка действует 24 часа.`,
+Ссылка действует 24 часа.
+
+${TEXT_SUPPORT}`,
     html: wrapEmailHtml({
       body: [
         p("Здравствуйте!"),
@@ -364,7 +384,9 @@ HTML для вставки:
 Документация: {{docsUrl}}
 Пример: {{exampleUrl}}
 
-Лимит по умолчанию: 10 запросов в секунду.`,
+Лимит по умолчанию: 10 запросов в секунду.
+
+${TEXT_SUPPORT}`,
     html: wrapEmailHtml({
       body: [
         p("Здравствуйте, <strong>{{clientName}}</strong>!"),
@@ -404,6 +426,8 @@ HTML для вставки:
 
 Если это письмо попало не туда или нужно уточнить контакты — ответьте на него.
 Это письмо отправлено на {{contactEmail}}.
+
+${TEXT_SUPPORT}
 
 Команда {{siteName}}
 {{siteUrl}}`,
