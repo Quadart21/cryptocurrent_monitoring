@@ -274,6 +274,7 @@ export function TelegramModule() {
   const [disablePreview, setDisablePreview] = useState(false);
   const [silent, setSilent] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [testing, setTesting] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -350,11 +351,47 @@ export function TelegramModule() {
   };
 
   const runTest = async () => {
-    if (!canWrite) return;
+    if (!canWrite) {
+      setError("Недостаточно прав для проверки связи");
+      return;
+    }
+    if (!settings) return;
+    setTesting(true);
     setBusy(true);
     setError(null);
+    setOkMsg(null);
     setConnection(null);
     try {
+      // Persist form values first so test uses what is on screen.
+      const saveRes = await fetch("/api/admin/telegram", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "settings",
+          settings: {
+            botToken: tokenDraft,
+            channelId: settings.channelId,
+            parseMode: settings.parseMode,
+            disablePreview: settings.disablePreview,
+            silent: settings.silent,
+          },
+        }),
+      });
+      const saveBody = (await saveRes.json()) as {
+        settings?: TelegramSettingsPublic;
+        error?: string;
+      };
+      if (!saveRes.ok) {
+        throw new Error(saveBody.error ?? "Не удалось сохранить перед проверкой");
+      }
+      if (saveBody.settings) {
+        setSettings(saveBody.settings);
+        setData((prev) =>
+          prev ? { ...prev, settings: saveBody.settings! } : prev,
+        );
+        setTokenDraft("");
+      }
+
       const res = await fetch("/api/admin/telegram", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -380,6 +417,7 @@ export function TelegramModule() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ошибка");
     } finally {
+      setTesting(false);
       setBusy(false);
     }
   };
@@ -825,7 +863,7 @@ export function TelegramModule() {
               onClick={() => void runTest()}
               className="rounded-xl border border-line px-5 py-2.5 text-sm font-semibold text-ink transition hover:border-accent/40 disabled:opacity-60"
             >
-              Проверить связь
+              {testing ? "Проверяю…" : "Проверить связь"}
             </button>
             <button
               type="submit"

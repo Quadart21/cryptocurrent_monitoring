@@ -1,8 +1,13 @@
 import "server-only";
 
+import dns from "node:dns";
 import type { TelegramParseMode } from "@/lib/telegram/types";
 
+/** Node may prefer broken IPv6 routes; Telegram works reliably over IPv4 here. */
+dns.setDefaultResultOrder("ipv4first");
+
 const API_BASE = "https://api.telegram.org";
+const REQUEST_TIMEOUT_MS = 15_000;
 
 export type TelegramApiError = {
   ok: false;
@@ -44,14 +49,42 @@ async function callTelegram<T>(
     throw new Error("Bot token не задан");
   }
 
-  const res = await fetch(`${API_BASE}/bot${trimmed}/${method}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body ?? {}),
-    cache: "no-store",
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/bot${trimmed}/${method}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body ?? {}),
+      cache: "no-store",
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(
+        `Telegram API не ответил за ${REQUEST_TIMEOUT_MS / 1000}с. ` +
+          `С этой сети валидные bot-запросы часто блокируются ` +
+          `(неверный токен отвечает сразу 401). Нужен выход в Telegram ` +
+          `через VPN/прокси или другой хостинг.`,
+      );
+    }
+    throw new Error(
+      error instanceof Error
+        ? `Сеть Telegram: ${error.message}`
+        : "Сеть Telegram недоступна",
+    );
+  } finally {
+    clearTimeout(timer);
+  }
 
-  const data = (await res.json()) as OkResult<T> | TelegramApiError;
+  let data: OkResult<T> | TelegramApiError;
+  try {
+    data = (await res.json()) as OkResult<T> | TelegramApiError;
+  } catch {
+    throw new Error(`Telegram API вернул не-JSON (HTTP ${res.status})`);
+  }
+
   if (!data.ok) {
     const err = data as TelegramApiError;
     throw new Error(
