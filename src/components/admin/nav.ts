@@ -86,6 +86,14 @@ export const ADMIN_NAV: AdminNavItem[] = [
     permission: "blog.read",
   },
   {
+    id: "telegram",
+    href: `${ADMIN_PATH}/telegram`,
+    label: "Telegram",
+    description: "Канал и публикации",
+    group: "content",
+    permission: "telegram.read",
+  },
+  {
     id: "qualities",
     href: `${ADMIN_PATH}/qualities`,
     label: "Качества",

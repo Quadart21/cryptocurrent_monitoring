@@ -679,3 +679,41 @@ export const apiClients = pgTable(
   ],
 );
 
+/** Telegram channel bot settings (single row id=1). */
+export const telegramSettings = pgTable("telegram_settings", {
+  id: integer("id").primaryKey().default(1),
+  botToken: text("bot_token").notNull().default(""),
+  channelId: text("channel_id").notNull().default(""),
+  parseMode: text("parse_mode").notNull().default("HTML"),
+  disablePreview: boolean("disable_preview").notNull().default(false),
+  silent: boolean("silent").notNull().default(false),
+  botUsername: text("bot_username").notNull().default(""),
+  channelTitle: text("channel_title").notNull().default(""),
+  lastPostAt: text("last_post_at"),
+  updatedAt: text("updated_at").notNull().default(""),
+});
+
+/** Outbound Telegram channel posts (admin compose log). */
+export const telegramPosts = pgTable(
+  "telegram_posts",
+  {
+    id: text("id").primaryKey(),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+    chatId: text("chat_id").notNull().default(""),
+    messageId: integer("message_id"),
+    text: text("text").notNull().default(""),
+    parseMode: text("parse_mode").notNull().default("HTML"),
+    disablePreview: boolean("disable_preview").notNull().default(false),
+    silent: boolean("silent").notNull().default(false),
+    photoUrl: text("photo_url").notNull().default(""),
+    status: text("status").notNull().default("sent"),
+    error: text("error"),
+    adminLogin: text("admin_login").notNull().default(""),
+  },
+  (t) => [
+    index("telegram_posts_created_at_idx").on(t.createdAt),
+    index("telegram_posts_status_idx").on(t.status),
+  ],
+);
+

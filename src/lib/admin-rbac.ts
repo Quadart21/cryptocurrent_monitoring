@@ -19,6 +19,8 @@ export type AdminPermission =
   | "banners.write"
   | "blog.read"
   | "blog.write"
+  | "telegram.read"
+  | "telegram.write"
   | "qualities.read"
   | "qualities.write"
   | "achievements.read"
@@ -52,6 +54,7 @@ export type AdminResource =
   | "blacklist"
   | "banners"
   | "blog"
+  | "telegram"
   | "qualities"
   | "achievements"
   | "ads"
@@ -84,7 +87,7 @@ export const ADMIN_ROLE_LABEL: Record<AdminRole, string> = {
 export const ADMIN_ROLE_HINT: Record<AdminRole, string> = {
   owner: "Полный доступ, управление админами",
   moderator: "Обменники, отзывы, жалобы, ЧС, баннеры, API-ключи",
-  editor: "Новости, качества, ачивки",
+  editor: "Новости, Telegram, качества, ачивки",
   ads: "Креативы и тарифы",
   viewer: "Только просмотр",
 };
@@ -103,6 +106,8 @@ const ALL_PERMISSIONS: AdminPermission[] = [
   "banners.write",
   "blog.read",
   "blog.write",
+  "telegram.read",
+  "telegram.write",
   "qualities.read",
   "qualities.write",
   "achievements.read",
@@ -152,6 +157,8 @@ const ROLE_PERMISSIONS: Record<AdminRole, AdminPermission[] | "*"> = {
     "reviews.read",
     "blog.read",
     "blog.write",
+    "telegram.read",
+    "telegram.write",
     "qualities.read",
     "qualities.write",
     "achievements.read",
@@ -172,6 +179,7 @@ const ROLE_PERMISSIONS: Record<AdminRole, AdminPermission[] | "*"> = {
     "blacklist.read",
     "banners.read",
     "blog.read",
+    "telegram.read",
     "qualities.read",
     "achievements.read",
     "ads.read",

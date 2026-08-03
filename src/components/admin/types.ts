@@ -66,6 +66,7 @@ export type AdminNavId =
   | "legal"
   | "email"
   | "blog"
+  | "telegram"
   | "blacklist"
   | "catalog"
   | "sync"
