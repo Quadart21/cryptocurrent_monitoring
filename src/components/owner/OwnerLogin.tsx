@@ -136,12 +136,12 @@ export function OwnerLogin() {
               Кабинет владельца
             </p>
             <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-ink">
-              {mode === "login" ? "Вход" : "Доступ по email"}
+              {mode === "login" ? "С возвращением" : "Получить доступ"}
             </h1>
             <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-ink-muted">
               {mode === "login"
-                ? "После одобрения заявки логин, пароль и 2FA приходят на email."
-                : "Укажите email, который указан у обменника — пришлём логин и временный пароль."}
+                ? "Войдите логином из письма после одобрения. Забыли пароль — восстановите по email ниже."
+                : "Укажите email обменника — пришлём логин и временный пароль. Если 2FA уже была включена, код из приложения понадобится при входе."}
             </p>
           </div>
 
@@ -231,7 +231,7 @@ export function OwnerLogin() {
                 onClick={() => switchMode("remind")}
                 className="w-full rounded-xl border border-line bg-bg-soft/40 px-4 py-3 text-sm font-medium text-ink transition hover:border-accent/40 hover:text-accent"
               >
-                Вы владелец обменника? Получить доступ
+                Вы владелец обменника? Получить доступ по email
               </button>
             </form>
           ) : (

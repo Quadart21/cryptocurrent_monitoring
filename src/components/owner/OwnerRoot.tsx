@@ -9,8 +9,12 @@ function OwnerGate() {
 
   if (checking) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-bg text-sm text-ink-muted">
-        Загрузка кабинета…
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-bg px-4">
+        <div
+          className="size-10 animate-pulse rounded-2xl bg-accent/20"
+          aria-hidden
+        />
+        <p className="text-sm text-ink-muted">Открываем кабинет…</p>
       </div>
     );
   }
