@@ -1,0 +1,92 @@
+[
+  {
+    "name": "GoExMe",
+    "website": "https://goexme.io/",
+    "feedUrl": "https://goexme.io/api/rates",
+    "status": "active",
+    "contact": "admin@goexme.io · @exme_support",
+    "description": "Обменник GoExMe. Поддержка admin@goexme.io, Telegram @exme_support.",
+    "notes": "OK ~919 pairs; /api/rates BestChange XML"
+  },
+  {
+    "name": "SonaChange",
+    "website": "https://sonachange.com/",
+    "feedUrl": "https://sonachange.com/api/rates.xml",
+    "status": "active",
+    "contact": "",
+    "description": "Онлайн-обменник SonaChange.",
+    "notes": "OK ~5106 pairs; site CF 403 from DC/workstation — contact TBD"
+  },
+  {
+    "name": "Boss Exchange",
+    "website": "https://boss-exchange.com/",
+    "feedUrl": "https://boss-exchange.com/service/export/xml",
+    "status": "active",
+    "contact": "support@boss-exchange.com",
+    "description": "Онлайн-обменник Boss Exchange. Операторы пн–пт 10:00–22:00 (Киев).",
+    "notes": "OK ~555 pairs"
+  },
+  {
+    "name": "Device.me",
+    "website": "https://device.me/",
+    "feedUrl": "https://device.me/service/export/xml",
+    "status": "active",
+    "contact": "support@device.me · @device_me_bot",
+    "description": "Обменник Device.me. Telegram @device_me_bot.",
+    "notes": "OK ~419 pairs"
+  },
+  {
+    "name": "BTCBank",
+    "website": "https://btcbank.com.ua/",
+    "feedUrl": "https://btcbank.com.ua/rates.xml",
+    "status": "active",
+    "contact": "support@btcbank.com.ua",
+    "description": "Обменный пункт BTCBank (Украина).",
+    "notes": "OK ~44 pairs"
+  },
+  {
+    "name": "Go-Go Exchange",
+    "website": "https://go-go.exchange/",
+    "feedUrl": "https://go-go.exchange/service/export/xml",
+    "status": "active",
+    "contact": "support@go-go.exchange · @Go_Go_exchange",
+    "description": "Онлайн-обменник Go-Go Exchange. Telegram @Go_Go_exchange.",
+    "notes": "OK ~119 pairs"
+  },
+  {
+    "name": "CoinsBar",
+    "website": "https://coinsbar.net/",
+    "feedUrl": "https://coinsbar.net/service/export/xml",
+    "status": "active",
+    "contact": "@coinsbar_support",
+    "description": "Обменник CoinsBar. Поддержка Telegram @coinsbar_support (пн–пт 10:00–18:00).",
+    "notes": "OK ~97 pairs; email not published"
+  },
+  {
+    "name": "7Pay",
+    "website": "https://7pay.me/",
+    "feedUrl": "https://7pay.me/bestchange.xml",
+    "status": "active",
+    "contact": "info@7pay.me · @the_7Pay",
+    "description": "Обменник 7Pay. Telegram @the_7Pay.",
+    "notes": "OK ~257 pairs"
+  },
+  {
+    "name": "Bitsz",
+    "website": "https://bitsz.io/",
+    "feedUrl": "https://bitsz.io/rates.xml",
+    "status": "active",
+    "contact": "support@bitsz.io · @Bitsz_support_bot",
+    "description": "Обменник Bitsz. Telegram @Bitsz_support_bot.",
+    "notes": "OK ~4199 pairs"
+  },
+  {
+    "name": "1Tab",
+    "website": "https://1tab.co/",
+    "feedUrl": "https://1tab.co/service/export/xml",
+    "status": "active",
+    "contact": "orders@1tab.co · @onetab_operate",
+    "description": "Обменник 1Tab. Telegram @onetab_operate.",
+    "notes": "OK ~57 pairs"
+  }
+]

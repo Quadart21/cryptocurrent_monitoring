@@ -1,6 +1,6 @@
 {
   "name": "gapsnap",
-  "version": "2.41.9",
+  "version": "2.41.10",
   "private": true,
   "scripts": {
     "dev": "next dev",
