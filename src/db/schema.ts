@@ -517,6 +517,50 @@ export const emailContacts = pgTable(
   ],
 );
 
+/** Admin mailbox conversation with a contact email. */
+export const mailThreads = pgTable(
+  "mail_threads",
+  {
+    id: text("id").primaryKey(),
+    contactEmail: text("contact_email").notNull(),
+    contactName: text("contact_name").notNull().default(""),
+    subject: text("subject").notNull().default(""),
+    lastMessageAt: text("last_message_at").notNull(),
+    unreadCount: integer("unread_count").notNull().default(0),
+    exchangerId: text("exchanger_id"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => [
+    index("mail_threads_contact_idx").on(t.contactEmail),
+    index("mail_threads_last_msg_idx").on(t.lastMessageAt),
+  ],
+);
+
+/** Messages inside an admin mailbox thread (inbound from Resend or outbound replies). */
+export const mailMessages = pgTable(
+  "mail_messages",
+  {
+    id: text("id").primaryKey(),
+    threadId: text("thread_id").notNull(),
+    direction: text("direction").notNull(), // inbound | outbound
+    fromAddress: text("from_address").notNull(),
+    toAddress: text("to_address").notNull(),
+    subject: text("subject").notNull().default(""),
+    textBody: text("text_body").notNull().default(""),
+    htmlBody: text("html_body").notNull().default(""),
+    resendEmailId: text("resend_email_id"),
+    messageIdHeader: text("message_id_header"),
+    inReplyTo: text("in_reply_to"),
+    createdAt: text("created_at").notNull(),
+  },
+  (t) => [
+    index("mail_messages_thread_idx").on(t.threadId),
+    index("mail_messages_resend_idx").on(t.resendEmailId),
+    index("mail_messages_created_idx").on(t.createdAt),
+  ],
+);
+
 /**
  * New currency/city/country codes awaiting admin moderation.
  * Live catalog is NOT updated until status = approved.

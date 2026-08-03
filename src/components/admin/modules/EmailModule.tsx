@@ -19,8 +19,10 @@ import type {
   EmailTemplate,
 } from "@/lib/email/types";
 import { defaultComposeHtml } from "@/lib/email/layout";
+import { MailInboxPanel } from "@/components/admin/modules/MailInboxPanel";
 
 type TabId =
+  | "inbox"
   | "overview"
   | "contacts"
   | "broadcast"
@@ -44,10 +46,12 @@ type Snapshot = {
   contacts: EmailContact[];
   contactStats: ContactStats;
   smtpEnv: {
+    provider?: string;
     hasApiKey: boolean;
     hasFromEnv: boolean;
     fromEnv: string | null;
     fromNameEnv: string | null;
+    hasWebhookSecret?: boolean;
   };
   siteUrl: string;
   siteName: string;
@@ -55,6 +59,7 @@ type Snapshot = {
 };
 
 const TABS: Array<{ id: TabId; label: string }> = [
+  { id: "inbox", label: "Входящие" },
   { id: "overview", label: "Обзор" },
   { id: "contacts", label: "Контакты" },
   { id: "broadcast", label: "Рассылка" },
@@ -232,7 +237,7 @@ function SourceBadges({ sources }: { sources: string[] }) {
 
 export function EmailModule() {
   const { busy, setBusy } = useAdmin();
-  const [tab, setTab] = useState<TabId>("overview");
+  const [tab, setTab] = useState<TabId>("inbox");
   const [data, setData] = useState<Snapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
@@ -582,7 +587,7 @@ export function EmailModule() {
     <div className="space-y-5">
       <AdminPageHeader
         title="Почта"
-        description="Контакты обменников и авторов отзывов, шаблоны и рассылки"
+        description="Входящие через Resend, контакты, шаблоны и рассылки"
       />
 
       <AdminTabBar value={tab} onChange={switchTab} tabs={TABS} />
@@ -598,12 +603,14 @@ export function EmailModule() {
         </p>
       ) : null}
 
+      {tab === "inbox" && <MailInboxPanel />}
+
       {tab === "overview" && (
         <div className="space-y-4">
           <AdminStatGrid
             items={[
               {
-                label: "Ключ SMTP",
+                label: "Resend API",
                 value: data.smtpEnv.hasApiKey ? "Задан" : "Нет",
                 tone: data.smtpEnv.hasApiKey ? "ok" : "warn",
               },
@@ -869,7 +876,7 @@ export function EmailModule() {
             <div className="grid gap-4 p-5 sm:grid-cols-2">
               <Field
                 label="Email отправителя"
-                hint={`По умолчанию: ${data.smtpEnv.fromEnv ?? "SMTPBZ_FROM"}`}
+                hint={`По умолчанию: ${data.smtpEnv.fromEnv ?? "RESEND_FROM"}`}
               >
                 <input
                   className={inputClass}
@@ -879,7 +886,7 @@ export function EmailModule() {
                   onChange={(e) =>
                     setSettings({ ...settings, fromEmail: e.target.value })
                   }
-                  placeholder={data.smtpEnv.fromEnv ?? "noreply@gapsnap.org"}
+                  placeholder={data.smtpEnv.fromEnv ?? "support@gapsnap.org"}
                 />
               </Field>
               <Field label="Имя отправителя">
@@ -1113,7 +1120,7 @@ export function EmailModule() {
       {tab === "compose" && (
         <AdminSection
           title="Одно письмо"
-          description="Тест SMTP или ручная отправка одному адресу"
+          description="Тест Resend или ручная отправка одному адресу"
         >
           <div className="space-y-4 p-5">
             <Field label="Кому">

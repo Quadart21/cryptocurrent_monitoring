@@ -218,6 +218,13 @@
       "when": 1785540000000,
       "tag": "0030_exchanger_referral",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1785550000000,
+      "tag": "0031_mail_inbox",
+      "breakpoints": true
     }
   ]
 }

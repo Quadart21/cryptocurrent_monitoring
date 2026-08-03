@@ -205,6 +205,8 @@ export async function POST(request: Request) {
     const isMail =
       message.includes("smtp.bz") ||
       message.includes("SMTPBZ_") ||
+      message.includes("RESEND_") ||
+      message.includes("Resend") ||
       message.includes("smtp") ||
       message.includes("fromEmail");
     return NextResponse.json(

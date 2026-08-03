@@ -14,7 +14,7 @@ import {
   sendOwnerBannerUnpublishedEmail,
 } from "@/lib/owner-mail";
 import { assertSafeOutboundUrl } from "@/lib/security/ssrf";
-import { smtpBzConfigured } from "@/lib/smtp-bz";
+import { resendConfigured } from "@/lib/resend-mail";
 import {
   ensureBannerToken,
   getExchangerById,
@@ -222,7 +222,7 @@ function escapeHtml(value: string): string {
 async function notifyAdminMissing(missing: FeedExchanger[]): Promise<boolean> {
   const to = adminAlertEmail();
   if (!to || missing.length === 0) return false;
-  if (!smtpBzConfigured()) {
+  if (!resendConfigured()) {
     console.warn("[gapsnap] banner missing, but SMTP not configured — skip admin email");
     return false;
   }
@@ -401,7 +401,7 @@ export async function warnOwnerBannerMissing(
       error: "Нет email владельца (ownerEmail / contact)",
     };
   }
-  if (!smtpBzConfigured()) {
+  if (!resendConfigured()) {
     return { ok: false, exchangerId, error: "SMTP не настроен" };
   }
 
@@ -459,7 +459,7 @@ export async function unpublishForMissingBanner(
   if (notifyOwner) {
     if (!to) {
       warning = "Снято без письма: нет email владельца";
-    } else if (!smtpBzConfigured()) {
+    } else if (!resendConfigured()) {
       warning = "Снято без письма: SMTP не настроен";
     } else {
       try {

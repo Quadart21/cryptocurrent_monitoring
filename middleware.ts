@@ -119,7 +119,8 @@ export async function middleware(request: NextRequest) {
   if (
     pathname === "/api/admin/login" ||
     pathname === "/api/owner/login" ||
-    pathname === "/api/owner/remind-access"
+    pathname === "/api/owner/remind-access" ||
+    pathname.startsWith("/api/webhooks/")
   ) {
     return NextResponse.next();
   }

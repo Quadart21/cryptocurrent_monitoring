@@ -16,7 +16,7 @@ import type {
   EmailTemplateId,
   BroadcastSegment,
 } from "@/lib/email/types";
-import { sendSmtpBzEmail, smtpBzConfigStatus } from "@/lib/smtp-bz";
+import { sendResendEmail, resendConfigStatus } from "@/lib/resend-mail";
 import { getSeoSettings } from "@/lib/store";
 
 export function renderTemplate(
@@ -385,12 +385,19 @@ export async function sendTemplatedEmail(
   const subject = renderTemplate(tpl.subject, vars);
   const html = renderTemplate(tpl.html, vars);
   const text = renderTemplate(tpl.text, vars);
-  const fromEmail = settings.fromEmail || process.env.SMTPBZ_FROM?.trim() || "";
+  const fromEmail =
+    settings.fromEmail ||
+    process.env.RESEND_FROM?.trim() ||
+    process.env.SMTPBZ_FROM?.trim() ||
+    "";
   const fromName =
-    settings.fromName || process.env.SMTPBZ_FROM_NAME?.trim() || "GapSnap";
+    settings.fromName ||
+    process.env.RESEND_FROM_NAME?.trim() ||
+    process.env.SMTPBZ_FROM_NAME?.trim() ||
+    "GapSnap";
 
   try {
-    const result = await sendSmtpBzEmail({
+    const result = await sendResendEmail({
       to: input.to,
       subject,
       html,
@@ -431,11 +438,18 @@ export async function sendRawAdminEmail(input: {
   tag?: string;
 }): Promise<void> {
   const settings = await getEmailSettings();
-  const fromEmail = settings.fromEmail || process.env.SMTPBZ_FROM?.trim() || "";
+  const fromEmail =
+    settings.fromEmail ||
+    process.env.RESEND_FROM?.trim() ||
+    process.env.SMTPBZ_FROM?.trim() ||
+    "";
   const fromName =
-    settings.fromName || process.env.SMTPBZ_FROM_NAME?.trim() || "GapSnap";
+    settings.fromName ||
+    process.env.RESEND_FROM_NAME?.trim() ||
+    process.env.SMTPBZ_FROM_NAME?.trim() ||
+    "GapSnap";
   try {
-    const result = await sendSmtpBzEmail({
+    const result = await sendResendEmail({
       to: input.to,
       subject: input.subject,
       html: input.html,
@@ -526,7 +540,7 @@ export async function getEmailAdminSnapshot() {
     settings,
     templates,
     log,
-    smtpEnv: smtpBzConfigStatus(),
+    smtpEnv: resendConfigStatus(),
     siteUrl: siteBaseUrl(seo.siteUrl),
     siteName: seo.siteName || "GapSnap",
   };
