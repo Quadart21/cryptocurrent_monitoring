@@ -16,6 +16,63 @@ export function hasEmailLayout(html: string): boolean {
   return html.includes(`data-gapsnap-email="${EMAIL_LAYOUT_VERSION}"`);
 }
 
+export function escapeEmailHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** Turn plain admin/mailbox text into body HTML (paragraphs + line breaks). */
+export function plainTextToEmailBody(text: string): string {
+  const trimmed = text.trim();
+  if (!trimmed) return "";
+  const parts = trimmed.split(/\n{2,}/).filter((p) => p.length > 0);
+  return parts
+    .map((para, i) => {
+      const inner = escapeEmailHtml(para).replace(/\n/g, "<br />");
+      const margin = i === parts.length - 1 ? "0" : "0 0 16px";
+      return `<p style="margin:${margin}">${inner}</p>`;
+    })
+    .join("");
+}
+
+/**
+ * If HTML is already the branded envelope — leave it.
+ * Otherwise wrap body content in the shared GapSnap layout.
+ */
+export function ensureEmailLayout(
+  html: string,
+  opts?: Omit<WrapEmailOptions, "body">,
+): string {
+  const trimmed = html.trim();
+  if (!trimmed) return trimmed;
+  if (hasEmailLayout(trimmed)) return trimmed;
+  return wrapEmailHtml({
+    body: trimmed,
+    ctaHref: opts?.ctaHref ?? EMAIL_DEFAULT_SITE_URL,
+    ctaAlt: opts?.ctaAlt ?? "Открыть GapSnap",
+    ctaKind: opts?.ctaKind ?? "brand",
+    siteUrl: opts?.siteUrl ?? EMAIL_DEFAULT_SITE_URL,
+    siteLabel: opts?.siteLabel ?? "gapsnap.org",
+    supportEmail: opts?.supportEmail,
+    afterCta: opts?.afterCta,
+  });
+}
+
+/** Plain-text footer matching the branded HTML chrome. */
+export function withManualEmailTextFooter(text: string): string {
+  const trimmed = text.trim();
+  const footer = [
+    "—",
+    "команда GapSnap",
+    EMAIL_DEFAULT_SITE_URL,
+    emailTextSupportLine(),
+  ].join("\n");
+  return trimmed ? `${trimmed}\n\n${footer}` : footer;
+}
+
 export function emailHighlight(
   html: string,
   tone: "accent" | "warn" | "danger" = "accent",
@@ -134,22 +191,16 @@ export function wrapEmailHtml(opts: WrapEmailOptions): string {
 </div>`;
 }
 
-/** Default HTML for admin compose / broadcast (literal site URL). */
+/**
+ * Default body HTML for admin compose / broadcast.
+ * Branded chrome is applied on send via `ensureEmailLayout`.
+ */
 export function defaultComposeHtml(kind: "compose" | "broadcast"): string {
-  const intro =
-    kind === "broadcast"
-      ? `<p style="margin:0 0 16px">Здравствуйте!</p>
-              <p style="margin:0 0 16px">Новости <strong style="color:#6d28d9">GapSnap</strong>.</p>
-              <p style="margin:0;color:#6a6578">Кратко расскажем, что изменилось, и чем это полезно вам.</p>`
-      : `<p style="margin:0 0 16px">Здравствуйте!</p>
-              <p style="margin:0 0 16px">Сообщение от <strong style="color:#6d28d9">GapSnap</strong>.</p>
-              <p style="margin:0;color:#6a6578">Если появятся вопросы — мы на связи и с радостью поможем.</p>`;
-
-  return wrapEmailHtml({
-    body: intro,
-    ctaHref: EMAIL_DEFAULT_SITE_URL,
-    ctaAlt: "Открыть GapSnap",
-    siteUrl: EMAIL_DEFAULT_SITE_URL,
-    siteLabel: "gapsnap.org",
-  });
+  return kind === "broadcast"
+    ? `<p style="margin:0 0 16px">Здравствуйте!</p>
+<p style="margin:0 0 16px">Новости <strong style="color:#6d28d9">GapSnap</strong>.</p>
+<p style="margin:0;color:#6a6578">Кратко расскажем, что изменилось, и чем это полезно вам.</p>`
+    : `<p style="margin:0 0 16px">Здравствуйте!</p>
+<p style="margin:0 0 16px">Сообщение от <strong style="color:#6d28d9">GapSnap</strong>.</p>
+<p style="margin:0;color:#6a6578">Если появятся вопросы — мы на связи и с радостью поможем.</p>`;
 }

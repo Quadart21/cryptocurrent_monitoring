@@ -4,6 +4,11 @@ import { desc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db/index";
 import { runMigrations } from "@/db/migrate";
 import { mailMessages, mailThreads } from "@/db/schema";
+import {
+  ensureEmailLayout,
+  plainTextToEmailBody,
+  withManualEmailTextFooter,
+} from "@/lib/email/layout";
 import { getEmailSettings } from "@/lib/email/service";
 import {
   resolveMailboxIdentity,
@@ -289,15 +294,16 @@ export async function replyToThread(input: {
     ? thread.subject
     : `Re: ${thread.subject || "сообщение"}`;
 
-  const html =
-    input.bodyHtml?.trim() ||
-    `<div style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.55;white-space:pre-wrap">${escapeHtml(text)}</div>`;
+  const html = ensureEmailLayout(
+    input.bodyHtml?.trim() || plainTextToEmailBody(text),
+  );
+  const textOut = withManualEmailTextFooter(text);
 
   const sent = await sendResendEmail({
     to: thread.contactEmail,
     subject,
     html,
-    text,
+    text: textOut,
     from: identity.email,
     name: identity.name,
     reply: identity.email,
@@ -357,15 +363,16 @@ export async function startOutboundThread(input: {
   if (text.length < 1) throw new Error("Введите текст письма");
 
   const identity = resolveMailboxIdentity(input.fromEmail);
-  const html =
-    input.bodyHtml?.trim() ||
-    `<div style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.55;white-space:pre-wrap">${escapeHtml(text)}</div>`;
+  const html = ensureEmailLayout(
+    input.bodyHtml?.trim() || plainTextToEmailBody(text),
+  );
+  const textOut = withManualEmailTextFooter(text);
 
   const sent = await sendResendEmail({
     to,
     subject,
     html,
-    text,
+    text: textOut,
     from: identity.email,
     name: identity.name,
     reply: identity.email,
@@ -435,10 +442,3 @@ export async function mailboxUnreadTotal(): Promise<number> {
   return Number(row?.n ?? 0);
 }
 
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}

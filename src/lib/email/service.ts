@@ -8,7 +8,7 @@ import {
   DEFAULT_EMAIL_SETTINGS,
   DEFAULT_EMAIL_TEMPLATES,
 } from "@/lib/email/defaults";
-import { hasEmailLayout } from "@/lib/email/layout";
+import { ensureEmailLayout, hasEmailLayout } from "@/lib/email/layout";
 import type {
   EmailLogRow,
   EmailSettings,
@@ -448,11 +448,12 @@ export async function sendRawAdminEmail(input: {
     process.env.RESEND_FROM_NAME?.trim() ||
     process.env.SMTPBZ_FROM_NAME?.trim() ||
     "GapSnap";
+  const html = ensureEmailLayout(input.html);
   try {
     const result = await sendResendEmail({
       to: input.to,
       subject: input.subject,
-      html: input.html,
+      html,
       text: input.text,
       tag: input.tag ?? "admin-manual",
       from: fromEmail || undefined,

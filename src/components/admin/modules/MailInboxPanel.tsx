@@ -380,7 +380,7 @@ export function MailInboxPanel() {
                 />
                 <textarea
                   className={`${inputClass} min-h-[140px] resize-y`}
-                  placeholder="Текст"
+                  placeholder="Текст письма (фирменный шаблон GapSnap добавится сам)"
                   value={composeBody}
                   onChange={(e) => setComposeBody(e.target.value)}
                 />
@@ -460,7 +460,7 @@ export function MailInboxPanel() {
                   />
                   <textarea
                     className={`${inputClass} min-h-[88px] resize-y`}
-                    placeholder="Ответ клиенту…"
+                    placeholder="Ответ клиенту… (уйдёт в фирменном шаблоне GapSnap)"
                     value={reply}
                     onChange={(e) => setReply(e.target.value)}
                   />

@@ -839,7 +839,10 @@ export function EmailModule() {
                 placeholder="Тема рассылки"
               />
             </Field>
-            <Field label="HTML">
+            <Field
+              label="Текст письма"
+              hint="Пишите только тело — баннер, кнопка и подвал GapSnap добавятся сами"
+            >
               <textarea
                 className={areaClass}
                 rows={10}
@@ -1140,7 +1143,10 @@ export function EmailModule() {
                 placeholder="Тема письма"
               />
             </Field>
-            <Field label="HTML">
+            <Field
+              label="Текст письма"
+              hint="Пишите только тело — баннер, кнопка и подвал GapSnap добавятся сами"
+            >
               <textarea
                 className={areaClass}
                 rows={8}
