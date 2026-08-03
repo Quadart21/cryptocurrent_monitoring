@@ -146,6 +146,7 @@ function mapExchanger(row: ExchangerRow): FeedExchanger {
     name: row.name,
     website: row.website,
     exchangeUrlTemplate: row.exchangeUrlTemplate ?? "",
+    referralUrlTemplate: row.referralUrlTemplate ?? "",
     feedUrl: row.feedUrl,
     contact: row.contact,
     description: row.description,
@@ -980,6 +981,7 @@ export async function addExchangerApplication(input: {
   name: string;
   website: string;
   exchangeUrlTemplate?: string;
+  referralUrlTemplate?: string;
   feedUrl: string;
   contact: string;
   description: string;
@@ -1021,6 +1023,7 @@ export async function addExchangerApplication(input: {
       name: input.name,
       website: input.website,
       exchangeUrlTemplate: (input.exchangeUrlTemplate ?? "").trim(),
+      referralUrlTemplate: (input.referralUrlTemplate ?? "").trim(),
       feedUrl: input.feedUrl,
       contact: input.contact,
       description: input.description,
@@ -1072,6 +1075,7 @@ export async function createExchangerManual(input: {
   name: string;
   website: string;
   exchangeUrlTemplate?: string;
+  referralUrlTemplate?: string;
   feedUrl: string;
   contact?: string;
   description?: string;
@@ -1087,6 +1091,7 @@ export async function createExchangerManual(input: {
   const contact = (input.contact ?? "").trim();
   const description = (input.description ?? "").trim();
   const exchangeUrlTemplate = (input.exchangeUrlTemplate ?? "").trim();
+  const referralUrlTemplate = (input.referralUrlTemplate ?? "").trim();
   const status = input.status === "active" ? "active" : "pending";
   const ownerEmail = input.ownerEmail?.trim().toLowerCase() || null;
   const ownerLogin = input.ownerLogin?.trim().toLowerCase() || null;
@@ -1128,6 +1133,7 @@ export async function createExchangerManual(input: {
       name,
       website,
       exchangeUrlTemplate,
+      referralUrlTemplate,
       feedUrl,
       contact,
       description:
@@ -1303,6 +1309,7 @@ export async function updateExchanger(
       | "name"
       | "website"
       | "exchangeUrlTemplate"
+      | "referralUrlTemplate"
       | "feedUrl"
       | "contact"
       | "description"
@@ -1382,6 +1389,9 @@ export async function updateExchanger(
       ...(patch.website !== undefined ? { website: patch.website } : {}),
       ...(patch.exchangeUrlTemplate !== undefined
         ? { exchangeUrlTemplate: patch.exchangeUrlTemplate }
+        : {}),
+      ...(patch.referralUrlTemplate !== undefined
+        ? { referralUrlTemplate: patch.referralUrlTemplate }
         : {}),
       ...(patch.feedUrl !== undefined ? { feedUrl: patch.feedUrl } : {}),
       ...(patch.contact !== undefined ? { contact: patch.contact } : {}),

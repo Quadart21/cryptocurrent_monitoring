@@ -208,6 +208,7 @@ export function RatesBoard({
       offer.exchanger.website,
       offer.from,
       offer.to,
+      offer.exchanger.referralUrlTemplate,
     );
   }
 

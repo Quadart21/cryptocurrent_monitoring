@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { validateExchangeUrlTemplate } from "@/lib/exchange-link";
+import {
+  validateExchangeUrlTemplate,
+  validateReferralUrlTemplate,
+} from "@/lib/exchange-link";
 import { hashOwnerPassword } from "@/lib/owner-auth";
 import { addExchangerApplication } from "@/lib/store";
 import { validateAndPrepareLogo } from "@/lib/logo";
@@ -13,6 +16,14 @@ export const maxDuration = 60;
 
 function newExchangerId(): string {
   return `ex_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
+async function assertSafeTemplateOrUrl(value: string): Promise<void> {
+  const sample =
+    value.includes("{0}") || value.includes("{1}")
+      ? value.replaceAll("{0}", "BTC").replaceAll("{1}", "USDTTRC20")
+      : value;
+  await assertSafeOutboundUrl(sample, { allowHttp: true });
 }
 
 export async function POST(request: Request) {
@@ -30,6 +41,9 @@ export async function POST(request: Request) {
   const website = String(form.get("website") ?? "").trim();
   const exchangeUrlTemplate = String(
     form.get("exchangeUrlTemplate") ?? "",
+  ).trim();
+  const referralUrlTemplate = String(
+    form.get("referralUrlTemplate") ?? "",
   ).trim();
   const feedUrl = String(form.get("feedUrl") ?? "").trim();
   const contact = String(form.get("contact") ?? "").trim();
@@ -63,15 +77,26 @@ export async function POST(request: Request) {
     );
   }
   try {
-    const sample = exchangeUrlTemplate
-      .replaceAll("{0}", "BTC")
-      .replaceAll("{1}", "USDTTRC20");
-    await assertSafeOutboundUrl(sample, { allowHttp: true });
+    await assertSafeTemplateOrUrl(exchangeUrlTemplate);
   } catch {
     return NextResponse.json(
       { error: "Некорректный шаблон ссылки на обмен" },
       { status: 400 },
     );
+  }
+  const referralError = validateReferralUrlTemplate(referralUrlTemplate);
+  if (referralError) {
+    return NextResponse.json({ error: referralError }, { status: 400 });
+  }
+  if (referralUrlTemplate) {
+    try {
+      await assertSafeTemplateOrUrl(referralUrlTemplate);
+    } catch {
+      return NextResponse.json(
+        { error: "Некорректная реферальная ссылка" },
+        { status: 400 },
+      );
+    }
   }
   try {
     await assertSafeOutboundUrl(feedUrl, { allowHttp: true });
@@ -140,6 +165,7 @@ export async function POST(request: Request) {
       name,
       website,
       exchangeUrlTemplate,
+      referralUrlTemplate,
       feedUrl,
       contact,
       description:

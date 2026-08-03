@@ -123,6 +123,7 @@ export const seedExchanger: FeedExchanger = {
   name: "Kubex",
   website: "https://kubex.me",
   exchangeUrlTemplate: "https://kubex.me/ru/exchange/{0}/{1}",
+  referralUrlTemplate: "",
   feedUrl: "https://kubex.me/exports/valuta.xml",
   contact: "seed@gapsnap.local",
   description:
@@ -495,6 +496,7 @@ export async function ensureSeeded(db: Db): Promise<void> {
       name: seedExchanger.name,
       website: seedExchanger.website,
       exchangeUrlTemplate: seedExchanger.exchangeUrlTemplate,
+      referralUrlTemplate: seedExchanger.referralUrlTemplate,
       feedUrl: seedExchanger.feedUrl,
       contact: seedExchanger.contact,
       description: seedExchanger.description,

@@ -25,6 +25,7 @@ export type LiveOffer = {
     name: string;
     website: string;
     exchangeUrlTemplate?: string;
+    referralUrlTemplate?: string;
     rating: number;
     reviews: number;
     verified: boolean;
@@ -180,6 +181,7 @@ export function RateTable({
                         offer.exchanger.website,
                         offer.from,
                         offer.to,
+                        offer.exchanger.referralUrlTemplate,
                       )}
                       target="_blank"
                       rel="noopener noreferrer"

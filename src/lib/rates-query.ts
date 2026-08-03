@@ -35,6 +35,7 @@ export type RatesOffer = {
     name: string;
     website: string;
     exchangeUrlTemplate: string;
+    referralUrlTemplate: string;
     rating: number;
     reviews: number;
     verified: boolean;
@@ -132,6 +133,7 @@ export async function queryRates(
           name: exchanger.name,
           website: exchanger.website,
           exchangeUrlTemplate: exchanger.exchangeUrlTemplate,
+          referralUrlTemplate: exchanger.referralUrlTemplate,
           rating: exchanger.rating,
           reviews: exchanger.reviews,
           verified: exchanger.verified,

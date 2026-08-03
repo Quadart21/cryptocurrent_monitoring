@@ -32,6 +32,11 @@ export type FeedExchanger = {
   website: string;
   /** Deep-link with `{0}`=from, `{1}`=to. Empty → use website. */
   exchangeUrlTemplate: string;
+  /**
+   * GapSnap referral / affiliate link. Plain URL or `{0}`/`{1}` template.
+   * When set, used for public “Обменять” / “Перейти на сайт” instead of exchanger links.
+   */
+  referralUrlTemplate: string;
   feedUrl: string;
   contact: string;
   description: string;

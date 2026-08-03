@@ -35,6 +35,7 @@ type EditForm = {
   name: string;
   website: string;
   exchangeUrlTemplate: string;
+  referralUrlTemplate: string;
   feedUrl: string;
   contact: string;
   description: string;
@@ -45,6 +46,7 @@ function formFromEx(ex: FeedExchanger | AdminExchanger): EditForm {
     name: ex.name,
     website: ex.website,
     exchangeUrlTemplate: ex.exchangeUrlTemplate ?? "",
+    referralUrlTemplate: ex.referralUrlTemplate ?? "",
     feedUrl: ex.feedUrl,
     contact: ex.contact,
     description: ex.description,
@@ -234,6 +236,7 @@ export function ExchangerDetailModule() {
     const name = form.name.trim();
     const website = form.website.trim();
     const exchangeUrlTemplate = form.exchangeUrlTemplate.trim();
+    const referralUrlTemplate = form.referralUrlTemplate.trim();
     const feedUrl = form.feedUrl.trim();
     const contact = form.contact.trim();
     const description = form.description.trim();
@@ -258,6 +261,7 @@ export function ExchangerDetailModule() {
           name,
           website,
           exchangeUrlTemplate,
+          referralUrlTemplate,
           feedUrl,
           contact,
           description,
@@ -788,6 +792,24 @@ export function ExchangerDetailModule() {
               <span className="block text-[11px] text-ink-muted">
                 Пусто — кнопка «Обменять» ведёт на сайт. С шаблоном откроется
                 выбранная на мониторинге пара.
+              </span>
+            </label>
+            <label className="block space-y-1 sm:col-span-2">
+              <span className="text-xs text-ink-muted">
+                Реферальная ссылка GapSnap
+              </span>
+              <input
+                value={form.referralUrlTemplate}
+                onChange={(e) =>
+                  setForm({ ...form, referralUrlTemplate: e.target.value })
+                }
+                placeholder="https://example.com/?ref=gapsnap или …/{0}/{1}?partner=…"
+                className="w-full rounded-2xl border border-line bg-input px-3 py-2.5 text-sm outline-none focus:border-accent"
+              />
+              <span className="block text-[11px] text-ink-muted">
+                Партнёрская ссылка мониторинга. Имеет приоритет над обычным
+                шаблоном обмена и сайтом при клике «Обменять» / «Перейти на
+                сайт». Обычный URL или шаблон с {"{0}"}/{"{1}"}.
               </span>
             </label>
             <label className="block space-y-1">

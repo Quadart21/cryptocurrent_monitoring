@@ -71,6 +71,12 @@ export function ApplyForm() {
           required
         />
         <Field
+          label="Реферальная ссылка мониторинга"
+          name="referralUrlTemplate"
+          placeholder="https://example.com/?ref=gapsnap или …/exchange/{0}/{1}?ref=…"
+          hint="Опционально. Партнёрская ссылка GapSnap: обычный URL или шаблон с {0}/{1}. Если указана — клиенты с мониторинга переходят по ней вместо обычной ссылки обменника."
+        />
+        <Field
           label="URL XML-фида"
           name="feedUrl"
           placeholder="https://example.com/exports/rates.xml"

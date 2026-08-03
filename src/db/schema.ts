@@ -57,6 +57,11 @@ export const exchangers = pgTable(
     website: text("website").notNull().default(""),
     /** Deep-link template: `{0}` = from code, `{1}` = to code. */
     exchangeUrlTemplate: text("exchange_url_template").notNull().default(""),
+    /**
+     * GapSnap-owned affiliate / referral link (admin or apply).
+     * Plain URL or template with `{0}`/`{1}`. Overrides public outbound when set.
+     */
+    referralUrlTemplate: text("referral_url_template").notNull().default(""),
     feedUrl: text("feed_url").notNull().default(""),
     contact: text("contact").notNull().default(""),
     description: text("description").notNull().default(""),

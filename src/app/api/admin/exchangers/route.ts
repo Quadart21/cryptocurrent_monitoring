@@ -1,6 +1,9 @@
 ﻿import { NextResponse } from "next/server";
 import { assertAdminResource } from "@/lib/admin-guard";
-import { validateExchangeUrlTemplate } from "@/lib/exchange-link";
+import {
+  validateExchangeUrlTemplate,
+  validateReferralUrlTemplate,
+} from "@/lib/exchange-link";
 import { hashOwnerPassword } from "@/lib/owner-auth";
 import {
   extractEmail,
@@ -38,6 +41,14 @@ export const maxDuration = 60;
 
 function newExchangerId(): string {
   return `ex_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
+async function assertSafeTemplateOrUrl(value: string): Promise<void> {
+  const sample =
+    value.includes("{0}") || value.includes("{1}")
+      ? value.replaceAll("{0}", "BTC").replaceAll("{1}", "USDTTRC20")
+      : value;
+  await assertSafeOutboundUrl(sample, { allowHttp: true });
 }
 
 function toPublicExchanger(
@@ -79,6 +90,7 @@ export async function POST(request: Request) {
     name?: string;
     website?: string;
     exchangeUrlTemplate?: string;
+    referralUrlTemplate?: string;
     feedUrl?: string;
     contact?: string;
     description?: string;
@@ -103,6 +115,7 @@ export async function POST(request: Request) {
   const website = String(body.website ?? "").trim();
   const feedUrl = String(body.feedUrl ?? "").trim();
   const exchangeUrlTemplate = String(body.exchangeUrlTemplate ?? "").trim();
+  const referralUrlTemplate = String(body.referralUrlTemplate ?? "").trim();
   const contact = String(body.contact ?? "").trim();
   const description = String(body.description ?? "").trim();
   const ownerEmail = String(body.ownerEmail ?? "").trim().toLowerCase();
@@ -129,13 +142,24 @@ export async function POST(request: Request) {
   }
   if (exchangeUrlTemplate) {
     try {
-      const sample = exchangeUrlTemplate
-        .replaceAll("{0}", "BTC")
-        .replaceAll("{1}", "USDTTRC20");
-      await assertSafeOutboundUrl(sample, { allowHttp: true });
+      await assertSafeTemplateOrUrl(exchangeUrlTemplate);
     } catch {
       return NextResponse.json(
         { error: "Некорректный шаблон ссылки на обмен" },
+        { status: 400 },
+      );
+    }
+  }
+  const referralError = validateReferralUrlTemplate(referralUrlTemplate);
+  if (referralError) {
+    return NextResponse.json({ error: referralError }, { status: 400 });
+  }
+  if (referralUrlTemplate) {
+    try {
+      await assertSafeTemplateOrUrl(referralUrlTemplate);
+    } catch {
+      return NextResponse.json(
+        { error: "Некорректная реферальная ссылка" },
         { status: 400 },
       );
     }
@@ -189,6 +213,7 @@ export async function POST(request: Request) {
       name,
       website,
       exchangeUrlTemplate,
+      referralUrlTemplate,
       feedUrl,
       contact,
       description,
@@ -250,6 +275,7 @@ export async function PATCH(request: Request) {
     name?: string;
     website?: string;
     exchangeUrlTemplate?: string;
+    referralUrlTemplate?: string;
     feedUrl?: string;
     contact?: string;
     description?: string;
@@ -331,7 +357,35 @@ export async function PATCH(request: Request) {
     if (templateError) {
       return NextResponse.json({ error: templateError }, { status: 400 });
     }
+    if (tpl) {
+      try {
+        await assertSafeTemplateOrUrl(tpl);
+      } catch {
+        return NextResponse.json(
+          { error: "Некорректный шаблон ссылки на обмен" },
+          { status: 400 },
+        );
+      }
+    }
     patch.exchangeUrlTemplate = tpl;
+  }
+  if (body.referralUrlTemplate !== undefined) {
+    const tpl = body.referralUrlTemplate.trim();
+    const referralError = validateReferralUrlTemplate(tpl);
+    if (referralError) {
+      return NextResponse.json({ error: referralError }, { status: 400 });
+    }
+    if (tpl) {
+      try {
+        await assertSafeTemplateOrUrl(tpl);
+      } catch {
+        return NextResponse.json(
+          { error: "Некорректная реферальная ссылка" },
+          { status: 400 },
+        );
+      }
+    }
+    patch.referralUrlTemplate = tpl;
   }
   if (body.feedUrl !== undefined) patch.feedUrl = body.feedUrl.trim();
   if (body.contact !== undefined) patch.contact = body.contact.trim();

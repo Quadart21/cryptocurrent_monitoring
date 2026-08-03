@@ -62,6 +62,7 @@ const EMPTY_FORM = {
   website: "",
   feedUrl: "",
   exchangeUrlTemplate: "",
+  referralUrlTemplate: "",
   contact: "",
   description: "",
   ownerEmail: "",
@@ -175,6 +176,7 @@ export function ExchangersModule() {
           website: form.website.trim(),
           feedUrl: form.feedUrl.trim(),
           exchangeUrlTemplate: form.exchangeUrlTemplate.trim(),
+          referralUrlTemplate: form.referralUrlTemplate.trim(),
           contact: form.contact.trim(),
           description: form.description.trim(),
           ownerEmail: form.ownerEmail.trim() || undefined,
@@ -320,6 +322,24 @@ export function ExchangersModule() {
               />
               <span className="block text-xs text-ink-muted">
                 {"{0}"} — отдаёте, {"{1}"} — получаете. Можно заполнить позже.
+              </span>
+            </label>
+
+            <label className="block space-y-1.5 sm:col-span-2">
+              <span className="text-xs font-medium uppercase tracking-[0.14em] text-ink-muted">
+                Реферальная ссылка GapSnap
+              </span>
+              <input
+                value={form.referralUrlTemplate}
+                onChange={(e) =>
+                  setForm({ ...form, referralUrlTemplate: e.target.value })
+                }
+                placeholder="https://example.com/?ref=gapsnap"
+                className="w-full rounded-2xl border border-line bg-input px-3 py-2.5 text-sm outline-none focus:border-accent"
+              />
+              <span className="block text-xs text-ink-muted">
+                Партнёрская ссылка мониторинга (приоритет над шаблоном обмена).
+                Можно добавить позже.
               </span>
             </label>
 
