@@ -39,7 +39,7 @@ export function plainTextToEmailBody(text: string): string {
     .join("");
 }
 
-/** Rough HTML → plain text for multipart/alternative. */
+/** Rough HTML → plain text for multipart/alternative and admin inbox. */
 export function htmlToPlainText(html: string): string {
   return html
     .replace(/<style[\s\S]*?<\/style>/gi, "")
@@ -48,14 +48,44 @@ export function htmlToPlainText(html: string): string {
     .replace(/<\/p>/gi, "\n\n")
     .replace(/<\/div>/gi, "\n")
     .replace(/<\/tr>/gi, "\n")
+    .replace(/<\/h[1-6]>/gi, "\n\n")
+    .replace(/<\/li>/gi, "\n")
+    .replace(/<li[^>]*>/gi, "• ")
+    .replace(/<hr\s*\/?>/gi, "\n---\n")
     .replace(/<[^>]+>/g, "")
     .replace(/&nbsp;/gi, " ")
     .replace(/&amp;/gi, "&")
     .replace(/&lt;/gi, "<")
     .replace(/&gt;/gi, ">")
     .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&#(\d+);/g, (_, n) => {
+      const code = Number(n);
+      return Number.isFinite(code) ? String.fromCharCode(code) : "";
+    })
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n[ \t]+/g, "\n")
+    .replace(/[ \t]{2,}/g, " ")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+/**
+ * Plain text for admin mailbox bubbles: keep real text when it has breaks,
+ * otherwise rebuild from HTML so <br>/<p> become newlines.
+ */
+export function emailBodiesToDisplayText(
+  textBody: string,
+  htmlBody: string,
+): string {
+  const text = (textBody ?? "").replace(/\r\n/g, "\n").trim();
+  const html = (htmlBody ?? "").trim();
+  if (text && (text.includes("\n") || !html)) return text;
+  if (html) {
+    const fromHtml = htmlToPlainText(html);
+    if (fromHtml) return fromHtml;
+  }
+  return text || "(пусто)";
 }
 
 function stripDocumentShell(html: string): string {

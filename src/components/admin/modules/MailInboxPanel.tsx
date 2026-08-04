@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAdmin } from "@/components/admin/AdminProvider";
 import { AdminSection } from "@/components/admin/ui";
+import { emailBodiesToDisplayText } from "@/lib/email/layout";
 
 type Identity = { email: string; name: string };
 
@@ -443,7 +444,7 @@ export function MailInboxPanel() {
                     {activeThread.subject}
                   </p>
                 </div>
-                <div className="max-h-[320px] flex-1 space-y-3 overflow-y-auto p-5">
+                <div className="max-h-[min(60vh,560px)] flex-1 space-y-3 overflow-y-auto p-5">
                   {messages.map((m) => {
                     const mine = m.direction === "outbound";
                     return (
@@ -461,11 +462,8 @@ export function MailInboxPanel() {
                             : `${m.fromAddress} → ${m.toAddress}`}{" "}
                           · {formatWhen(m.createdAt)}
                         </p>
-                        <p className="whitespace-pre-wrap leading-relaxed">
-                          {m.textBody ||
-                            (m.htmlBody
-                              ? m.htmlBody.replace(/<[^>]+>/g, " ").trim()
-                              : "(пусто)")}
+                        <p className="whitespace-pre-wrap break-words leading-relaxed">
+                          {emailBodiesToDisplayText(m.textBody, m.htmlBody)}
                         </p>
                       </div>
                     );

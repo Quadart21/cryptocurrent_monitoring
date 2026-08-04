@@ -6,6 +6,7 @@ import { runMigrations } from "@/db/migrate";
 import { mailMessages, mailThreads } from "@/db/schema";
 import {
   ensureEmailLayout,
+  htmlToPlainText,
   plainTextToEmailBody,
   withManualEmailTextFooter,
 } from "@/lib/email/layout";
@@ -232,6 +233,11 @@ export async function ingestInboundEmail(input: {
       .where(eq(mailThreads.id, thread.id));
   }
 
+  const htmlBody = input.htmlBody || "";
+  const textRaw = (input.textBody || "").replace(/\r\n/g, "\n").trim();
+  const textBody =
+    textRaw || (htmlBody ? htmlToPlainText(htmlBody) : "");
+
   const messageId = newId("msg");
   await db.insert(mailMessages).values({
     id: messageId,
@@ -240,8 +246,8 @@ export async function ingestInboundEmail(input: {
     fromAddress: from,
     toAddress,
     subject: input.subject.trim() || "(без темы)",
-    textBody: input.textBody || "",
-    htmlBody: input.htmlBody || "",
+    textBody,
+    htmlBody,
     resendEmailId: input.resendEmailId || null,
     messageIdHeader: input.messageIdHeader ?? null,
     inReplyTo: input.inReplyTo ?? null,
