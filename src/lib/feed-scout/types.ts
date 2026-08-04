@@ -32,6 +32,12 @@ export type FeedScoutWorker = {
   username: string;
   firstName: string;
   status: FeedScoutWorkerStatus;
+  /** null = unlimited; 0 = blocked until admin raises */
+  linkQuota: number | null;
+  /** Remaining slots; null when unlimited */
+  linksRemaining: number | null;
+  /** Remaining slots × payout rate */
+  budgetReserved: number;
   createdAt: string;
   updatedAt: string;
   acceptedCount: number;

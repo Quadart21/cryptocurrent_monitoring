@@ -339,6 +339,71 @@ function mapPayoutStatus(value: string): FeedScoutPayoutStatus {
   return "none";
 }
 
+function normalizeLinkQuota(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return Math.floor(n);
+}
+
+function toWorkerView(
+  row: typeof feedScoutWorkers.$inferSelect,
+  stats:
+    | { acceptedCount: number; paidTotal: number; failedPayouts: number }
+    | undefined,
+  payoutAmount: number,
+): FeedScoutWorker {
+  const acceptedCount = stats?.acceptedCount ?? 0;
+  const linkQuota = normalizeLinkQuota(row.linkQuota);
+  const linksRemaining =
+    linkQuota === null ? null : Math.max(0, linkQuota - acceptedCount);
+  const budgetReserved =
+    linksRemaining === null ? 0 : linksRemaining * payoutAmount;
+  return {
+    id: row.id,
+    tgUserId: row.tgUserId,
+    username: row.username,
+    firstName: row.firstName,
+    status: mapWorkerStatus(row.status),
+    linkQuota,
+    linksRemaining,
+    budgetReserved,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    acceptedCount,
+    paidTotal: stats?.paidTotal ?? 0,
+    failedPayouts: stats?.failedPayouts ?? 0,
+  };
+}
+
+async function getWorkerAcceptedCount(workerId: string): Promise<number> {
+  const stats = await workerStatsMap([workerId]);
+  return stats.get(workerId)?.acceptedCount ?? 0;
+}
+
+async function assertWorkerHasQuota(
+  workerId: string,
+): Promise<{ ok: true; remaining: number | null } | { ok: false; reason: string }> {
+  const db = getDb();
+  const [row] = await db
+    .select()
+    .from(feedScoutWorkers)
+    .where(eq(feedScoutWorkers.id, workerId))
+    .limit(1);
+  if (!row) return { ok: false, reason: "Воркер не найден" };
+  const linkQuota = normalizeLinkQuota(row.linkQuota);
+  if (linkQuota === null) return { ok: true, remaining: null };
+  const accepted = await getWorkerAcceptedCount(workerId);
+  const remaining = linkQuota - accepted;
+  if (remaining <= 0) {
+    return {
+      ok: false,
+      reason: `Лимит ссылок исчерпан (${accepted}/${linkQuota}). Дождитесь новой квоты от администратора.`,
+    };
+  }
+  return { ok: true, remaining };
+}
+
 export async function upsertFeedScoutWorker(input: {
   tgUserId: number | string;
   username?: string;
@@ -364,18 +429,9 @@ export async function upsertFeedScoutWorker(input: {
       })
       .where(eq(feedScoutWorkers.id, existing.id))
       .returning();
-    return {
-      id: row.id,
-      tgUserId: row.tgUserId,
-      username: row.username,
-      firstName: row.firstName,
-      status: mapWorkerStatus(row.status),
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
-      acceptedCount: 0,
-      paidTotal: 0,
-      failedPayouts: 0,
-    };
+    const settings = await ensureSettingsRow();
+    const stats = await workerStatsMap([row.id]);
+    return toWorkerView(row, stats.get(row.id), settings.payoutAmount);
   }
 
   const id = newId("fsw");
@@ -387,23 +443,15 @@ export async function upsertFeedScoutWorker(input: {
       username: (input.username ?? "").replace(/^@/, ""),
       firstName: input.firstName ?? "",
       status: "active",
+      // New workers start with 0 until admin grants a quota from xRocket balance.
+      linkQuota: 0,
       createdAt: now,
       updatedAt: now,
     })
     .returning();
 
-  return {
-    id: row.id,
-    tgUserId: row.tgUserId,
-    username: row.username,
-    firstName: row.firstName,
-    status: mapWorkerStatus(row.status),
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-    acceptedCount: 0,
-    paidTotal: 0,
-    failedPayouts: 0,
-  };
+  const settings = await ensureSettingsRow();
+  return toWorkerView(row, undefined, settings.payoutAmount);
 }
 
 export async function setFeedScoutWorkerStatus(
@@ -417,20 +465,36 @@ export async function setFeedScoutWorkerStatus(
     .where(eq(feedScoutWorkers.id, workerId))
     .returning();
   if (!row) return null;
+  const settings = await ensureSettingsRow();
   const stats = await workerStatsMap([row.id]);
-  const s = stats.get(row.id);
-  return {
-    id: row.id,
-    tgUserId: row.tgUserId,
-    username: row.username,
-    firstName: row.firstName,
-    status: mapWorkerStatus(row.status),
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-    acceptedCount: s?.acceptedCount ?? 0,
-    paidTotal: s?.paidTotal ?? 0,
-    failedPayouts: s?.failedPayouts ?? 0,
-  };
+  return toWorkerView(row, stats.get(row.id), settings.payoutAmount);
+}
+
+/** Set absolute max accepted links (null = unlimited). */
+export async function setFeedScoutWorkerQuota(
+  workerId: string,
+  linkQuota: number | null,
+): Promise<FeedScoutWorker | null> {
+  const db = getDb();
+  const quota =
+    linkQuota === null
+      ? null
+      : Math.max(0, Math.floor(Number(linkQuota)));
+  if (linkQuota !== null && !Number.isFinite(quota as number)) {
+    throw new Error("Некорректная квота");
+  }
+  const [row] = await db
+    .update(feedScoutWorkers)
+    .set({
+      linkQuota: quota,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(feedScoutWorkers.id, workerId))
+    .returning();
+  if (!row) return null;
+  const settings = await ensureSettingsRow();
+  const stats = await workerStatsMap([row.id]);
+  return toWorkerView(row, stats.get(row.id), settings.payoutAmount);
 }
 
 async function workerStatsMap(
@@ -469,28 +533,16 @@ async function workerStatsMap(
 }
 
 export async function listFeedScoutWorkers(): Promise<FeedScoutWorker[]> {
-  await ensureSettingsRow();
+  const settings = await ensureSettingsRow();
   const db = getDb();
   const rows = await db
     .select()
     .from(feedScoutWorkers)
     .orderBy(desc(feedScoutWorkers.createdAt));
   const stats = await workerStatsMap(rows.map((r) => r.id));
-  return rows.map((row) => {
-    const s = stats.get(row.id);
-    return {
-      id: row.id,
-      tgUserId: row.tgUserId,
-      username: row.username,
-      firstName: row.firstName,
-      status: mapWorkerStatus(row.status),
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
-      acceptedCount: s?.acceptedCount ?? 0,
-      paidTotal: s?.paidTotal ?? 0,
-      failedPayouts: s?.failedPayouts ?? 0,
-    };
-  });
+  return rows.map((row) =>
+    toWorkerView(row, stats.get(row.id), settings.payoutAmount),
+  );
 }
 
 export async function listFeedScoutSubmissions(limit = 100): Promise<
@@ -536,6 +588,8 @@ export async function getWorkerStatsByTgUserId(tgUserId: string): Promise<{
   paidTotal: number;
   failedPayouts: number;
   status: FeedScoutWorkerStatus;
+  linkQuota: number | null;
+  linksRemaining: number | null;
 }> {
   const db = getDb();
   const [worker] = await db
@@ -549,15 +603,20 @@ export async function getWorkerStatsByTgUserId(tgUserId: string): Promise<{
       paidTotal: 0,
       failedPayouts: 0,
       status: "active",
+      linkQuota: 0,
+      linksRemaining: 0,
     };
   }
+  const settings = await ensureSettingsRow();
   const stats = await workerStatsMap([worker.id]);
-  const s = stats.get(worker.id);
+  const view = toWorkerView(worker, stats.get(worker.id), settings.payoutAmount);
   return {
-    acceptedCount: s?.acceptedCount ?? 0,
-    paidTotal: s?.paidTotal ?? 0,
-    failedPayouts: s?.failedPayouts ?? 0,
-    status: mapWorkerStatus(worker.status),
+    acceptedCount: view.acceptedCount,
+    paidTotal: view.paidTotal,
+    failedPayouts: view.failedPayouts,
+    status: view.status,
+    linkQuota: view.linkQuota,
+    linksRemaining: view.linksRemaining,
   };
 }
 
@@ -627,6 +686,11 @@ export async function processFeedUrlForWorker(input: {
   const norm = normalizeFeedUrl(raw);
   if (!norm) {
     return { url: raw, ok: false, reason: "Некорректный URL" };
+  }
+
+  const quota = await assertWorkerHasQuota(input.workerId);
+  if (!quota.ok) {
+    return { url: raw, ok: false, reason: quota.reason };
   }
 
   const taken = await feedUrlAlreadyTaken(norm);
@@ -941,12 +1005,22 @@ function escapeHtml(text: string): string {
     .replace(/>/g, "&gt;");
 }
 
-function helpText(settings: FeedScoutSettings): string {
+function helpText(
+  settings: FeedScoutSettings,
+  quota?: { linkQuota: number | null; linksRemaining: number | null },
+): string {
+  const quotaLine =
+    quota?.linkQuota === null
+      ? "Квота: без лимита"
+      : quota
+        ? `Квота: осталось <b>${quota.linksRemaining ?? 0}</b> из ${quota.linkQuota} ссылок`
+        : "Квота выдаётся администратором";
   return [
     "<b>GapSnap Feed Scout</b>",
     "",
     "Пришлите одну или несколько ссылок на XML-фиды обменников.",
     `Ставка: <b>${settings.payoutAmount} ${settings.payoutCurrency}</b> за принятую ссылку.`,
+    quotaLine,
     "",
     "Принимаем только валидные новые фиды (которых ещё нет в GapSnap).",
     "Выплата на ваш Telegram через @xRocket — откройте бота хотя бы раз.",
@@ -1017,18 +1091,31 @@ export async function handleFeedScoutUpdate(
   const command = text.split(/\s+/)[0]?.toLowerCase().replace(/@\w+$/, "") ?? "";
 
   if (command === "/start" || command === "/help") {
-    await scoutTgSendMessage(token, message.chat.id, helpText(settings));
+    const stats = await getWorkerStatsByTgUserId(String(message.from.id));
+    await scoutTgSendMessage(
+      token,
+      message.chat.id,
+      helpText(settings, {
+        linkQuota: stats.linkQuota,
+        linksRemaining: stats.linksRemaining,
+      }),
+    );
     return;
   }
 
   if (command === "/stats") {
     const stats = await getWorkerStatsByTgUserId(String(message.from.id));
+    const quotaLine =
+      stats.linkQuota === null
+        ? "Квота: без лимита"
+        : `Квота: <b>${stats.linksRemaining ?? 0}</b> осталось из ${stats.linkQuota}`;
     await scoutTgSendMessage(
       token,
       message.chat.id,
       [
         "<b>Ваша статистика</b>",
         `Принято ссылок: <b>${stats.acceptedCount}</b>`,
+        quotaLine,
         `Выплачено: <b>${stats.paidTotal} ${settings.payoutCurrency}</b>`,
         `Неудачных выплат: <b>${stats.failedPayouts}</b>`,
         stats.failedPayouts > 0
@@ -1063,9 +1150,24 @@ export async function handleFeedScoutUpdate(
     return;
   }
 
+  const quotaCheck = await assertWorkerHasQuota(worker.id);
+  if (!quotaCheck.ok) {
+    await scoutTgSendMessage(token, message.chat.id, quotaCheck.reason);
+    return;
+  }
+
   const batch = urls.slice(0, MAX_URLS_PER_MESSAGE);
   const results: FeedScoutUrlResult[] = [];
   for (const url of batch) {
+    const again = await assertWorkerHasQuota(worker.id);
+    if (!again.ok) {
+      results.push({ url, ok: false, reason: again.reason });
+      // Mark remaining URLs in this batch as quota-blocked without fetching.
+      for (const rest of batch.slice(results.length)) {
+        results.push({ url: rest, ok: false, reason: again.reason });
+      }
+      break;
+    }
     results.push(
       await processFeedUrlForWorker({
         workerId: worker.id,
@@ -1117,17 +1219,34 @@ export async function handleFeedScoutUpdate(
 }
 
 export async function getFeedScoutAdminSnapshot() {
-  const [settings, workers, submissions, webhook] = await Promise.all([
+  const [settings, workers, submissions, webhook, xrocket] = await Promise.all([
     getFeedScoutSettingsPublic(),
     listFeedScoutWorkers(),
     listFeedScoutSubmissions(100),
     getFeedScoutWebhookInfo(),
+    testFeedScoutXrocket().catch((e) => ({
+      ok: false as const,
+      error: e instanceof Error ? e.message : "fail",
+    })),
   ]);
+
+  const budgetReserved = workers
+    .filter((w) => w.status === "active")
+    .reduce((sum, w) => sum + w.budgetReserved, 0);
+  const usdtBalance =
+    xrocket.ok && Array.isArray(xrocket.balances)
+      ? Number(
+          xrocket.balances.find((b) => String(b.currency) === "USDT")
+            ?.balance ?? 0,
+        )
+      : null;
+
   return {
     settings,
     workers,
     submissions,
     webhook,
+    xrocket,
     env: {
       hasBotToken: Boolean(process.env.FEED_SCOUT_BOT_TOKEN?.trim()),
       hasXrocketPayKey: Boolean(process.env.XROCKET_PAY_KEY?.trim()),
@@ -1138,6 +1257,15 @@ export async function getFeedScoutAdminSnapshot() {
       acceptedTotal: workers.reduce((s, w) => s + w.acceptedCount, 0),
       paidTotal: workers.reduce((s, w) => s + w.paidTotal, 0),
       failedPayouts: workers.reduce((s, w) => s + w.failedPayouts, 0),
+      budgetReserved,
+      usdtBalance,
+      payoutAmount: settings.payoutAmount,
+      payoutCurrency: settings.payoutCurrency,
+      /** How many more links the current USDT balance can fund at the set rate. */
+      balanceLinkCapacity:
+        usdtBalance !== null && settings.payoutAmount > 0
+          ? Math.floor(usdtBalance / settings.payoutAmount)
+          : null,
     },
   };
 }

@@ -7,6 +7,7 @@ import {
   listFeedScoutWorkers,
   retryFeedScoutPayout,
   setFeedScoutWebhook,
+  setFeedScoutWorkerQuota,
   setFeedScoutWorkerStatus,
   testFeedScoutBot,
   testFeedScoutXrocket,
@@ -61,6 +62,7 @@ export async function PUT(request: Request) {
     };
     workerId?: string;
     status?: FeedScoutWorkerStatus;
+    linkQuota?: number | null;
     submissionId?: string;
   };
 
@@ -99,6 +101,25 @@ export async function PUT(request: Request) {
       (body.status === "active" || body.status === "banned")
     ) {
       const worker = await setFeedScoutWorkerStatus(body.workerId, body.status);
+      if (!worker) {
+        return NextResponse.json({ error: "worker not found" }, { status: 404 });
+      }
+      return NextResponse.json({ worker });
+    }
+
+    if (body.action === "setWorkerQuota" && body.workerId) {
+      const raw = body.linkQuota;
+      const linkQuota =
+        raw === null || raw === undefined
+          ? null
+          : Number(raw);
+      if (linkQuota !== null && (!Number.isFinite(linkQuota) || linkQuota < 0)) {
+        return NextResponse.json({ error: "invalid linkQuota" }, { status: 400 });
+      }
+      const worker = await setFeedScoutWorkerQuota(
+        body.workerId,
+        linkQuota === null ? null : Math.floor(linkQuota),
+      );
       if (!worker) {
         return NextResponse.json({ error: "worker not found" }, { status: 404 });
       }

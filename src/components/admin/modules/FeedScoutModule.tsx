@@ -27,6 +27,12 @@ type Snapshot = {
     lastErrorMessage?: string;
     expectedUrl: string;
   };
+  xrocket?: {
+    ok: boolean;
+    appName?: string;
+    balances?: Array<{ currency: string; balance: number }>;
+    error?: string;
+  };
   env: { hasBotToken: boolean; hasXrocketPayKey: boolean };
   stats: {
     workers: number;
@@ -34,6 +40,11 @@ type Snapshot = {
     acceptedTotal: number;
     paidTotal: number;
     failedPayouts: number;
+    budgetReserved: number;
+    usdtBalance: number | null;
+    payoutAmount: number;
+    payoutCurrency: string;
+    balanceLinkCapacity: number | null;
   };
 };
 
@@ -93,6 +104,7 @@ export function FeedScoutModule() {
   const [payoutAmount, setPayoutAmount] = useState("1");
   const [payoutCurrency, setPayoutCurrency] = useState("USDT");
   const [enabled, setEnabled] = useState(true);
+  const [quotaDraft, setQuotaDraft] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     const res = await fetch("/api/admin/feed-scout?view=snapshot");
@@ -105,6 +117,14 @@ export function FeedScoutModule() {
     setPayoutAmount(String(data.settings.payoutAmount));
     setPayoutCurrency(data.settings.payoutCurrency);
     setEnabled(data.settings.enabled);
+    setQuotaDraft(
+      Object.fromEntries(
+        data.workers.map((w) => [
+          w.id,
+          w.linkQuota === null ? "" : String(w.linkQuota),
+        ]),
+      ),
+    );
     setError(null);
   }, []);
 
@@ -242,6 +262,42 @@ export function FeedScoutModule() {
               <AdminStatGrid
                 items={[
                   {
+                    label: "Баланс xRocket USDT",
+                    value:
+                      snap.stats.usdtBalance === null
+                        ? "—"
+                        : snap.stats.usdtBalance,
+                    tone:
+                      snap.stats.usdtBalance !== null &&
+                      snap.stats.usdtBalance < snap.stats.budgetReserved
+                        ? "warn"
+                        : "ok",
+                  },
+                  {
+                    label: "Хватит на ссылок",
+                    value:
+                      snap.stats.balanceLinkCapacity === null
+                        ? "—"
+                        : snap.stats.balanceLinkCapacity,
+                  },
+                  {
+                    label: "Зарезервировано квотами",
+                    value: `${snap.stats.budgetReserved} ${snap.stats.payoutCurrency}`,
+                    tone:
+                      snap.stats.usdtBalance !== null &&
+                      snap.stats.budgetReserved > snap.stats.usdtBalance
+                        ? "warn"
+                        : undefined,
+                  },
+                  {
+                    label: "Ставка / ссылка",
+                    value: `${snap.stats.payoutAmount} ${snap.stats.payoutCurrency}`,
+                  },
+                ]}
+              />
+              <AdminStatGrid
+                items={[
+                  {
                     label: "Воркеры",
                     value: `${snap.stats.activeWorkers}/${snap.stats.workers}`,
                   },
@@ -263,7 +319,7 @@ export function FeedScoutModule() {
               />
               <AdminSection
                 title="Статус"
-                description="Бот, webhook и ставка"
+                description="Бот, webhook, баланс и ставка"
               >
                 <div className="space-y-3 px-5 py-4 text-sm">
                   <p>
@@ -286,7 +342,29 @@ export function FeedScoutModule() {
                     </span>
                   </p>
                   <p>
-                    xRocket:{" "}
+                    Баланс xRocket:{" "}
+                    {snap.stats.usdtBalance === null ? (
+                      <span className="text-warn">
+                        {snap.xrocket?.error ?? "не удалось загрузить"}
+                      </span>
+                    ) : (
+                      <span className="font-medium tabular-nums text-ok">
+                        {snap.stats.usdtBalance} USDT
+                        {snap.stats.balanceLinkCapacity !== null
+                          ? ` ≈ ${snap.stats.balanceLinkCapacity} ссылок`
+                          : ""}
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-ink-muted">
+                    Квоты воркеров резервируют{" "}
+                    <span className="tabular-nums text-ink">
+                      {snap.stats.budgetReserved} {snap.stats.payoutCurrency}
+                    </span>
+                    . Новым воркерам квота = 0 (пока не выдадите лимит).
+                  </p>
+                  <p>
+                    xRocket key:{" "}
                     {snap.settings.hasXrocketPayKey
                       ? snap.settings.xrocketPayKeyHint
                       : "ключ не задан"}
@@ -306,17 +384,21 @@ export function FeedScoutModule() {
           ) : null}
 
           {tab === "workers" ? (
-            <AdminSection title="Воркеры" description="Пользователи бота">
+            <AdminSection
+              title="Воркеры"
+              description="Квота = максимум принятых ссылок. Остаток × ставка = резерв под выплату. Пустое поле = без лимита."
+            >
               <div className="overflow-x-auto">
                 <table className="min-w-full text-left text-sm">
                   <thead className="border-b border-line bg-bg-soft/50 text-xs uppercase tracking-wide text-ink-muted">
                     <tr>
                       <th className="px-4 py-3 font-medium">TG</th>
-                      <th className="px-4 py-3 font-medium">Имя</th>
                       <th className="px-4 py-3 font-medium">Статус</th>
-                      <th className="px-4 py-3 font-medium">Ссылок</th>
+                      <th className="px-4 py-3 font-medium">Принято</th>
+                      <th className="px-4 py-3 font-medium">Квота</th>
+                      <th className="px-4 py-3 font-medium">Осталось</th>
+                      <th className="px-4 py-3 font-medium">Резерв</th>
                       <th className="px-4 py-3 font-medium">Выплачено</th>
-                      <th className="px-4 py-3 font-medium">Ошибки</th>
                       <th className="px-4 py-3 font-medium" />
                     </tr>
                   </thead>
@@ -324,63 +406,156 @@ export function FeedScoutModule() {
                     {snap.workers.length === 0 ? (
                       <tr>
                         <td
-                          colSpan={7}
+                          colSpan={8}
                           className="px-4 py-8 text-center text-ink-muted"
                         >
                           Пока нет воркеров — они появятся после /start в боте
                         </td>
                       </tr>
                     ) : (
-                      snap.workers.map((w) => (
-                        <tr key={w.id} className="border-b border-line/70">
-                          <td className="px-4 py-3 tabular-nums">
-                            {w.username ? `@${w.username}` : w.tgUserId}
-                          </td>
-                          <td className="px-4 py-3">{w.firstName || "—"}</td>
-                          <td className="px-4 py-3">
-                            {w.status === "banned" ? (
-                              <span className="text-danger">ban</span>
-                            ) : (
-                              <span className="text-ok">active</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 tabular-nums">
-                            {w.acceptedCount}
-                          </td>
-                          <td className="px-4 py-3 tabular-nums">
-                            {w.paidTotal} {snap.settings.payoutCurrency}
-                          </td>
-                          <td className="px-4 py-3 tabular-nums">
-                            {w.failedPayouts}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            {canWrite ? (
-                              <button
-                                type="button"
-                                disabled={busy}
-                                className="rounded-lg border border-line px-2.5 py-1 text-xs hover:bg-bg-soft"
-                                onClick={() =>
-                                  void runAction(
-                                    {
-                                      action: "setWorkerStatus",
-                                      workerId: w.id,
-                                      status:
-                                        w.status === "banned"
-                                          ? "active"
-                                          : "banned",
-                                    },
-                                    w.status === "banned"
-                                      ? "Воркер разбанен"
-                                      : "Воркер забанен",
-                                  )
-                                }
-                              >
-                                {w.status === "banned" ? "Разбан" : "Бан"}
-                              </button>
-                            ) : null}
-                          </td>
-                        </tr>
-                      ))
+                      snap.workers.map((w) => {
+                        const draft = quotaDraft[w.id] ?? "";
+                        const rate = snap.stats.payoutAmount;
+                        const remainingPreview =
+                          draft.trim() === ""
+                            ? null
+                            : Math.max(
+                                0,
+                                Math.floor(Number(draft)) - w.acceptedCount,
+                              );
+                        return (
+                          <tr key={w.id} className="border-b border-line/70">
+                            <td className="px-4 py-3">
+                              <div className="tabular-nums">
+                                {w.username ? `@${w.username}` : w.tgUserId}
+                              </div>
+                              <div className="text-[11px] text-ink-muted">
+                                {w.firstName || "—"}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              {w.status === "banned" ? (
+                                <span className="text-danger">ban</span>
+                              ) : (
+                                <span className="text-ok">active</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 tabular-nums">
+                              {w.acceptedCount}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-1.5">
+                                <input
+                                  className={`${inputClass} w-20 px-2 py-1.5`}
+                                  type="number"
+                                  min={0}
+                                  step={1}
+                                  placeholder="∞"
+                                  disabled={!canWrite || busy}
+                                  value={draft}
+                                  onChange={(e) =>
+                                    setQuotaDraft((prev) => ({
+                                      ...prev,
+                                      [w.id]: e.target.value,
+                                    }))
+                                  }
+                                />
+                                {canWrite ? (
+                                  <button
+                                    type="button"
+                                    disabled={busy}
+                                    className="rounded-lg border border-line px-2 py-1 text-xs hover:bg-bg-soft disabled:opacity-50"
+                                    onClick={() => {
+                                      const raw = (quotaDraft[w.id] ?? "").trim();
+                                      const linkQuota =
+                                        raw === ""
+                                          ? null
+                                          : Math.floor(Number(raw));
+                                      if (
+                                        linkQuota !== null &&
+                                        (!Number.isFinite(linkQuota) ||
+                                          linkQuota < 0)
+                                      ) {
+                                        setError("Некорректная квота");
+                                        return;
+                                      }
+                                      void runAction(
+                                        {
+                                          action: "setWorkerQuota",
+                                          workerId: w.id,
+                                          linkQuota,
+                                        },
+                                        "Квота сохранена",
+                                      );
+                                    }}
+                                  >
+                                    OK
+                                  </button>
+                                ) : null}
+                              </div>
+                              <div className="mt-1 text-[11px] text-ink-muted">
+                                {draft.trim() === ""
+                                  ? "без лимита"
+                                  : `≈ ${(
+                                      Math.max(
+                                        0,
+                                        Math.floor(Number(draft)) -
+                                          w.acceptedCount,
+                                      ) * rate
+                                    ).toFixed(3)} ${snap.stats.payoutCurrency}`}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 tabular-nums">
+                              {w.linksRemaining === null
+                                ? "∞"
+                                : w.linksRemaining}
+                              {remainingPreview !== null &&
+                              remainingPreview !== w.linksRemaining ? (
+                                <span className="ml-1 text-[11px] text-ink-muted">
+                                  → {remainingPreview}
+                                </span>
+                              ) : null}
+                            </td>
+                            <td className="px-4 py-3 tabular-nums">
+                              {w.budgetReserved} {snap.stats.payoutCurrency}
+                            </td>
+                            <td className="px-4 py-3 tabular-nums">
+                              {w.paidTotal} {snap.settings.payoutCurrency}
+                              {w.failedPayouts > 0 ? (
+                                <span className="ml-1 text-warn">
+                                  ({w.failedPayouts} err)
+                                </span>
+                              ) : null}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              {canWrite ? (
+                                <button
+                                  type="button"
+                                  disabled={busy}
+                                  className="rounded-lg border border-line px-2.5 py-1 text-xs hover:bg-bg-soft"
+                                  onClick={() =>
+                                    void runAction(
+                                      {
+                                        action: "setWorkerStatus",
+                                        workerId: w.id,
+                                        status:
+                                          w.status === "banned"
+                                            ? "active"
+                                            : "banned",
+                                      },
+                                      w.status === "banned"
+                                        ? "Воркер разбанен"
+                                        : "Воркер забанен",
+                                    )
+                                  }
+                                >
+                                  {w.status === "banned" ? "Разбан" : "Бан"}
+                                </button>
+                              ) : null}
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>

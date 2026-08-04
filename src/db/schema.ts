@@ -794,6 +794,11 @@ export const feedScoutWorkers = pgTable(
     username: text("username").notNull().default(""),
     firstName: text("first_name").notNull().default(""),
     status: text("status").notNull().default("active"),
+    /**
+     * Max accepted links for this worker (lifetime until raised).
+     * null = unlimited; 0 = cannot submit until admin grants quota.
+     */
+    linkQuota: integer("link_quota"),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
   },
