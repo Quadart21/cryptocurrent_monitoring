@@ -8,7 +8,12 @@ import {
   DEFAULT_EMAIL_SETTINGS,
   DEFAULT_EMAIL_TEMPLATES,
 } from "@/lib/email/defaults";
-import { ensureEmailLayout, hasEmailLayout } from "@/lib/email/layout";
+import {
+  ensureEmailLayout,
+  hasEmailLayout,
+  htmlToPlainText,
+  withManualEmailTextFooter,
+} from "@/lib/email/layout";
 import type {
   EmailLogRow,
   EmailSettings,
@@ -449,12 +454,15 @@ export async function sendRawAdminEmail(input: {
     process.env.SMTPBZ_FROM_NAME?.trim() ||
     "GapSnap";
   const html = ensureEmailLayout(input.html);
+  const text =
+    input.text?.trim() ||
+    withManualEmailTextFooter(htmlToPlainText(input.html));
   try {
     const result = await sendResendEmail({
       to: input.to,
       subject: input.subject,
       html,
-      text: input.text,
+      text,
       tag: input.tag ?? "admin-manual",
       from: fromEmail || undefined,
       name: fromName,

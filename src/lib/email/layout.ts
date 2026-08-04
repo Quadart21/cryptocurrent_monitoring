@@ -1,6 +1,6 @@
 /** Shared GapSnap transactional / broadcast email chrome. */
 
-export const EMAIL_LAYOUT_VERSION = "v3";
+export const EMAIL_LAYOUT_VERSION = "v4";
 
 /** Prefer same-origin assets after deploy; ibb kept as fallback in older sends. */
 export const EMAIL_BANNER_SRC = "https://gapsnap.org/email/banner.png";
@@ -11,6 +11,7 @@ export const EMAIL_SUPPORT_TELEGRAM = "GapSnapSupport";
 export const EMAIL_SUPPORT_TELEGRAM_URL = `https://t.me/${EMAIL_SUPPORT_TELEGRAM}`;
 
 const MARKER = `data-gapsnap-email="${EMAIL_LAYOUT_VERSION}"`;
+const ANY_LAYOUT_RE = /data-gapsnap-email="v\d+"/;
 
 export function hasEmailLayout(html: string): boolean {
   return html.includes(`data-gapsnap-email="${EMAIL_LAYOUT_VERSION}"`);
@@ -38,19 +39,52 @@ export function plainTextToEmailBody(text: string): string {
     .join("");
 }
 
-/**
- * If HTML is already the branded envelope — leave it.
- * Otherwise wrap body content in the shared GapSnap layout.
- */
-export function ensureEmailLayout(
-  html: string,
+/** Rough HTML → plain text for multipart/alternative. */
+export function htmlToPlainText(html: string): string {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<\/div>/gi, "\n")
+    .replace(/<\/tr>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function stripDocumentShell(html: string): string {
+  let body = html.trim();
+  if (/^<!DOCTYPE/i.test(body) || /^<html[\s>]/i.test(body)) {
+    const m = body.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+    body = (m?.[1] ?? body)
+      .replace(/<\/?html[^>]*>/gi, "")
+      .replace(/<!DOCTYPE[^>]*>/gi, "")
+      .trim();
+  }
+  return body;
+}
+
+/** Pull inner body out of an older GapSnap chrome so we can re-wrap (v3→v4). */
+function extractLayoutBody(html: string): string | null {
+  if (!ANY_LAYOUT_RE.test(html)) return null;
+  const m = html.match(
+    /padding:32px 32px 28px;color:#17151f;font-size:15px;line-height:1\.6(?:;[^"]*)?"\s*>\s*([\s\S]*?)\s*<\/td>\s*<\/tr>/i,
+  );
+  return m?.[1]?.trim() ?? null;
+}
+
+function applyWrap(
+  body: string,
   opts?: Omit<WrapEmailOptions, "body">,
 ): string {
-  const trimmed = html.trim();
-  if (!trimmed) return trimmed;
-  if (hasEmailLayout(trimmed)) return trimmed;
   return wrapEmailHtml({
-    body: trimmed,
+    body,
     ctaHref: opts?.ctaHref ?? EMAIL_DEFAULT_SITE_URL,
     ctaAlt: opts?.ctaAlt ?? "Открыть GapSnap",
     ctaKind: opts?.ctaKind ?? "brand",
@@ -59,6 +93,31 @@ export function ensureEmailLayout(
     supportEmail: opts?.supportEmail,
     afterCta: opts?.afterCta,
   });
+}
+
+/**
+ * If HTML is already the current branded envelope — leave it.
+ * Older GapSnap chrome is upgraded (not nested). Plain body is wrapped.
+ */
+export function ensureEmailLayout(
+  html: string,
+  opts?: Omit<WrapEmailOptions, "body">,
+): string {
+  const trimmed = html.trim();
+  if (!trimmed) return trimmed;
+  if (hasEmailLayout(trimmed)) return trimmed;
+
+  // Upgrade v1–v3 (or any prior marker) instead of nesting a second shell.
+  const fromOld = extractLayoutBody(trimmed);
+  if (fromOld != null) return applyWrap(fromOld, opts);
+
+  let body = stripDocumentShell(trimmed);
+  // Bare plain text from admin editors → paragraphs.
+  if (body && !/<[a-z][\s\S]*>/i.test(body)) {
+    body = plainTextToEmailBody(body);
+  }
+
+  return applyWrap(body, opts);
 }
 
 /** Plain-text footer matching the branded HTML chrome. */
@@ -153,24 +212,35 @@ export function wrapEmailHtml(opts: WrapEmailOptions): string {
           </tr>`
       : "";
 
-  return `<div ${MARKER} style="margin:0;padding:0;background:#f6f5f8;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif">
+  // Full document + charset: fragment-only Cyrillic HTML often fails in Gmail/Outlook
+  // ("This message could not be displayed").
+  return `<!DOCTYPE html>
+<html lang="ru" dir="ltr">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GapSnap</title>
+</head>
+<body style="margin:0;padding:0;background:#f6f5f8;">
+<div ${MARKER} lang="ru" dir="ltr" style="margin:0;padding:0;background:#f6f5f8;font-family:Arial,Helvetica,sans-serif">
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f6f5f8;padding:28px 12px">
     <tr>
       <td align="center">
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="560" style="max-width:560px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e2e0ea">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="560" style="max-width:560px;width:100%;background:#ffffff;border-radius:16px;border:1px solid #e2e0ea">
           <tr>
             <td style="padding:0;line-height:0;font-size:0;background:#0d0c12">
               <img src="${EMAIL_BANNER_SRC}" alt="GapSnap — мониторинг обменников" width="560" style="display:block;width:100%;max-width:560px;height:auto;border:0;outline:none;text-decoration:none" />
             </td>
           </tr>
           <tr>
-            <td style="padding:32px 32px 28px;color:#17151f;font-size:15px;line-height:1.6">
+            <td style="padding:32px 32px 28px;color:#17151f;font-size:15px;line-height:1.6;font-family:Arial,Helvetica,sans-serif">
               ${opts.body}
             </td>
           </tr>
           ${ctaBand}
           <tr>
-            <td style="padding:18px 32px 24px;border-top:1px solid #e2e0ea;background:#eeeef3">
+            <td style="padding:18px 32px 24px;border-top:1px solid #e2e0ea;background:#eeeef3;font-family:Arial,Helvetica,sans-serif">
               <p style="margin:0;font-size:13px;line-height:1.5;color:#6a6578">
                 С уважением,<br />
                 <strong style="color:#17151f">команда GapSnap</strong>
@@ -188,7 +258,9 @@ export function wrapEmailHtml(opts: WrapEmailOptions): string {
       </td>
     </tr>
   </table>
-</div>`;
+</div>
+</body>
+</html>`;
 }
 
 /**

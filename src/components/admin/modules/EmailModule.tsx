@@ -470,7 +470,17 @@ export function EmailModule() {
               },
         ),
       });
-      const json = (await res.json()) as { error?: string };
+      const raw = await res.text();
+      let json: { error?: string } = {};
+      try {
+        json = raw ? (JSON.parse(raw) as { error?: string }) : {};
+      } catch {
+        throw new Error(
+          res.ok
+            ? "Сервер вернул не JSON"
+            : `Ошибка сервера (HTTP ${res.status})`,
+        );
+      }
       if (!res.ok) throw new Error(json.error ?? "Ошибка отправки");
       setOk(kind === "test" ? "Тестовое письмо отправлено" : "Письмо отправлено");
       await load();

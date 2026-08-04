@@ -204,7 +204,17 @@ export function MailInboxPanel() {
           from: fromEmail,
         }),
       });
-      const json = (await res.json()) as { error?: string };
+      const raw = await res.text();
+      let json: { error?: string } = {};
+      try {
+        json = raw ? (JSON.parse(raw) as { error?: string }) : {};
+      } catch {
+        throw new Error(
+          res.ok
+            ? "Сервер вернул не JSON"
+            : `Ошибка сервера (HTTP ${res.status})`,
+        );
+      }
       if (!res.ok) throw new Error(json.error ?? "Не удалось ответить");
       setOk("Ответ отправлен");
       setReply("");
@@ -233,10 +243,19 @@ export function MailInboxPanel() {
           from: fromEmail,
         }),
       });
-      const json = (await res.json()) as {
-        error?: string;
-        thread?: Thread;
-      };
+      const raw = await res.text();
+      let json: { error?: string; thread?: Thread } = {};
+      try {
+        json = raw
+          ? (JSON.parse(raw) as { error?: string; thread?: Thread })
+          : {};
+      } catch {
+        throw new Error(
+          res.ok
+            ? "Сервер вернул не JSON"
+            : `Ошибка сервера (HTTP ${res.status})`,
+        );
+      }
       if (!res.ok) throw new Error(json.error ?? "Не удалось отправить");
       setOk("Письмо отправлено");
       setComposing(false);
