@@ -587,7 +587,6 @@ async function paySubmission(input: {
   tgUserId: string;
   amount: number;
   currency: string;
-  feedUrl: string;
 }): Promise<{ ok: true; transferId: number } | { ok: false; error: string }> {
   const settings = await ensureSettingsRow();
   if (!settings.xrocketPayKey.trim()) {
@@ -606,7 +605,8 @@ async function paySubmission(input: {
       currency: input.currency,
       amount: input.amount,
       transferId: input.submissionId,
-      description: `GapSnap feed scout: ${input.feedUrl.slice(0, 80)}`,
+      // xRocket rejects descriptions that contain URLs / contacts.
+      description: `GapSnap feed scout #${input.submissionId}`,
     });
     return { ok: true, transferId: result.id };
   } catch (error) {
@@ -733,7 +733,6 @@ export async function processFeedUrlForWorker(input: {
     tgUserId: input.tgUserId,
     amount,
     currency,
-    feedUrl: norm,
   });
 
   if (payout.ok) {
@@ -810,7 +809,6 @@ export async function retryFailedPayoutsForWorker(
       tgUserId: worker.tgUserId,
       amount: row.amount,
       currency: row.currency,
-      feedUrl: row.feedUrlNorm,
     });
     if (payout.ok) {
       paid += 1;
@@ -876,7 +874,6 @@ export async function retryFeedScoutPayout(
     tgUserId: row.worker.tgUserId,
     amount: row.submission.amount,
     currency: row.submission.currency,
-    feedUrl: row.submission.feedUrlNorm,
   });
 
   if (payout.ok) {

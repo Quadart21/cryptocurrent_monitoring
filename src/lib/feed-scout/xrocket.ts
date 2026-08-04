@@ -18,7 +18,22 @@ export type XrocketAppInfo = {
 };
 
 type ApiOk<T> = { success: true; data: T };
-type ApiErr = { success: false; message?: string };
+type ApiErr = {
+  success: false;
+  message?: string;
+  errors?: Array<{ property?: string; error?: string }>;
+};
+
+function formatXrocketError(data: ApiErr, httpStatus: number): string {
+  const parts: string[] = [];
+  if (data.message?.trim()) parts.push(data.message.trim());
+  for (const err of data.errors ?? []) {
+    const detail = [err.property, err.error].filter(Boolean).join(": ");
+    if (detail) parts.push(detail);
+  }
+  if (parts.length === 0) return `xRocket Pay error HTTP ${httpStatus}`;
+  return parts.join(" — ");
+}
 
 async function callXrocket<T>(
   apiKey: string,
@@ -64,10 +79,7 @@ async function callXrocket<T>(
   }
 
   if (!data.success) {
-    throw new Error(
-      (data as ApiErr).message?.trim() ||
-        `xRocket Pay error HTTP ${res.status}`,
-    );
+    throw new Error(formatXrocketError(data as ApiErr, res.status));
   }
   return (data as ApiOk<T>).data;
 }
