@@ -72,6 +72,7 @@ export type AdminNavId =
   | "sync"
   | "banners"
   | "api-clients"
+  | "feed-scout"
   | "admins";
 
 export type AdminNavGroupId =

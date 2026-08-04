@@ -43,6 +43,8 @@ export type AdminPermission =
   | "sync.write"
   | "api_clients.read"
   | "api_clients.write"
+  | "feed_scout.read"
+  | "feed_scout.write"
   | "admins.read"
   | "admins.write";
 
@@ -66,6 +68,7 @@ export type AdminResource =
   | "catalog"
   | "sync"
   | "api_clients"
+  | "feed_scout"
   | "admins";
 
 export const ADMIN_ROLES: AdminRole[] = [
@@ -86,7 +89,7 @@ export const ADMIN_ROLE_LABEL: Record<AdminRole, string> = {
 
 export const ADMIN_ROLE_HINT: Record<AdminRole, string> = {
   owner: "Полный доступ, управление админами",
-  moderator: "Обменники, отзывы, жалобы, ЧС, баннеры, API-ключи",
+  moderator: "Обменники, отзывы, жалобы, ЧС, баннеры, API-ключи, Feed Scout",
   editor: "Новости, Telegram, качества, ачивки",
   ads: "Креативы и тарифы",
   viewer: "Только просмотр",
@@ -130,6 +133,8 @@ const ALL_PERMISSIONS: AdminPermission[] = [
   "sync.write",
   "api_clients.read",
   "api_clients.write",
+  "feed_scout.read",
+  "feed_scout.write",
   "admins.read",
   "admins.write",
 ];
@@ -150,6 +155,8 @@ const ROLE_PERMISSIONS: Record<AdminRole, AdminPermission[] | "*"> = {
     "banners.write",
     "api_clients.read",
     "api_clients.write",
+    "feed_scout.read",
+    "feed_scout.write",
   ],
   editor: [
     "overview",
@@ -191,6 +198,7 @@ const ROLE_PERMISSIONS: Record<AdminRole, AdminPermission[] | "*"> = {
     "catalog.read",
     "sync.read",
     "api_clients.read",
+    "feed_scout.read",
   ],
 };
 

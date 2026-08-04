@@ -225,6 +225,13 @@
       "when": 1785550000000,
       "tag": "0031_mail_inbox",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1785560000000,
+      "tag": "0032_feed_scout",
+      "breakpoints": true
     }
   ]
 }

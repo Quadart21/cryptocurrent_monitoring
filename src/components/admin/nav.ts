@@ -78,6 +78,14 @@ export const ADMIN_NAV: AdminNavItem[] = [
     permission: "api_clients.read",
   },
   {
+    id: "feed-scout",
+    href: `${ADMIN_PATH}/feed-scout`,
+    label: "Feed Scout",
+    description: "Бот скаутов XML-фидов",
+    group: "moderation",
+    permission: "feed_scout.read",
+  },
+  {
     id: "blog",
     href: `${ADMIN_PATH}/blog`,
     label: "Новости",

@@ -772,3 +772,62 @@ export const telegramPosts = pgTable(
   ],
 );
 
+/** Feed-scout Telegram bot settings (single row id=1). */
+export const feedScoutSettings = pgTable("feed_scout_settings", {
+  id: integer("id").primaryKey().default(1),
+  botToken: text("bot_token").notNull().default(""),
+  botUsername: text("bot_username").notNull().default(""),
+  xrocketPayKey: text("xrocket_pay_key").notNull().default(""),
+  payoutAmount: doublePrecision("payout_amount").notNull().default(1),
+  payoutCurrency: text("payout_currency").notNull().default("USDT"),
+  enabled: boolean("enabled").notNull().default(true),
+  webhookSecret: text("webhook_secret").notNull().default(""),
+  updatedAt: text("updated_at").notNull().default(""),
+});
+
+/** Workers who submit XML feed URLs via the scout bot. */
+export const feedScoutWorkers = pgTable(
+  "feed_scout_workers",
+  {
+    id: text("id").primaryKey(),
+    tgUserId: text("tg_user_id").notNull(),
+    username: text("username").notNull().default(""),
+    firstName: text("first_name").notNull().default(""),
+    status: text("status").notNull().default("active"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => [
+    uniqueIndex("feed_scout_workers_tg_uidx").on(t.tgUserId),
+    index("feed_scout_workers_status_idx").on(t.status),
+  ],
+);
+
+/** Accepted (or attempted) feed submissions + payout ledger. */
+export const feedScoutSubmissions = pgTable(
+  "feed_scout_submissions",
+  {
+    id: text("id").primaryKey(),
+    workerId: text("worker_id")
+      .notNull()
+      .references(() => feedScoutWorkers.id, { onDelete: "cascade" }),
+    feedUrl: text("feed_url").notNull(),
+    feedUrlNorm: text("feed_url_norm").notNull(),
+    exchangerId: text("exchanger_id"),
+    pairCount: integer("pair_count").notNull().default(0),
+    amount: doublePrecision("amount").notNull().default(0),
+    currency: text("currency").notNull().default("USDT"),
+    payoutStatus: text("payout_status").notNull().default("none"),
+    xrocketTransferId: text("xrocket_transfer_id"),
+    payoutError: text("payout_error"),
+    createdAt: text("created_at").notNull(),
+    paidAt: text("paid_at"),
+  },
+  (t) => [
+    uniqueIndex("feed_scout_submissions_norm_uidx").on(t.feedUrlNorm),
+    index("feed_scout_submissions_worker_idx").on(t.workerId),
+    index("feed_scout_submissions_created_idx").on(t.createdAt),
+    index("feed_scout_submissions_payout_idx").on(t.payoutStatus),
+  ],
+);
+
