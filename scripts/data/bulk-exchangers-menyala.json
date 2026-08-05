@@ -1,0 +1,11 @@
+[
+  {
+    "name": "Menyala",
+    "website": "https://www.menyala.info/",
+    "feedUrl": "https://menyala.info/service/export/xml",
+    "status": "active",
+    "contact": "info@menyala.info",
+    "description": "Онлайн-обменник Menyala (Меняла). Обработка заявок с 8:00 (Киев). BestChange id 1236.",
+    "notes": "OK ~168 pairs; CF 403 from DC — worker uses feed proxy; canonical www.menyala.info"
+  }
+]
