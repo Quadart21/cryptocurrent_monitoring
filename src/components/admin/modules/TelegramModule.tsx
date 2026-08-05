@@ -80,8 +80,8 @@ async function readTelegramApiJson<T>(res: Response): Promise<T> {
   if (trimmed.startsWith("<!") || trimmed.startsWith("<html")) {
     throw new Error(
       res.status === 504 || res.status === 502 || res.status === 524
-        ? "Прокси оборвал долгий запрос (таймаут). Текст и картинка теперь генерируются по шагам — попробуйте ещё раз."
-        : `Сервер вернул HTML вместо JSON (HTTP ${res.status}). Часто это таймаут nginx/Cloudflare.`,
+        ? "Прокси (Cloudflare/nginx) оборвал долгий запрос. Картинка теперь генерируется в фоне — обновите страницу и попробуйте ещё раз."
+        : `Сервер вернул HTML вместо JSON (HTTP ${res.status}). Часто это таймаут Cloudflare (~100с).`,
     );
   }
   try {
@@ -90,6 +90,82 @@ async function readTelegramApiJson<T>(res: Response): Promise<T> {
     throw new Error(
       `Невалидный JSON (HTTP ${res.status}): ${trimmed.slice(0, 160)}`,
     );
+  }
+}
+
+type ImageJobSnapshot = {
+  id: string;
+  status: "queued" | "running" | "done" | "error";
+  progress: string;
+  percent: number;
+  photoUrl: string;
+  error: string | null;
+  elapsedMs: number;
+};
+
+async function pollTelegramImageJob(
+  jobId: string,
+  onTick: (job: ImageJobSnapshot) => void,
+): Promise<string> {
+  const startedAt = Date.now();
+  let badStreak = 0;
+  for (;;) {
+    await new Promise((r) => setTimeout(r, 1500));
+    try {
+      const res = await fetch(
+        `/api/admin/telegram?view=compose-image-job&id=${encodeURIComponent(jobId)}`,
+        { cache: "no-store" },
+      );
+      const body = await readTelegramApiJson<{
+        job?: ImageJobSnapshot;
+        error?: string;
+      }>(res);
+      if (!res.ok || !body.job) {
+        badStreak += 1;
+        if (badStreak >= 6) {
+          throw new Error(body.error ?? "Не удалось получить статус картинки");
+        }
+        continue;
+      }
+      badStreak = 0;
+      onTick(body.job);
+      if (body.job.status === "done") {
+        if (!body.job.photoUrl) throw new Error("Картинка не вернулась");
+        return body.job.photoUrl;
+      }
+      if (body.job.status === "error") {
+        throw new Error(body.job.error || "Ошибка генерации картинки");
+      }
+    } catch (err) {
+      if (
+        err instanceof Error &&
+        (err.message.startsWith("Прокси") ||
+          err.message.startsWith("Сервер вернул HTML") ||
+          err.message.startsWith("Картинка") ||
+          err.message.startsWith("Ошибка генерации") ||
+          err.message.startsWith("Невалидный"))
+      ) {
+        // Soft-retry transient HTML/network blips while job may still be running.
+        if (
+          err.message.startsWith("Прокси") ||
+          err.message.startsWith("Сервер вернул HTML") ||
+          err.message.startsWith("Невалидный")
+        ) {
+          badStreak += 1;
+          if (badStreak < 6) continue;
+        }
+        throw err;
+      }
+      badStreak += 1;
+      if (badStreak >= 6) {
+        throw err instanceof Error ? err : new Error("Статус картинки недоступен");
+      }
+    }
+    if (Date.now() - startedAt > 4 * 60_000) {
+      throw new Error(
+        "Генерация картинки дольше 4 минут — смотрите pm2 logs gapsnap-web",
+      );
+    }
   }
 }
 
@@ -823,8 +899,8 @@ export function TelegramModule() {
 
       setComposeProgress({
         phase: "image",
-        label: "Рисую обложку по тексту поста…",
-        percent: 55,
+        label: "Запускаю генерацию обложки в фоне…",
+        percent: 45,
         startedAt,
         withImage: true,
         includeTextStep: true,
@@ -838,30 +914,36 @@ export function TelegramModule() {
           action: "compose-image",
           text: body.composed.text,
           topic,
-          model: settings?.composeModel || undefined,
         }),
       });
       const imgBody = await readTelegramApiJson<{
-        image?: { photoUrl: string };
+        jobId?: string;
         error?: string;
       }>(imgRes);
-      if (!imgRes.ok) {
-        throw new Error(imgBody.error ?? "Не удалось сгенерировать картинку");
+      if (!imgRes.ok || !imgBody.jobId) {
+        throw new Error(imgBody.error ?? "Не удалось запустить генерацию картинки");
       }
-      if (imgBody.image?.photoUrl) {
-        setPhotoUrl(imgBody.image.photoUrl);
+
+      const photo = await pollTelegramImageJob(imgBody.jobId, (job) => {
         setComposeProgress({
-          phase: "done",
-          label: "Пост и картинка готовы",
-          percent: 100,
+          phase: "image",
+          label: job.progress || "Рисую обложку…",
+          percent: Math.max(50, Math.min(95, job.percent || 55)),
           startedAt,
           withImage: true,
           includeTextStep: true,
         });
-        flash("Пост и картинка готовы — можно править и публиковать");
-      } else {
-        throw new Error("Картинка не вернулась");
-      }
+      });
+      setPhotoUrl(photo);
+      setComposeProgress({
+        phase: "done",
+        label: "Пост и картинка готовы",
+        percent: 100,
+        startedAt,
+        withImage: true,
+        includeTextStep: true,
+      });
+      flash("Пост и картинка готовы — можно править и публиковать");
     } catch (err) {
       setComposeProgress(COMPOSE_IDLE);
       setError(err instanceof Error ? err.message : "Ошибка");
@@ -888,8 +970,8 @@ export function TelegramModule() {
     setError(null);
     setComposeProgress({
       phase: "image",
-      label: "Рисую обложку по тексту поста…",
-      percent: 35,
+      label: "Запускаю генерацию обложки в фоне…",
+      percent: 20,
       startedAt,
       withImage: true,
       includeTextStep: false,
@@ -902,26 +984,36 @@ export function TelegramModule() {
           action: "compose-image",
           text,
           topic,
-          model: settings?.composeModel || undefined,
         }),
       });
       const body = await readTelegramApiJson<{
-        image?: { photoUrl: string };
+        jobId?: string;
         error?: string;
       }>(res);
-      if (!res.ok) throw new Error(body.error ?? "Не удалось сгенерировать картинку");
-      if (body.image?.photoUrl) {
-        setPhotoUrl(body.image.photoUrl);
+      if (!res.ok || !body.jobId) {
+        throw new Error(body.error ?? "Не удалось запустить генерацию картинки");
+      }
+
+      const photo = await pollTelegramImageJob(body.jobId, (job) => {
         setComposeProgress({
-          phase: "done",
-          label: "Картинка готова",
-          percent: 100,
+          phase: "image",
+          label: job.progress || "Рисую обложку…",
+          percent: Math.max(25, Math.min(95, job.percent || 40)),
           startedAt,
           withImage: true,
           includeTextStep: false,
         });
-        flash("Картинка сгенерирована");
-      }
+      });
+      setPhotoUrl(photo);
+      setComposeProgress({
+        phase: "done",
+        label: "Картинка готова",
+        percent: 100,
+        startedAt,
+        withImage: true,
+        includeTextStep: false,
+      });
+      flash("Картинка сгенерирована");
     } catch (err) {
       setComposeProgress(COMPOSE_IDLE);
       setError(err instanceof Error ? err.message : "Ошибка");

@@ -7,11 +7,12 @@ import {
 import {
   deleteTelegramPost,
   editTelegramPost,
-  generateTelegramImageFromPostText,
   generateTelegramPostFromTopic,
   getTelegramAdminSnapshot,
+  getTelegramImageJobStatus,
   listTelegramPosts,
   publishTelegramPost,
+  startTelegramImageFromPostText,
   testTelegramConnection,
   updateTelegramSettings,
 } from "@/lib/telegram/service";
@@ -39,6 +40,10 @@ export async function GET(request: Request) {
     if (view === "posts") {
       const limit = Number(searchParams.get("limit") ?? 50);
       return NextResponse.json({ posts: await listTelegramPosts(limit) });
+    }
+    if (view === "compose-image-job") {
+      const id = searchParams.get("id") ?? "";
+      return NextResponse.json(await getTelegramImageJobStatus(id));
     }
     return NextResponse.json({ error: "unknown view" }, { status: 400 });
   } catch (error) {
@@ -100,19 +105,18 @@ export async function PUT(request: Request) {
       const composed = await generateTelegramPostFromTopic({
         topic: body.topic ?? "",
         model: body.model,
-        // Image is a separate client step (compose-image) to avoid nginx 60s HTML timeouts.
+        // Image is a separate background job (compose-image) — Cloudflare ~100s limit.
         withImage: body.withImage === true,
       });
       return NextResponse.json({ composed });
     }
 
     if (body.action === "compose-image") {
-      const image = await generateTelegramImageFromPostText({
+      const started = await startTelegramImageFromPostText({
         text: body.text ?? "",
         topic: body.topic,
-        model: body.model,
       });
-      return NextResponse.json({ image });
+      return NextResponse.json({ jobId: started.jobId });
     }
 
     if (body.action === "publish") {

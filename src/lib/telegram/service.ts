@@ -358,27 +358,55 @@ export async function generateTelegramPostFromTopic(input: {
   }
 }
 
+export async function startTelegramImageFromPostText(input: {
+  text: string;
+  topic?: string;
+}): Promise<{ jobId: string }> {
+  const { getSeoSettings } = await import("@/lib/store");
+  const seo = await getSeoSettings();
+  const text = input.text.trim();
+  if (!text) throw new Error("Нет текста поста для картинки");
+
+  const { startTelegramImageJob } = await import(
+    "@/lib/telegram/compose-image-job"
+  );
+  const started = startTelegramImageJob({
+    postText: text,
+    topic: input.topic,
+    siteName: seo.siteName || "GapSnap",
+  });
+  return { jobId: started.jobId };
+}
+
+export async function getTelegramImageJobStatus(jobId: string) {
+  const { getTelegramImageJob } = await import(
+    "@/lib/telegram/compose-image-job"
+  );
+  const job = getTelegramImageJob(jobId);
+  if (!job) throw new Error("Задача генерации картинки не найдена");
+  return {
+    job: {
+      id: job.id,
+      status: job.status,
+      progress: job.progress,
+      percent: job.percent,
+      photoUrl: job.photoUrl,
+      error: job.error,
+      startedAt: job.startedAt,
+      updatedAt: job.updatedAt,
+      elapsedMs: Date.now() - job.startedAt,
+    },
+  };
+}
+
+/** @deprecated Prefer startTelegramImageFromPostText + polling (Cloudflare ~100s limit). */
 export async function generateTelegramImageFromPostText(input: {
   text: string;
   topic?: string;
   model?: string;
 }): Promise<{ photoUrl: string }> {
-  const { getNewsSettings, getSeoSettings } = await import("@/lib/store");
-  const [settings, news, seo] = await Promise.all([
-    getTelegramSettings(),
-    getNewsSettings().catch(() => null),
-    getSeoSettings(),
-  ]);
-
-  const model =
-    (input.model ?? "").trim() ||
-    settings.composeModel.trim() ||
-    news?.model?.trim() ||
-    "";
-  if (!model) {
-    throw new Error("Выберите модель ИИ в настройках Telegram или Новостей");
-  }
-
+  const { getSeoSettings } = await import("@/lib/store");
+  const seo = await getSeoSettings();
   const text = input.text.trim();
   if (!text) throw new Error("Нет текста поста для картинки");
 
@@ -389,7 +417,7 @@ export async function generateTelegramImageFromPostText(input: {
     postText: text,
     topic: input.topic,
     siteName: seo.siteName || "GapSnap",
-    textModel: model,
+    textModel: input.model,
   });
   return { photoUrl: image.photoUrl };
 }
