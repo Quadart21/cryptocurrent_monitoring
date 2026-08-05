@@ -206,3 +206,69 @@ export async function chatCompletion(input: {
   }
   return String(content).trim();
 }
+
+export type GeneratedImage = {
+  bytes: Buffer;
+  revisedPrompt?: string;
+};
+
+/** OpenAI-compatible image generation (codex.sale `/images/generations`). */
+export async function generateImage(input: {
+  model?: string;
+  prompt: string;
+  size?: "1024x1024" | "1536x1024" | "1024x1536" | "auto";
+  quality?: "low" | "medium" | "high" | "auto";
+}): Promise<GeneratedImage> {
+  const prompt = input.prompt.trim();
+  if (!prompt) throw new Error("Пустой промпт для картинки");
+
+  const model =
+    (input.model ?? "").trim() ||
+    process.env.CODEX_IMAGE_MODEL?.trim() ||
+    "gpt-image-2";
+
+  const res = await codexFetch("/images/generations", {
+    method: "POST",
+    timeoutMs: 180_000,
+    body: JSON.stringify({
+      model,
+      prompt: prompt.slice(0, 4000),
+      n: 1,
+      size: input.size ?? "1024x1024",
+      quality: input.quality ?? "medium",
+    }),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(
+      `Image generation failed: HTTP ${res.status} ${body.slice(0, 300)}`,
+    );
+  }
+  const json = (await readJsonOrThrow(res, "generateImage")) as {
+    data?: Array<{ b64_json?: string; url?: string; revised_prompt?: string }>;
+  };
+  const item = json.data?.[0];
+  if (!item) throw new Error("Пустой ответ image API");
+
+  let bytes: Buffer | null = null;
+  if (item.b64_json?.trim()) {
+    bytes = Buffer.from(item.b64_json.trim(), "base64");
+  } else if (item.url?.trim()) {
+    const imgRes = await fetch(item.url.trim(), {
+      cache: "no-store",
+      signal: AbortSignal.timeout(60_000),
+    });
+    if (!imgRes.ok) {
+      throw new Error(`Не удалось скачать картинку: HTTP ${imgRes.status}`);
+    }
+    bytes = Buffer.from(await imgRes.arrayBuffer());
+  }
+  if (!bytes?.length) throw new Error("Image API не вернул данные картинки");
+
+  return {
+    bytes,
+    revisedPrompt: item.revised_prompt
+      ? String(item.revised_prompt).trim()
+      : undefined,
+  };
+}

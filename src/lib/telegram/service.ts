@@ -292,7 +292,14 @@ export async function getTelegramAdminSnapshot(): Promise<{
 export async function generateTelegramPostFromTopic(input: {
   topic: string;
   model?: string;
-}): Promise<{ text: string; parseMode: TelegramParseMode }> {
+  /** Generate cover image from the composed text (default true). */
+  withImage?: boolean;
+}): Promise<{
+  text: string;
+  parseMode: TelegramParseMode;
+  photoUrl: string;
+  imageError: string | null;
+}> {
   const { composeTelegramPost } = await import("@/lib/telegram/compose-post");
   const { DEFAULT_TELEGRAM_COMPOSE_PROMPT } = await import(
     "@/lib/telegram/default-prompt"
@@ -316,14 +323,75 @@ export async function generateTelegramPostFromTopic(input: {
 
   const prompt =
     settings.composePrompt.trim() || DEFAULT_TELEGRAM_COMPOSE_PROMPT;
+  const siteName = seo.siteName || "GapSnap";
+  const siteUrl = seo.siteUrl || process.env.SITE_URL || "https://gapsnap.org";
 
-  return composeTelegramPost({
+  const composed = await composeTelegramPost({
     model,
     promptTemplate: prompt,
     topic: input.topic,
-    siteName: seo.siteName || "GapSnap",
-    siteUrl: seo.siteUrl || process.env.SITE_URL || "https://gapsnap.org",
+    siteName,
+    siteUrl,
   });
+
+  const withImage = input.withImage !== false;
+  if (!withImage) {
+    return { ...composed, photoUrl: "", imageError: null };
+  }
+
+  try {
+    const { composeTelegramPostImage } = await import(
+      "@/lib/telegram/compose-image"
+    );
+    const image = await composeTelegramPostImage({
+      postText: composed.text,
+      topic: input.topic,
+      siteName,
+      textModel: model,
+    });
+    return { ...composed, photoUrl: image.photoUrl, imageError: null };
+  } catch (error) {
+    const imageError =
+      error instanceof Error ? error.message : "Не удалось сгенерировать картинку";
+    console.warn(`[gapsnap] telegram compose image failed:`, imageError);
+    return { ...composed, photoUrl: "", imageError };
+  }
+}
+
+export async function generateTelegramImageFromPostText(input: {
+  text: string;
+  topic?: string;
+  model?: string;
+}): Promise<{ photoUrl: string }> {
+  const { getNewsSettings, getSeoSettings } = await import("@/lib/store");
+  const [settings, news, seo] = await Promise.all([
+    getTelegramSettings(),
+    getNewsSettings().catch(() => null),
+    getSeoSettings(),
+  ]);
+
+  const model =
+    (input.model ?? "").trim() ||
+    settings.composeModel.trim() ||
+    news?.model?.trim() ||
+    "";
+  if (!model) {
+    throw new Error("Выберите модель ИИ в настройках Telegram или Новостей");
+  }
+
+  const text = input.text.trim();
+  if (!text) throw new Error("Нет текста поста для картинки");
+
+  const { composeTelegramPostImage } = await import(
+    "@/lib/telegram/compose-image"
+  );
+  const image = await composeTelegramPostImage({
+    postText: text,
+    topic: input.topic,
+    siteName: seo.siteName || "GapSnap",
+    textModel: model,
+  });
+  return { photoUrl: image.photoUrl };
 }
 
 export async function testTelegramConnection(): Promise<TelegramConnectionInfo> {
@@ -424,10 +492,35 @@ export async function publishTelegramPost(input: {
   const adminLogin = (input.adminLogin ?? "").trim();
 
   try {
+    const { isLocalTgImageUrl, readTgImageFile, tgImageFilenameFromUrl } =
+      await import("@/lib/telegram/tg-image");
+
+    let photoBytes: Buffer | undefined;
+    let photoFilename: string | undefined;
+    if (photoUrl && isLocalTgImageUrl(photoUrl)) {
+      const name = tgImageFilenameFromUrl(photoUrl);
+      if (name) {
+        const file = await readTgImageFile(name);
+        if (file) {
+          photoBytes = file.bytes;
+          photoFilename = name;
+        }
+      }
+    }
+
+    const absolutePhotoUrl =
+      photoUrl && !photoBytes
+        ? /^https?:\/\//i.test(photoUrl)
+          ? photoUrl
+          : `${(process.env.SITE_URL ?? "https://gapsnap.org").replace(/\/+$/, "")}${photoUrl.startsWith("/") ? "" : "/"}${photoUrl}`
+        : photoUrl;
+
     const msg = photoUrl
       ? await tgSendPhoto(settings.botToken, {
           chatId: settings.channelId,
-          photoUrl,
+          photoUrl: absolutePhotoUrl,
+          photoBytes,
+          photoFilename,
           caption: text || undefined,
           parseMode: text ? parseMode : undefined,
           silent,

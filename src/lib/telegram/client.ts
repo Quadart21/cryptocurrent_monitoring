@@ -39,6 +39,40 @@ export type TelegramMessage = {
 
 type OkResult<T> = { ok: true; result: T };
 
+function telegramNetworkError(error: unknown, timeoutMs: number): Error {
+  if (error instanceof Error && error.name === "AbortError") {
+    return new Error(
+      `Telegram API не ответил за ${timeoutMs / 1000}с. ` +
+        `С этой сети валидные bot-запросы часто блокируются ` +
+        `(неверный токен отвечает сразу 401). Нужен выход в Telegram ` +
+        `через VPN/прокси или другой хостинг.`,
+    );
+  }
+  return new Error(
+    error instanceof Error
+      ? `Сеть Telegram: ${error.message}`
+      : "Сеть Telegram недоступна",
+  );
+}
+
+async function parseTelegramResponse<T>(res: Response): Promise<T> {
+  let data: OkResult<T> | TelegramApiError;
+  try {
+    data = (await res.json()) as OkResult<T> | TelegramApiError;
+  } catch {
+    throw new Error(`Telegram API вернул не-JSON (HTTP ${res.status})`);
+  }
+
+  if (!data.ok) {
+    const err = data as TelegramApiError;
+    throw new Error(
+      err.description?.trim() ||
+        `Telegram API error ${err.error_code ?? res.status}`,
+    );
+  }
+  return (data as OkResult<T>).result;
+}
+
 async function callTelegram<T>(
   token: string,
   method: string,
@@ -61,38 +95,42 @@ async function callTelegram<T>(
       signal: controller.signal,
     });
   } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      throw new Error(
-        `Telegram API не ответил за ${REQUEST_TIMEOUT_MS / 1000}с. ` +
-          `С этой сети валидные bot-запросы часто блокируются ` +
-          `(неверный токен отвечает сразу 401). Нужен выход в Telegram ` +
-          `через VPN/прокси или другой хостинг.`,
-      );
-    }
-    throw new Error(
-      error instanceof Error
-        ? `Сеть Telegram: ${error.message}`
-        : "Сеть Telegram недоступна",
-    );
+    throw telegramNetworkError(error, REQUEST_TIMEOUT_MS);
   } finally {
     clearTimeout(timer);
   }
 
-  let data: OkResult<T> | TelegramApiError;
-  try {
-    data = (await res.json()) as OkResult<T> | TelegramApiError;
-  } catch {
-    throw new Error(`Telegram API вернул не-JSON (HTTP ${res.status})`);
+  return parseTelegramResponse<T>(res);
+}
+
+async function callTelegramMultipart<T>(
+  token: string,
+  method: string,
+  form: FormData,
+  timeoutMs = 60_000,
+): Promise<T> {
+  const trimmed = token.trim();
+  if (!trimmed) {
+    throw new Error("Bot token не задан");
   }
 
-  if (!data.ok) {
-    const err = data as TelegramApiError;
-    throw new Error(
-      err.description?.trim() ||
-        `Telegram API error ${err.error_code ?? res.status}`,
-    );
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/bot${trimmed}/${method}`, {
+      method: "POST",
+      body: form,
+      cache: "no-store",
+      signal: controller.signal,
+    });
+  } catch (error) {
+    throw telegramNetworkError(error, timeoutMs);
+  } finally {
+    clearTimeout(timer);
   }
-  return (data as OkResult<T>).result;
+
+  return parseTelegramResponse<T>(res);
 }
 
 export async function tgGetMe(token: string): Promise<TelegramUser> {
@@ -131,16 +169,45 @@ export async function tgSendPhoto(
   token: string,
   input: {
     chatId: string;
-    photoUrl: string;
+    photoUrl?: string;
+    /** Local file bytes — preferred over URL (Telegram cannot always fetch our host). */
+    photoBytes?: Buffer;
+    photoFilename?: string;
     caption?: string;
     parseMode?: TelegramParseMode;
     silent?: boolean;
     replyMarkup?: Record<string, unknown>;
   },
 ): Promise<TelegramMessage> {
+  if (input.photoBytes?.length) {
+    const form = new FormData();
+    form.set("chat_id", input.chatId);
+    const name = input.photoFilename?.trim() || "photo.jpg";
+    const type = name.toLowerCase().endsWith(".png")
+      ? "image/png"
+      : name.toLowerCase().endsWith(".webp")
+        ? "image/webp"
+        : "image/jpeg";
+    form.set(
+      "photo",
+      new Blob([new Uint8Array(input.photoBytes)], { type }),
+      name,
+    );
+    if (input.caption) form.set("caption", input.caption);
+    if (input.parseMode) form.set("parse_mode", input.parseMode);
+    if (input.silent) form.set("disable_notification", "true");
+    if (input.replyMarkup) {
+      form.set("reply_markup", JSON.stringify(input.replyMarkup));
+    }
+    return callTelegramMultipart<TelegramMessage>(token, "sendPhoto", form);
+  }
+
+  const photoUrl = (input.photoUrl ?? "").trim();
+  if (!photoUrl) throw new Error("Нужен URL или файл картинки");
+
   return callTelegram<TelegramMessage>(token, "sendPhoto", {
     chat_id: input.chatId,
-    photo: input.photoUrl,
+    photo: photoUrl,
     caption: input.caption || undefined,
     parse_mode: input.parseMode || undefined,
     disable_notification: input.silent ?? false,

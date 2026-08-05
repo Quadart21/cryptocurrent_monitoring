@@ -7,6 +7,7 @@ import {
 import {
   deleteTelegramPost,
   editTelegramPost,
+  generateTelegramImageFromPostText,
   generateTelegramPostFromTopic,
   getTelegramAdminSnapshot,
   listTelegramPosts,
@@ -22,6 +23,7 @@ import type {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 export async function GET(request: Request) {
   const denied = await assertAdminResource("telegram", request.method);
@@ -74,6 +76,7 @@ export async function PUT(request: Request) {
     id?: string;
     topic?: string;
     model?: string;
+    withImage?: boolean;
   };
 
   try {
@@ -97,8 +100,18 @@ export async function PUT(request: Request) {
       const composed = await generateTelegramPostFromTopic({
         topic: body.topic ?? "",
         model: body.model,
+        withImage: body.withImage !== false,
       });
       return NextResponse.json({ composed });
+    }
+
+    if (body.action === "compose-image") {
+      const image = await generateTelegramImageFromPostText({
+        text: body.text ?? "",
+        topic: body.topic,
+        model: body.model,
+      });
+      return NextResponse.json({ image });
     }
 
     if (body.action === "publish") {

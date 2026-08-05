@@ -481,6 +481,8 @@ export function TelegramModule() {
   const [testing, setTesting] = useState(false);
   const [topic, setTopic] = useState("");
   const [composing, setComposing] = useState(false);
+  const [composingImage, setComposingImage] = useState(false);
+  const [withImage, setWithImage] = useState(true);
   const [buttonRows, setButtonRows] = useState<TelegramButtonRow[]>([]);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -653,22 +655,76 @@ export function TelegramModule() {
           action: "compose",
           topic,
           model: settings?.composeModel || undefined,
+          withImage,
         }),
       });
       const body = (await res.json()) as {
-        composed?: { text: string; parseMode: TelegramParseMode };
+        composed?: {
+          text: string;
+          parseMode: TelegramParseMode;
+          photoUrl?: string;
+          imageError?: string | null;
+        };
         error?: string;
       };
       if (!res.ok) throw new Error(body.error ?? "Не удалось сгенерировать");
       if (body.composed) {
         setText(body.composed.text);
         setParseMode(body.composed.parseMode || "HTML");
-        flash("Текст сгенерирован — можно править и публиковать");
+        if (body.composed.photoUrl) {
+          setPhotoUrl(body.composed.photoUrl);
+          flash("Пост и картинка готовы — можно править и публиковать");
+        } else if (withImage && body.composed.imageError) {
+          setError(`Текст готов, картинка: ${body.composed.imageError}`);
+          flash("Текст сгенерирован — картинку можно сгенерировать отдельно");
+        } else {
+          flash("Текст сгенерирован — можно править и публиковать");
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ошибка");
     } finally {
       setComposing(false);
+      setBusy(false);
+    }
+  };
+
+  const runComposeImage = async () => {
+    if (!canWrite) {
+      setError("Недостаточно прав");
+      return;
+    }
+    if (!text.trim()) {
+      setError("Сначала нужен текст поста");
+      return;
+    }
+    setComposingImage(true);
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/telegram", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "compose-image",
+          text,
+          topic,
+          model: settings?.composeModel || undefined,
+        }),
+      });
+      const body = (await res.json()) as {
+        image?: { photoUrl: string };
+        error?: string;
+      };
+      if (!res.ok) throw new Error(body.error ?? "Не удалось сгенерировать картинку");
+      if (body.image?.photoUrl) {
+        setPhotoUrl(body.image.photoUrl);
+        flash("Картинка сгенерирована");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ошибка");
+    } finally {
+      setComposingImage(false);
       setBusy(false);
     }
   };
@@ -837,7 +893,7 @@ export function TelegramModule() {
           description={
             editingId
               ? "Изменения уйдут в уже опубликованное сообщение"
-              : "Задайте тему → ИИ напишет HTML-пост → правьте и публикуйте"
+              : "Задайте тему → ИИ напишет пост и обложку → правьте и публикуйте"
           }
         >
           <div className="space-y-4 p-5">
@@ -882,16 +938,32 @@ export function TelegramModule() {
                       <span className="text-danger"> · {data.modelsError}</span>
                     ) : null}
                   </p>
-                  <button
-                    type="button"
-                    disabled={
-                      busy || !canWrite || !topic.trim() || composing
-                    }
-                    onClick={() => void runCompose()}
-                    className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-60"
-                  >
-                    {composing ? "Генерирую…" : "Сгенерировать пост"}
-                  </button>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <label className="flex cursor-pointer items-center gap-2 text-xs text-ink-muted select-none">
+                      <input
+                        type="checkbox"
+                        className="size-3.5 rounded border-line accent-[var(--accent)]"
+                        checked={withImage}
+                        onChange={(e) => setWithImage(e.target.checked)}
+                        disabled={!canWrite || composing}
+                      />
+                      С картинкой
+                    </label>
+                    <button
+                      type="button"
+                      disabled={
+                        busy || !canWrite || !topic.trim() || composing
+                      }
+                      onClick={() => void runCompose()}
+                      className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-60"
+                    >
+                      {composing
+                        ? withImage
+                          ? "Генерирую пост и картинку…"
+                          : "Генерирую…"
+                        : "Сгенерировать пост"}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -933,17 +1005,58 @@ export function TelegramModule() {
             </Field>
 
             {!editingId ? (
-              <Field
-                label="URL картинки"
-                hint="Необязательно. Если задан — отправится как фото с подписью"
-              >
-                <input
-                  className={inputClass}
-                  value={photoUrl}
-                  onChange={(e) => setPhotoUrl(e.target.value)}
-                  placeholder="https://…"
-                />
-              </Field>
+              <div className="space-y-3">
+                <Field
+                  label="Картинка"
+                  hint="ИИ генерирует обложку по тексту поста. Можно вставить свой URL."
+                >
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <input
+                      className={inputClass}
+                      value={photoUrl}
+                      onChange={(e) => setPhotoUrl(e.target.value)}
+                      placeholder="https://… или /api/tg-images/…"
+                    />
+                    <button
+                      type="button"
+                      disabled={
+                        busy ||
+                        !canWrite ||
+                        !text.trim() ||
+                        composing ||
+                        composingImage
+                      }
+                      onClick={() => void runComposeImage()}
+                      className="shrink-0 rounded-xl border border-line px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-accent/40 disabled:opacity-60"
+                    >
+                      {composingImage
+                        ? "Рисую…"
+                        : photoUrl
+                          ? "Перегенерировать"
+                          : "Сгенерировать картинку"}
+                    </button>
+                  </div>
+                </Field>
+                {photoUrl.trim() ? (
+                  <div className="overflow-hidden rounded-xl border border-line bg-bg-soft/40">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={photoUrl.trim()}
+                      alt="Превью обложки поста"
+                      className="mx-auto max-h-64 w-full object-contain"
+                    />
+                    <div className="flex justify-end border-t border-line/70 px-3 py-2">
+                      <button
+                        type="button"
+                        className="text-xs font-medium text-ink-muted underline-offset-2 hover:text-ink hover:underline"
+                        onClick={() => setPhotoUrl("")}
+                      >
+                        Убрать картинку
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             ) : null}
 
             <ButtonsEditor
@@ -1170,7 +1283,7 @@ export function TelegramModule() {
 
           <AdminSection
             title="ИИ для постов"
-            description="Та же модель Codex, что для новостей. Плейсхолдеры: {{topic}} {{siteName}} {{siteUrl}}"
+            description="Текст — модель Codex из списка. Обложка — CODEX_IMAGE_MODEL (по умолчанию gpt-image-2). Плейсхолдеры: {{topic}} {{siteName}} {{siteUrl}}"
           >
             <div className="space-y-4 p-5">
               <Field label="Модель">

@@ -28,3 +28,21 @@ export const DEFAULT_TELEGRAM_COMPOSE_PROMPT = `Ты редактор Telegram-�
   "text": "готовый HTML-текст поста",
   "parseMode": "HTML"
 }`;
+
+/** Prompt that turns a Telegram post into an English illustration brief for image models. */
+export const DEFAULT_TELEGRAM_IMAGE_PROMPT = `You create image prompts for the Telegram channel of {{siteName}} (crypto exchanger monitoring).
+
+Write ONE English prompt for a square illustration that matches the post below.
+Style: modern flat tech illustration, clean composition, teal/cyan accents on a dark or soft gradient background, subtle crypto/exchange motifs (charts, coins, arrows, dashboard glow) only if they fit the topic. No photorealism, no clutter.
+Hard rules:
+- NO text, letters, numbers, logos, watermarks, or UI screenshots in the image
+- NO brands, real exchange names, or readable labels
+- Keep it suitable as a channel post cover (safe, professional)
+
+Topic from admin (may be empty):
+{{topic}}
+
+Post text (plain):
+{{postText}}
+
+Return ONLY the image prompt sentence(s), nothing else.`;
