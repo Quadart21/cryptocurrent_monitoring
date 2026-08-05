@@ -17,8 +17,8 @@ import {
   scoutTgSendMessage,
   scoutTgSetWebhook,
 } from "@/lib/feed-scout/client";
+import { enrichExchangerFromFeedUrl } from "@/lib/feed-scout/enrich-site";
 import {
-  exchangerNameFromFeedUrl,
   extractUrlsFromText,
   normalizeFeedUrl,
 } from "@/lib/feed-scout/normalize";
@@ -32,6 +32,7 @@ import type {
   FeedScoutWorkerStatus,
 } from "@/lib/feed-scout/types";
 import { maskSecret, xrocketGetAppInfo, xrocketTransfer } from "@/lib/feed-scout/xrocket";
+import { saveExchangerLogo } from "@/lib/logo";
 import { assertSafeOutboundUrl } from "@/lib/security/ssrf";
 import { getSeoSettings, createExchangerManual, replaceExchangerRates } from "@/lib/store";
 import { validateFeedUrl } from "@/lib/sync-feeds";
@@ -875,20 +876,31 @@ export async function processFeedUrlForWorker(input: {
     };
   }
 
-  const { name, website } = exchangerNameFromFeedUrl(norm);
+  const enrichment = await enrichExchangerFromFeedUrl(norm);
   const exchangerId = newId("ex");
+  let logoSaved = false;
 
   try {
     await createExchangerManual({
       id: exchangerId,
-      name,
-      website,
+      name: enrichment.name,
+      website: enrichment.website,
       feedUrl: norm,
-      description: "Добавлен через feed-scout бота. На модерации.",
+      contact: enrichment.contact,
+      description: enrichment.description,
+      ownerEmail: enrichment.ownerEmail,
       pairCount,
       status: "pending",
     });
     await replaceExchangerRates(exchangerId, items, { ok: true });
+    if (enrichment.logo) {
+      try {
+        await saveExchangerLogo(exchangerId, enrichment.logo);
+        logoSaved = true;
+      } catch {
+        // Logo is best-effort; card is already created.
+      }
+    }
   } catch (error) {
     return {
       url: raw,
@@ -899,6 +911,14 @@ export async function processFeedUrlForWorker(input: {
           : "Не удалось создать обменник",
     };
   }
+
+  const enrichmentSummary = {
+    name: enrichment.name,
+    contact: enrichment.contact,
+    emails: enrichment.emails,
+    telegrams: enrichment.telegrams,
+    logoSaved,
+  };
 
   const db = getDb();
   const submissionId = newId("fss");
@@ -963,6 +983,7 @@ export async function processFeedUrlForWorker(input: {
       amount,
       currency,
       payoutStatus: "paid",
+      enrichment: enrichmentSummary,
     };
   }
 
@@ -983,6 +1004,7 @@ export async function processFeedUrlForWorker(input: {
     currency,
     payoutStatus: "failed",
     payoutError: payout.error,
+    enrichment: enrichmentSummary,
   };
 }
 
@@ -1179,6 +1201,7 @@ function helpText(
       : "Квота выдаётся администратором",
     "",
     "Принимаем только валидные новые фиды (которых ещё нет в GapSnap).",
+    "После принятия сразу сканируем сайт обменника: имя, контакты, описание, логотип (если удаётся).",
     "Выплата на ваш Telegram через @xRocket — откройте бота хотя бы раз.",
     "",
     "Команды:",
@@ -1372,9 +1395,16 @@ export async function handleFeedScoutUpdate(
       r.payoutStatus === "paid"
         ? `✅ ${r.amount} ${r.currency}`
         : `⚠️ фид принят, выплата не прошла: ${escapeHtml(r.payoutError ?? "")}`;
-    lines.push(
-      `• ${escapeHtml(r.url)}\n  пар: ${r.pairCount}, ${pay}`,
-    );
+    const en = r.enrichment;
+    const cardBits: string[] = [`пар: ${r.pairCount}`, pay];
+    if (en?.name) cardBits.push(`имя: ${escapeHtml(en.name)}`);
+    if (en?.contact) {
+      cardBits.push(`контакт: ${escapeHtml(en.contact)}`);
+    } else {
+      cardBits.push("контакт: не найден");
+    }
+    if (en?.logoSaved) cardBits.push("логотип: ок");
+    lines.push(`• ${escapeHtml(r.url)}\n  ${cardBits.join(", ")}`);
   }
   for (const r of rejected) {
     if (r.ok) continue;

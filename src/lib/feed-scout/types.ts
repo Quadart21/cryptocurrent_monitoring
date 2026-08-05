@@ -65,6 +65,14 @@ export type FeedScoutSubmission = {
   paidAt: string | null;
 };
 
+export type FeedScoutEnrichmentSummary = {
+  name: string;
+  contact: string;
+  emails: string[];
+  telegrams: string[];
+  logoSaved: boolean;
+};
+
 export type FeedScoutUrlResult =
   | {
       url: string;
@@ -75,6 +83,7 @@ export type FeedScoutUrlResult =
       currency: string;
       payoutStatus: FeedScoutPayoutStatus;
       payoutError?: string;
+      enrichment?: FeedScoutEnrichmentSummary;
     }
   | {
       url: string;
