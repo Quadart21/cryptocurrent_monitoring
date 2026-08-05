@@ -79,7 +79,15 @@ function toPublic(settings: TelegramSettings): TelegramSettingsPublic {
 }
 
 function mapPost(row: typeof telegramPosts.$inferSelect): TelegramPost {
-  const status = (row.status || "sent") as TelegramPostStatus;
+  const raw = (row.status || "sent") as string;
+  const status: TelegramPostStatus =
+    raw === "generating" ||
+    raw === "draft" ||
+    raw === "failed" ||
+    raw === "deleted" ||
+    raw === "sent"
+      ? raw
+      : "sent";
   return {
     id: row.id,
     createdAt: row.createdAt,
@@ -92,10 +100,10 @@ function mapPost(row: typeof telegramPosts.$inferSelect): TelegramPost {
     silent: Boolean(row.silent),
     photoUrl: row.photoUrl ?? "",
     buttons: normalizeTelegramButtons(row.buttons ?? []),
-    status:
-      status === "failed" || status === "deleted" || status === "sent"
-        ? status
-        : "sent",
+    topic: row.topic ?? "",
+    progress: row.progress ?? "",
+    withImage: Boolean(row.withImage),
+    status,
     error: row.error ?? null,
     adminLogin: row.adminLogin ?? "",
   };
@@ -215,6 +223,14 @@ export async function updateTelegramSettings(patch: {
 
 export async function listTelegramPosts(limit = 50): Promise<TelegramPost[]> {
   await ensureSettingsRow();
+  try {
+    const { reclaimStaleTelegramComposeJobs } = await import(
+      "@/lib/telegram/compose-draft-job"
+    );
+    await reclaimStaleTelegramComposeJobs();
+  } catch (err) {
+    console.warn("[gapsnap] reclaim telegram compose jobs failed", err);
+  }
   const db = getDb();
   const rows = await db
     .select()
@@ -289,29 +305,19 @@ export async function getTelegramAdminSnapshot(): Promise<{
   };
 }
 
-export async function generateTelegramPostFromTopic(input: {
+export async function startTelegramComposeDraft(input: {
   topic: string;
-  model?: string;
-  /** Generate cover image from the composed text (default false — client runs image as a separate request). */
   withImage?: boolean;
-}): Promise<{
-  text: string;
-  parseMode: TelegramParseMode;
-  photoUrl: string;
-  imageError: string | null;
-}> {
-  const { composeTelegramPost } = await import("@/lib/telegram/compose-post");
-  const { DEFAULT_TELEGRAM_COMPOSE_PROMPT } = await import(
-    "@/lib/telegram/default-prompt"
-  );
-  const { getNewsSettings, getSeoSettings } = await import("@/lib/store");
+  model?: string;
+  adminLogin?: string;
+}): Promise<TelegramPost> {
+  const topic = input.topic.trim();
+  if (!topic) throw new Error("Укажите тему или описание обновления");
 
-  const [settings, news, seo] = await Promise.all([
-    getTelegramSettings(),
-    getNewsSettings().catch(() => null),
-    getSeoSettings(),
-  ]);
-
+  await ensureSettingsRow();
+  const settings = await getTelegramSettings();
+  const { getNewsSettings } = await import("@/lib/store");
+  const news = await getNewsSettings().catch(() => null);
   const model =
     (input.model ?? "").trim() ||
     settings.composeModel.trim() ||
@@ -321,41 +327,66 @@ export async function generateTelegramPostFromTopic(input: {
     throw new Error("Выберите модель ИИ в настройках Telegram или Новостей");
   }
 
-  const prompt =
-    settings.composePrompt.trim() || DEFAULT_TELEGRAM_COMPOSE_PROMPT;
-  const siteName = seo.siteName || "GapSnap";
-  const siteUrl = seo.siteUrl || process.env.SITE_URL || "https://gapsnap.org";
-
-  const composed = await composeTelegramPost({
-    model,
-    promptTemplate: prompt,
-    topic: input.topic,
-    siteName,
-    siteUrl,
+  const now = new Date().toISOString();
+  const id = newPostId();
+  const withImage = input.withImage !== false;
+  const db = getDb();
+  await db.insert(telegramPosts).values({
+    id,
+    createdAt: now,
+    updatedAt: now,
+    chatId: settings.channelId || "",
+    messageId: null,
+    text: "",
+    parseMode: settings.parseMode || "HTML",
+    disablePreview: settings.disablePreview,
+    silent: settings.silent,
+    photoUrl: "",
+    buttons: [],
+    topic,
+    progress: "В очереди…",
+    withImage,
+    status: "generating",
+    error: null,
+    adminLogin: (input.adminLogin ?? "").trim(),
   });
 
-  // Prefer client-side two-step compose (text → image) to stay under proxy timeouts.
-  if (!input.withImage) {
-    return { ...composed, photoUrl: "", imageError: null };
-  }
+  const { ensureTelegramComposeRunner } = await import(
+    "@/lib/telegram/compose-draft-job"
+  );
+  ensureTelegramComposeRunner(id);
 
-  try {
-    const { composeTelegramPostImage } = await import(
-      "@/lib/telegram/compose-image"
-    );
-    const image = await composeTelegramPostImage({
-      postText: composed.text,
-      topic: input.topic,
-      siteName,
-      textModel: model,
-    });
-    return { ...composed, photoUrl: image.photoUrl, imageError: null };
-  } catch (error) {
-    const imageError =
-      error instanceof Error ? error.message : "Не удалось сгенерировать картинку";
-    console.warn(`[gapsnap] telegram compose image failed:`, imageError);
-    return { ...composed, photoUrl: "", imageError };
+  const [row] = await db
+    .select()
+    .from(telegramPosts)
+    .where(eq(telegramPosts.id, id))
+    .limit(1);
+  return mapPost(row!);
+}
+
+export async function discardTelegramDraft(id: string): Promise<TelegramPost> {
+  await ensureSettingsRow();
+  const db = getDb();
+  const [row] = await db
+    .select()
+    .from(telegramPosts)
+    .where(eq(telegramPosts.id, id))
+    .limit(1);
+  if (!row) throw new Error("Черновик не найден");
+  if (row.status !== "draft" && row.status !== "failed" && row.status !== "generating") {
+    throw new Error("Можно удалить только черновик / ошибку / незавершённую генерацию");
   }
+  const now = new Date().toISOString();
+  await db
+    .update(telegramPosts)
+    .set({ status: "deleted", updatedAt: now, progress: "Удалён", error: null })
+    .where(eq(telegramPosts.id, id));
+  const [updated] = await db
+    .select()
+    .from(telegramPosts)
+    .where(eq(telegramPosts.id, id))
+    .limit(1);
+  return mapPost(updated!);
 }
 
 export async function startTelegramImageFromPostText(input: {
@@ -492,6 +523,8 @@ export async function publishTelegramPost(input: {
   silent?: boolean;
   buttons?: TelegramButtonRow[];
   adminLogin?: string;
+  /** If set, publish this draft/failed row instead of creating a new journal entry. */
+  draftId?: string;
 }): Promise<TelegramPost> {
   const settings = await getTelegramSettings();
   const text = input.text.trim();
@@ -506,6 +539,25 @@ export async function publishTelegramPost(input: {
     throw new Error("Канал не задан");
   }
 
+  const draftId = (input.draftId ?? "").trim();
+  let draftTopic = "";
+  let draftWithImage = false;
+  if (draftId) {
+    await ensureSettingsRow();
+    const db = getDb();
+    const [draft] = await db
+      .select()
+      .from(telegramPosts)
+      .where(eq(telegramPosts.id, draftId))
+      .limit(1);
+    if (!draft) throw new Error("Черновик не найден");
+    if (draft.status !== "draft" && draft.status !== "failed") {
+      throw new Error("Публиковать можно только черновик");
+    }
+    draftTopic = draft.topic ?? "";
+    draftWithImage = Boolean(draft.withImage);
+  }
+
   const parseMode = normalizeParseMode(input.parseMode ?? settings.parseMode);
   const disablePreview =
     typeof input.disablePreview === "boolean"
@@ -516,7 +568,7 @@ export async function publishTelegramPost(input: {
   const buttons = normalizeTelegramButtons(input.buttons ?? []);
   const replyMarkup = telegramReplyMarkup(buttons);
   const now = new Date().toISOString();
-  const id = newPostId();
+  const id = draftId || newPostId();
   const adminLogin = (input.adminLogin ?? "").trim();
 
   try {
@@ -564,22 +616,48 @@ export async function publishTelegramPost(input: {
         });
 
     const db = getDb();
-    await db.insert(telegramPosts).values({
-      id,
-      createdAt: now,
-      updatedAt: now,
-      chatId: String(msg.chat.id),
-      messageId: msg.message_id,
-      text,
-      parseMode,
-      disablePreview,
-      silent,
-      photoUrl,
-      buttons,
-      status: "sent",
-      error: null,
-      adminLogin,
-    });
+    if (draftId) {
+      await db
+        .update(telegramPosts)
+        .set({
+          updatedAt: now,
+          chatId: String(msg.chat.id),
+          messageId: msg.message_id,
+          text,
+          parseMode,
+          disablePreview,
+          silent,
+          photoUrl,
+          buttons,
+          topic: draftTopic,
+          withImage: draftWithImage,
+          progress: "Опубликовано",
+          status: "sent",
+          error: null,
+          adminLogin: adminLogin || "",
+        })
+        .where(eq(telegramPosts.id, draftId));
+    } else {
+      await db.insert(telegramPosts).values({
+        id,
+        createdAt: now,
+        updatedAt: now,
+        chatId: String(msg.chat.id),
+        messageId: msg.message_id,
+        text,
+        parseMode,
+        disablePreview,
+        silent,
+        photoUrl,
+        buttons,
+        topic: "",
+        progress: "",
+        withImage: Boolean(photoUrl),
+        status: "sent",
+        error: null,
+        adminLogin,
+      });
+    }
     await updateTelegramSettings({ lastPostAt: now });
     const [row] = await db
       .select()
@@ -591,6 +669,30 @@ export async function publishTelegramPost(input: {
     const message =
       error instanceof Error ? error.message : "Ошибка отправки в Telegram";
     const db = getDb();
+    if (draftId) {
+      await db
+        .update(telegramPosts)
+        .set({
+          updatedAt: now,
+          text,
+          parseMode,
+          disablePreview,
+          silent,
+          photoUrl,
+          buttons,
+          status: "failed",
+          progress: "Ошибка публикации",
+          error: message,
+          adminLogin: adminLogin || "",
+        })
+        .where(eq(telegramPosts.id, draftId));
+      const [row] = await db
+        .select()
+        .from(telegramPosts)
+        .where(eq(telegramPosts.id, draftId))
+        .limit(1);
+      throw Object.assign(new Error(message), { post: mapPost(row!) });
+    }
     await db.insert(telegramPosts).values({
       id,
       createdAt: now,
@@ -603,6 +705,9 @@ export async function publishTelegramPost(input: {
       silent,
       photoUrl,
       buttons,
+      topic: "",
+      progress: "",
+      withImage: Boolean(photoUrl),
       status: "failed",
       error: message,
       adminLogin,

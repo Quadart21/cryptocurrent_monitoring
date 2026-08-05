@@ -5,13 +5,14 @@ import {
   requireAdminSession,
 } from "@/lib/admin-guard";
 import {
-  deleteTelegramPost,
+  discardTelegramDraft,
   editTelegramPost,
-  generateTelegramPostFromTopic,
+  deleteTelegramPost,
   getTelegramAdminSnapshot,
   getTelegramImageJobStatus,
   listTelegramPosts,
   publishTelegramPost,
+  startTelegramComposeDraft,
   startTelegramImageFromPostText,
   testTelegramConnection,
   updateTelegramSettings,
@@ -79,6 +80,7 @@ export async function PUT(request: Request) {
     silent?: boolean;
     buttons?: TelegramButtonRow[];
     id?: string;
+    draftId?: string;
     topic?: string;
     model?: string;
     withImage?: boolean;
@@ -101,14 +103,14 @@ export async function PUT(request: Request) {
       return NextResponse.json({ connection, settings: snapshot.settings });
     }
 
-    if (body.action === "compose") {
-      const composed = await generateTelegramPostFromTopic({
+    if (body.action === "compose-start") {
+      const post = await startTelegramComposeDraft({
         topic: body.topic ?? "",
+        withImage: body.withImage !== false,
         model: body.model,
-        // Image is a separate background job (compose-image) — Cloudflare ~100s limit.
-        withImage: body.withImage === true,
+        adminLogin: session.user.login,
       });
-      return NextResponse.json({ composed });
+      return NextResponse.json({ post });
     }
 
     if (body.action === "compose-image") {
@@ -117,6 +119,11 @@ export async function PUT(request: Request) {
         topic: body.topic,
       });
       return NextResponse.json({ jobId: started.jobId });
+    }
+
+    if (body.action === "discard-draft" && body.id) {
+      const post = await discardTelegramDraft(body.id);
+      return NextResponse.json({ post });
     }
 
     if (body.action === "publish") {
@@ -129,6 +136,7 @@ export async function PUT(request: Request) {
           silent: body.silent,
           buttons: body.buttons,
           adminLogin: session.user.login,
+          draftId: body.draftId,
         });
         return NextResponse.json({ post });
       } catch (error) {

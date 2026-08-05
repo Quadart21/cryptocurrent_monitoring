@@ -418,12 +418,16 @@ function statusTone(
   status: TelegramPost["status"],
 ): string {
   if (status === "sent") return "bg-ok/20 text-ok";
+  if (status === "draft") return "bg-accent/15 text-accent-deep";
+  if (status === "generating") return "bg-warn/20 text-warn";
   if (status === "failed") return "bg-danger/15 text-danger";
   return "bg-bg-soft text-ink-muted";
 }
 
 function statusLabel(status: TelegramPost["status"]): string {
   if (status === "sent") return "Отправлен";
+  if (status === "draft") return "Черновик готов";
+  if (status === "generating") return "Генерируется…";
   if (status === "failed") return "Ошибка";
   return "Удалён";
 }
@@ -657,6 +661,7 @@ export function TelegramModule() {
   const [disablePreview, setDisablePreview] = useState(false);
   const [silent, setSilent] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [draftId, setDraftId] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
   const [topic, setTopic] = useState("");
   const [composing, setComposing] = useState(false);
@@ -668,6 +673,13 @@ export function TelegramModule() {
   const [buttonRows, setButtonRows] = useState<TelegramButtonRow[]>([]);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const seenDraftReadyRef = useRef<Set<string>>(new Set());
+  const bootstrappedDraftsRef = useRef(false);
+
+  const generatingCount =
+    data?.posts.filter((p) => p.status === "generating").length ?? 0;
+  const draftCount =
+    data?.posts.filter((p) => p.status === "draft").length ?? 0;
 
   useEffect(() => {
     if (!composeProgress.startedAt || composeProgress.phase === "idle") {
@@ -700,9 +712,11 @@ export function TelegramModule() {
       return;
     }
     const snap = (await res.json()) as Snapshot;
-    setData(snap);
+    setData((prev) => {
+      // Notify about newly finished drafts is handled in effect.
+      return snap;
+    });
     setSettings(snap.settings);
-    setParseMode(snap.settings.parseMode);
     setDisablePreview(snap.settings.disablePreview);
     setSilent(snap.settings.silent);
   }, []);
@@ -710,6 +724,37 @@ export function TelegramModule() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Keep journal fresh while background compose jobs run.
+  useEffect(() => {
+    if (generatingCount <= 0) return;
+    const id = window.setInterval(() => {
+      void load();
+    }, 2500);
+    return () => window.clearInterval(id);
+  }, [generatingCount, load]);
+
+  useEffect(() => {
+    if (!data) return;
+    if (!bootstrappedDraftsRef.current) {
+      for (const p of data.posts) {
+        if (p.status === "draft" || p.status === "generating") {
+          seenDraftReadyRef.current.add(p.id);
+        }
+      }
+      bootstrappedDraftsRef.current = true;
+      return;
+    }
+    for (const p of data.posts) {
+      if (p.status !== "draft") continue;
+      if (seenDraftReadyRef.current.has(p.id)) continue;
+      seenDraftReadyRef.current.add(p.id);
+      setOkMsg(
+        `Черновик готов — зайдите в журнал и откройте${p.topic ? `: «${p.topic.slice(0, 60)}»` : ""}`,
+      );
+      window.setTimeout(() => setOkMsg(null), 7000);
+    }
+  }, [data]);
 
   const flash = (msg: string) => {
     setOkMsg(msg);
@@ -844,114 +889,41 @@ export function TelegramModule() {
       setError("Опишите тему или обновление");
       return;
     }
-    const wantImage = withImage;
-    const startedAt = Date.now();
     setComposing(true);
     setBusy(true);
     setError(null);
-    setComposeProgress({
-      phase: "text",
-      label: "Пишу текст поста…",
-      percent: wantImage ? 12 : 25,
-      startedAt,
-      withImage: wantImage,
-      includeTextStep: true,
-    });
     try {
-      // Step 1: text only — keeps each request under proxy timeout.
       const res = await fetch("/api/admin/telegram", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "compose",
+          action: "compose-start",
           topic,
+          withImage,
           model: settings?.composeModel || undefined,
-          withImage: false,
         }),
       });
       const body = await readTelegramApiJson<{
-        composed?: {
-          text: string;
-          parseMode: TelegramParseMode;
-          photoUrl?: string;
-          imageError?: string | null;
-        };
+        post?: TelegramPost;
         error?: string;
       }>(res);
-      if (!res.ok) throw new Error(body.error ?? "Не удалось сгенерировать");
-      if (!body.composed) throw new Error("Пустой ответ compose");
-
-      setText(body.composed.text);
-      setParseMode(body.composed.parseMode || "HTML");
-
-      if (!wantImage) {
-        setComposeProgress({
-          phase: "done",
-          label: "Текст готов",
-          percent: 100,
-          startedAt,
-          withImage: false,
-          includeTextStep: true,
-        });
-        flash("Текст сгенерирован — можно править и публиковать");
-        return;
+      if (!res.ok) throw new Error(body.error ?? "Не удалось запустить генерацию");
+      if (body.post) {
+        seenDraftReadyRef.current.delete(body.post.id);
+        await load();
+        setTopic("");
+        flash(
+          withImage
+            ? "Генерация поста и картинки запущена в фоне — смотрите журнал"
+            : "Генерация поста запущена в фоне — смотрите журнал",
+        );
+        setTab("history");
       }
-
-      setComposeProgress({
-        phase: "image",
-        label: "Запускаю генерацию обложки в фоне…",
-        percent: 45,
-        startedAt,
-        withImage: true,
-        includeTextStep: true,
-      });
-      setComposingImage(true);
-
-      const imgRes = await fetch("/api/admin/telegram", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "compose-image",
-          text: body.composed.text,
-          topic,
-        }),
-      });
-      const imgBody = await readTelegramApiJson<{
-        jobId?: string;
-        error?: string;
-      }>(imgRes);
-      if (!imgRes.ok || !imgBody.jobId) {
-        throw new Error(imgBody.error ?? "Не удалось запустить генерацию картинки");
-      }
-
-      const photo = await pollTelegramImageJob(imgBody.jobId, (job) => {
-        setComposeProgress({
-          phase: "image",
-          label: job.progress || "Рисую обложку…",
-          percent: Math.max(50, Math.min(95, job.percent || 55)),
-          startedAt,
-          withImage: true,
-          includeTextStep: true,
-        });
-      });
-      setPhotoUrl(photo);
-      setComposeProgress({
-        phase: "done",
-        label: "Пост и картинка готовы",
-        percent: 100,
-        startedAt,
-        withImage: true,
-        includeTextStep: true,
-      });
-      flash("Пост и картинка готовы — можно править и публиковать");
     } catch (err) {
-      setComposeProgress(COMPOSE_IDLE);
       setError(err instanceof Error ? err.message : "Ошибка");
     } finally {
       setComposing(false);
-      setComposingImage(false);
       setBusy(false);
-      window.setTimeout(() => setComposeProgress(COMPOSE_IDLE), 2800);
     }
   };
 
@@ -1058,6 +1030,7 @@ export function TelegramModule() {
                 disablePreview,
                 silent,
                 buttons: buttonRows,
+                draftId: draftId || undefined,
               },
         ),
       });
@@ -1071,6 +1044,8 @@ export function TelegramModule() {
       setPhotoUrl("");
       setButtonRows([]);
       setEditingId(null);
+      setDraftId(null);
+      setTopic("");
       flash(editingId ? "Пост обновлён" : "Опубликовано в канал");
       setTab("history");
     } catch (err) {
@@ -1081,8 +1056,56 @@ export function TelegramModule() {
     }
   };
 
+  const openDraft = (post: TelegramPost) => {
+    if (post.status !== "draft" && post.status !== "failed") return;
+    setEditingId(null);
+    setDraftId(post.id);
+    setText(post.text);
+    setPhotoUrl(post.photoUrl);
+    setParseMode(post.parseMode);
+    setDisablePreview(post.disablePreview);
+    setSilent(post.silent);
+    setButtonRows(
+      post.buttons?.length
+        ? post.buttons.map((row) => row.map((b) => ({ ...b })))
+        : [],
+    );
+    setTopic(post.topic || "");
+    setTab("compose");
+    flash("Черновик открыт — правьте и публикуйте");
+  };
+
+  const discardDraft = async (id: string) => {
+    if (!canWrite) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/telegram", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "discard-draft", id }),
+      });
+      const body = await readTelegramApiJson<{ error?: string }>(res);
+      if (!res.ok) throw new Error(body.error ?? "Не удалось удалить");
+      if (draftId === id) {
+        setDraftId(null);
+        setText("");
+        setPhotoUrl("");
+        setButtonRows([]);
+        setTopic("");
+      }
+      await load();
+      flash("Черновик удалён");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ошибка");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const startEdit = (post: TelegramPost) => {
     if (post.status === "deleted" || !post.messageId) return;
+    setDraftId(null);
     setEditingId(post.id);
     setText(post.text);
     setPhotoUrl(post.photoUrl);
@@ -1141,6 +1164,7 @@ export function TelegramModule() {
 
   const sentCount = data.posts.filter((p) => p.status === "sent").length;
   const failedCount = data.posts.filter((p) => p.status === "failed").length;
+  const visiblePosts = data.posts.filter((p) => p.status !== "deleted");
 
   return (
     <div className="space-y-5">
@@ -1148,6 +1172,23 @@ export function TelegramModule() {
         title="Telegram"
         description="Постинг и форматирование сообщений в канал"
       />
+
+      {(generatingCount > 0 || draftCount > 0) && (
+        <p className="rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 text-sm text-ink">
+          {generatingCount > 0 ? (
+            <>
+              Идёт генерация: <strong>{generatingCount}</strong>
+              {draftCount > 0 ? " · " : null}
+            </>
+          ) : null}
+          {draftCount > 0 ? (
+            <>
+              Черновиков готово: <strong>{draftCount}</strong> — откройте в
+              журнале
+            </>
+          ) : null}
+        </p>
+      )}
 
       <AdminStatGrid
         items={[
@@ -1159,7 +1200,10 @@ export function TelegramModule() {
             label: "Канал",
             value: settings.channelTitle || settings.channelId || "—",
           },
-          { label: "В журнале", value: String(data.posts.length) },
+          {
+            label: "Черновики",
+            value: String(draftCount + generatingCount),
+          },
           {
             label: "Последний пост",
             value: settings.lastPostAt
@@ -1184,32 +1228,41 @@ export function TelegramModule() {
 
       {tab === "compose" && (
         <AdminSection
-          title={editingId ? "Редактирование поста" : "Новый пост"}
+          title={
+            editingId
+              ? "Редактирование поста"
+              : draftId
+                ? "Черновик"
+                : "Новый пост"
+          }
           description={
             editingId
               ? "Изменения уйдут в уже опубликованное сообщение"
-              : "Задайте тему → ИИ напишет пост и обложку → правьте и публикуйте"
+              : draftId
+                ? "Черновик из журнала — правьте и публикуйте"
+                : "Тема → генерация в фоне (текст + картинка) → черновик в журнале"
           }
         >
           <div className="space-y-4 p-5">
-            {editingId &&
-            (composing || composingImage || composeProgress.phase !== "idle") ? (
-              <ComposeStatusBar
-                progress={composeProgress}
-                elapsedSec={composeElapsed}
-              />
-            ) : null}
-            {editingId ? (
+            {editingId || draftId ? (
               <div className="flex flex-wrap items-center gap-2 text-sm">
-                <Pill className="bg-warn/20 text-warn">Редактирование</Pill>
+                <Pill
+                  className={
+                    editingId ? "bg-warn/20 text-warn" : "bg-accent/15 text-accent-deep"
+                  }
+                >
+                  {editingId ? "Редактирование" : "Черновик"}
+                </Pill>
                 <button
                   type="button"
                   className="text-xs font-medium text-ink-muted underline-offset-2 hover:text-ink hover:underline"
                   onClick={() => {
                     setEditingId(null);
+                    setDraftId(null);
                     setText("");
                     setPhotoUrl("");
                     setButtonRows([]);
+                    setTopic("");
                   }}
                 >
                   Отменить
@@ -1230,10 +1283,6 @@ export function TelegramModule() {
                     disabled={!canWrite || composing}
                   />
                 </Field>
-                <ComposeStatusBar
-                  progress={composeProgress}
-                  elapsedSec={composeElapsed}
-                />
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs text-ink-muted">
                     Модель:{" "}
@@ -1251,30 +1300,26 @@ export function TelegramModule() {
                         className="size-3.5 rounded border-line accent-[var(--accent)]"
                         checked={withImage}
                         onChange={(e) => setWithImage(e.target.checked)}
-                        disabled={!canWrite || composing || composingImage}
+                        disabled={!canWrite || composing}
                       />
                       С картинкой
                     </label>
                     <button
                       type="button"
                       disabled={
-                        busy ||
-                        !canWrite ||
-                        !topic.trim() ||
-                        composing ||
-                        composingImage
+                        busy || !canWrite || !topic.trim() || composing
                       }
                       onClick={() => void runCompose()}
                       className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-60"
                     >
-                      {composing
-                        ? composeProgress.phase === "image"
-                          ? "Рисую картинку…"
-                          : "Пишу текст…"
-                        : "Сгенерировать пост"}
+                      {composing ? "Запускаю…" : "Сгенерировать в фоне"}
                     </button>
                   </div>
                 </div>
+                <p className="text-xs text-ink-muted">
+                  Можно закрыть вкладку: прогресс и готовый черновик появятся в
+                  журнале.
+                </p>
               </div>
             )}
 
@@ -1420,7 +1465,11 @@ export function TelegramModule() {
                 onClick={() => void publishOrEdit()}
                 className="btn-primary rounded-xl px-5 py-2.5 text-sm font-semibold disabled:opacity-60"
               >
-                {editingId ? "Сохранить в канале" : "Опубликовать"}
+                {editingId
+                  ? "Сохранить в канале"
+                  : draftId
+                    ? "Опубликовать черновик"
+                    : "Опубликовать"}
               </button>
             </div>
           </div>
@@ -1430,22 +1479,22 @@ export function TelegramModule() {
       {tab === "history" && (
         <AdminSection
           title="Журнал"
-          description={`${sentCount} отправлено · ${failedCount} с ошибкой`}
+          description={`${sentCount} отправлено · ${draftCount} черновиков · ${generatingCount} в генерации · ${failedCount} с ошибкой`}
         >
-          {data.posts.length === 0 ? (
+          {visiblePosts.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-ink-muted">
               Пока нет публикаций
             </p>
           ) : (
             <div className="divide-y divide-line/70">
-              {data.posts.map((post) => (
+              {visiblePosts.map((post) => (
                 <div key={post.id} className="space-y-2 px-5 py-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <Pill className={statusTone(post.status)}>
                       {statusLabel(post.status)}
                     </Pill>
                     <span className="text-xs text-ink-muted">
-                      {formatWhen(post.createdAt)}
+                      {formatWhen(post.updatedAt || post.createdAt)}
                     </span>
                     {post.adminLogin ? (
                       <span className="text-xs text-ink-muted">
@@ -1460,14 +1509,46 @@ export function TelegramModule() {
                     {post.photoUrl ? (
                       <span className="text-xs text-ink-muted">· фото</span>
                     ) : null}
+                    {post.withImage && post.status === "generating" ? (
+                      <span className="text-xs text-ink-muted">· +картинка</span>
+                    ) : null}
                     {post.buttons?.length ? (
                       <span className="text-xs text-ink-muted">
                         · {post.buttons.reduce((n, r) => n + r.length, 0)} кн.
                       </span>
                     ) : null}
                   </div>
+                  {post.topic ? (
+                    <p className="text-xs text-ink-muted">
+                      Тема: <span className="text-ink">{post.topic}</span>
+                    </p>
+                  ) : null}
+                  {post.status === "generating" ? (
+                    <p className="text-sm text-warn">
+                      {post.progress || "Генерация…"}
+                    </p>
+                  ) : null}
+                  {post.status === "draft" ? (
+                    <p className="text-sm text-accent-deep">
+                      {post.progress || "Черновик готов — откройте и опубликуйте"}
+                    </p>
+                  ) : null}
+                  {post.photoUrl &&
+                  (post.status === "draft" || post.status === "sent") ? (
+                    <div className="overflow-hidden rounded-lg border border-line bg-bg-soft/40">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={post.photoUrl}
+                        alt=""
+                        className="mx-auto max-h-40 object-contain"
+                      />
+                    </div>
+                  ) : null}
                   <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-bg-soft/60 p-3 font-mono text-[12px] leading-relaxed text-ink">
-                    {post.text || "(без текста)"}
+                    {post.text ||
+                      (post.status === "generating"
+                        ? "(ещё генерируется…)"
+                        : "(без текста)")}
                   </pre>
                   {post.buttons?.length ? (
                     <div className="flex flex-col gap-1.5">
@@ -1490,6 +1571,39 @@ export function TelegramModule() {
                   ) : null}
                   {post.error ? (
                     <p className="text-xs text-danger">{post.error}</p>
+                  ) : null}
+                  {canWrite &&
+                  (post.status === "draft" || post.status === "failed") ? (
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => openDraft(post)}
+                        className="rounded-lg border border-accent/40 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent-deep transition hover:bg-accent/15 disabled:opacity-60"
+                      >
+                        Открыть черновик
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void discardDraft(post.id)}
+                        className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink-muted transition hover:border-danger/40 hover:text-danger disabled:opacity-60"
+                      >
+                        Удалить
+                      </button>
+                    </div>
+                  ) : null}
+                  {canWrite && post.status === "generating" ? (
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void discardDraft(post.id)}
+                        className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink-muted transition hover:border-danger/40 hover:text-danger disabled:opacity-60"
+                      >
+                        Отменить генерацию
+                      </button>
+                    </div>
                   ) : null}
                   {canWrite && post.status === "sent" && post.messageId ? (
                     <div className="flex flex-wrap gap-2">

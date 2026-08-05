@@ -762,6 +762,11 @@ export const telegramPosts = pgTable(
       .$type<Array<Array<{ text: string; url: string }>>>()
       .notNull()
       .default([]),
+    /** Original admin topic for AI compose (drafts / generating). */
+    topic: text("topic").notNull().default(""),
+    /** Live progress text while status=generating. */
+    progress: text("progress").notNull().default(""),
+    withImage: boolean("with_image").notNull().default(false),
     status: text("status").notNull().default("sent"),
     error: text("error"),
     adminLogin: text("admin_login").notNull().default(""),

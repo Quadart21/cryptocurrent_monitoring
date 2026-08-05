@@ -29,7 +29,12 @@ export type TelegramSettingsPublic = Omit<TelegramSettings, "botToken"> & {
   botTokenHint: string;
 };
 
-export type TelegramPostStatus = "sent" | "failed" | "deleted";
+export type TelegramPostStatus =
+  | "generating"
+  | "draft"
+  | "sent"
+  | "failed"
+  | "deleted";
 
 export type TelegramPost = {
   id: string;
@@ -43,6 +48,9 @@ export type TelegramPost = {
   silent: boolean;
   photoUrl: string;
   buttons: TelegramButtonRow[];
+  topic: string;
+  progress: string;
+  withImage: boolean;
   status: TelegramPostStatus;
   error: string | null;
   adminLogin: string;
