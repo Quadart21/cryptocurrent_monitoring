@@ -239,6 +239,13 @@
       "when": 1785570000000,
       "tag": "0033_feed_scout_link_quota",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1785580000000,
+      "tag": "0034_feed_scout_worker_note",
+      "breakpoints": true
     }
   ]
 }

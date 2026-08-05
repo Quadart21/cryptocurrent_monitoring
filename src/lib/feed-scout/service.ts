@@ -349,7 +349,12 @@ function normalizeLinkQuota(value: unknown): number | null {
 function toWorkerView(
   row: typeof feedScoutWorkers.$inferSelect,
   stats:
-    | { acceptedCount: number; paidTotal: number; failedPayouts: number }
+    | {
+        acceptedCount: number;
+        paidTotal: number;
+        failedPayouts: number;
+        lastSubmissionAt: string | null;
+      }
     | undefined,
   payoutAmount: number,
 ): FeedScoutWorker {
@@ -368,11 +373,13 @@ function toWorkerView(
     linkQuota,
     linksRemaining,
     budgetReserved,
+    adminNote: row.adminNote ?? "",
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     acceptedCount,
     paidTotal: stats?.paidTotal ?? 0,
     failedPayouts: stats?.failedPayouts ?? 0,
+    lastSubmissionAt: stats?.lastSubmissionAt ?? null,
   };
 }
 
@@ -445,6 +452,7 @@ export async function upsertFeedScoutWorker(input: {
       status: "active",
       // New workers start with 0 until admin grants a quota from xRocket balance.
       linkQuota: 0,
+      adminNote: "",
       createdAt: now,
       updatedAt: now,
     })
@@ -497,17 +505,153 @@ export async function setFeedScoutWorkerQuota(
   return toWorkerView(row, stats.get(row.id), settings.payoutAmount);
 }
 
+/** Grant N additional remaining slots (relative to current remaining). */
+export async function grantFeedScoutWorkerLinks(
+  workerId: string,
+  addLinks: number,
+): Promise<FeedScoutWorker | null> {
+  const add = Math.floor(Number(addLinks));
+  if (!Number.isFinite(add) || add <= 0) {
+    throw new Error("addLinks must be > 0");
+  }
+  const db = getDb();
+  const [row] = await db
+    .select()
+    .from(feedScoutWorkers)
+    .where(eq(feedScoutWorkers.id, workerId))
+    .limit(1);
+  if (!row) return null;
+  const accepted = await getWorkerAcceptedCount(workerId);
+  const currentQuota = normalizeLinkQuota(row.linkQuota);
+  const currentRemaining =
+    currentQuota === null ? 0 : Math.max(0, currentQuota - accepted);
+  // If unlimited, switch to accepted + add; if limited, add to remaining.
+  const nextQuota = accepted + currentRemaining + add;
+  return setFeedScoutWorkerQuota(workerId, nextQuota);
+}
+
+/** Set remaining slots exactly (quota = accepted + remaining). */
+export async function setFeedScoutWorkerRemaining(
+  workerId: string,
+  remaining: number,
+): Promise<FeedScoutWorker | null> {
+  const rem = Math.floor(Number(remaining));
+  if (!Number.isFinite(rem) || rem < 0) {
+    throw new Error("remaining must be >= 0");
+  }
+  const accepted = await getWorkerAcceptedCount(workerId);
+  return setFeedScoutWorkerQuota(workerId, accepted + rem);
+}
+
+export async function updateFeedScoutWorkerNote(
+  workerId: string,
+  adminNote: string,
+): Promise<FeedScoutWorker | null> {
+  const db = getDb();
+  const [row] = await db
+    .update(feedScoutWorkers)
+    .set({
+      adminNote: (adminNote ?? "").trim().slice(0, 2000),
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(feedScoutWorkers.id, workerId))
+    .returning();
+  if (!row) return null;
+  const settings = await ensureSettingsRow();
+  const stats = await workerStatsMap([row.id]);
+  return toWorkerView(row, stats.get(row.id), settings.payoutAmount);
+}
+
+/** Zero remaining for all active workers (keep accepted history). */
+export async function zeroAllFeedScoutQuotas(): Promise<number> {
+  const workers = await listFeedScoutWorkers();
+  let n = 0;
+  for (const w of workers) {
+    if (w.status === "banned") continue;
+    if (w.linkQuota === null || (w.linksRemaining ?? 0) > 0) {
+      await setFeedScoutWorkerRemaining(w.id, 0);
+      n += 1;
+    }
+  }
+  return n;
+}
+
+export async function retryAllFailedFeedScoutPayouts(): Promise<{
+  retried: number;
+  paid: number;
+  stillFailed: number;
+}> {
+  const db = getDb();
+  const failed = await db
+    .select({
+      submission: feedScoutSubmissions,
+      worker: feedScoutWorkers,
+    })
+    .from(feedScoutSubmissions)
+    .innerJoin(
+      feedScoutWorkers,
+      eq(feedScoutSubmissions.workerId, feedScoutWorkers.id),
+    )
+    .where(eq(feedScoutSubmissions.payoutStatus, "failed"))
+    .orderBy(feedScoutSubmissions.createdAt)
+    .limit(200);
+
+  let paid = 0;
+  let stillFailed = 0;
+  for (const row of failed) {
+    if (row.worker.status === "banned") {
+      stillFailed += 1;
+      continue;
+    }
+    const payout = await paySubmission({
+      submissionId: row.submission.id,
+      tgUserId: row.worker.tgUserId,
+      amount: row.submission.amount,
+      currency: row.submission.currency,
+    });
+    if (payout.ok) {
+      paid += 1;
+      await db
+        .update(feedScoutSubmissions)
+        .set({
+          payoutStatus: "paid",
+          xrocketTransferId: String(payout.transferId),
+          payoutError: null,
+          paidAt: new Date().toISOString(),
+        })
+        .where(eq(feedScoutSubmissions.id, row.submission.id));
+    } else {
+      stillFailed += 1;
+      await db
+        .update(feedScoutSubmissions)
+        .set({ payoutError: payout.error })
+        .where(eq(feedScoutSubmissions.id, row.submission.id));
+    }
+  }
+  return { retried: failed.length, paid, stillFailed };
+}
+
 async function workerStatsMap(
   workerIds: string[],
 ): Promise<
   Map<
     string,
-    { acceptedCount: number; paidTotal: number; failedPayouts: number }
+    {
+      acceptedCount: number;
+      paidTotal: number;
+      failedPayouts: number;
+      lastSubmissionAt: string | null;
+    }
   >
 > {
   const map = new Map<
     string,
-    { acceptedCount: number; paidTotal: number; failedPayouts: number }
+    {
+      acceptedCount: number;
+      paidTotal: number;
+      failedPayouts: number;
+      lastSubmissionAt: string | null;
+    }
   >();
   if (workerIds.length === 0) return map;
   const db = getDb();
@@ -517,6 +661,7 @@ async function workerStatsMap(
       acceptedCount: sql<number>`count(*)::int`,
       paidTotal: sql<number>`coalesce(sum(case when ${feedScoutSubmissions.payoutStatus} = 'paid' then ${feedScoutSubmissions.amount} else 0 end), 0)`,
       failedPayouts: sql<number>`count(*) filter (where ${feedScoutSubmissions.payoutStatus} = 'failed')::int`,
+      lastSubmissionAt: sql<string | null>`max(${feedScoutSubmissions.createdAt})`,
     })
     .from(feedScoutSubmissions)
     .where(inArray(feedScoutSubmissions.workerId, workerIds))
@@ -527,6 +672,7 @@ async function workerStatsMap(
       acceptedCount: Number(row.acceptedCount) || 0,
       paidTotal: Number(row.paidTotal) || 0,
       failedPayouts: Number(row.failedPayouts) || 0,
+      lastSubmissionAt: row.lastSubmissionAt ?? null,
     });
   }
   return map;
@@ -1241,6 +1387,20 @@ export async function getFeedScoutAdminSnapshot() {
         )
       : null;
 
+  const freeCapacity =
+    usdtBalance !== null
+      ? Math.max(0, usdtBalance - budgetReserved)
+      : null;
+  const exhaustedWorkers = workers.filter(
+    (w) =>
+      w.status === "active" &&
+      w.linkQuota !== null &&
+      (w.linksRemaining ?? 0) <= 0,
+  ).length;
+  const failedPayoutsNow = submissions.filter(
+    (s) => s.payoutStatus === "failed",
+  ).length;
+
   return {
     settings,
     workers,
@@ -1254,17 +1414,24 @@ export async function getFeedScoutAdminSnapshot() {
     stats: {
       workers: workers.length,
       activeWorkers: workers.filter((w) => w.status === "active").length,
+      bannedWorkers: workers.filter((w) => w.status === "banned").length,
+      exhaustedWorkers,
       acceptedTotal: workers.reduce((s, w) => s + w.acceptedCount, 0),
       paidTotal: workers.reduce((s, w) => s + w.paidTotal, 0),
       failedPayouts: workers.reduce((s, w) => s + w.failedPayouts, 0),
+      failedPayoutsNow,
       budgetReserved,
+      freeUsdt: freeCapacity,
       usdtBalance,
       payoutAmount: settings.payoutAmount,
       payoutCurrency: settings.payoutCurrency,
-      /** How many more links the current USDT balance can fund at the set rate. */
       balanceLinkCapacity:
         usdtBalance !== null && settings.payoutAmount > 0
           ? Math.floor(usdtBalance / settings.payoutAmount)
+          : null,
+      freeLinkCapacity:
+        freeCapacity !== null && settings.payoutAmount > 0
+          ? Math.floor(freeCapacity / settings.payoutAmount)
           : null,
     },
   };

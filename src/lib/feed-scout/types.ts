@@ -38,11 +38,13 @@ export type FeedScoutWorker = {
   linksRemaining: number | null;
   /** Remaining slots × payout rate */
   budgetReserved: number;
+  adminNote: string;
   createdAt: string;
   updatedAt: string;
   acceptedCount: number;
   paidTotal: number;
   failedPayouts: number;
+  lastSubmissionAt: string | null;
 };
 
 export type FeedScoutSubmission = {

@@ -3,21 +3,26 @@ import { assertAdminResource } from "@/lib/admin-guard";
 import {
   deleteFeedScoutWebhook,
   getFeedScoutAdminSnapshot,
+  grantFeedScoutWorkerLinks,
   listFeedScoutSubmissions,
   listFeedScoutWorkers,
+  retryAllFailedFeedScoutPayouts,
   retryFeedScoutPayout,
   setFeedScoutWebhook,
   setFeedScoutWorkerQuota,
+  setFeedScoutWorkerRemaining,
   setFeedScoutWorkerStatus,
   testFeedScoutBot,
   testFeedScoutXrocket,
   updateFeedScoutSettings,
+  updateFeedScoutWorkerNote,
+  zeroAllFeedScoutQuotas,
 } from "@/lib/feed-scout/service";
 import type { FeedScoutWorkerStatus } from "@/lib/feed-scout/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 export async function GET(request: Request) {
   const denied = await assertAdminResource("feed_scout", request.method);
@@ -63,6 +68,9 @@ export async function PUT(request: Request) {
     workerId?: string;
     status?: FeedScoutWorkerStatus;
     linkQuota?: number | null;
+    addLinks?: number;
+    remaining?: number;
+    adminNote?: string;
     submissionId?: string;
   };
 
@@ -110,9 +118,7 @@ export async function PUT(request: Request) {
     if (body.action === "setWorkerQuota" && body.workerId) {
       const raw = body.linkQuota;
       const linkQuota =
-        raw === null || raw === undefined
-          ? null
-          : Number(raw);
+        raw === null || raw === undefined ? null : Number(raw);
       if (linkQuota !== null && (!Number.isFinite(linkQuota) || linkQuota < 0)) {
         return NextResponse.json({ error: "invalid linkQuota" }, { status: 400 });
       }
@@ -124,6 +130,49 @@ export async function PUT(request: Request) {
         return NextResponse.json({ error: "worker not found" }, { status: 404 });
       }
       return NextResponse.json({ worker });
+    }
+
+    if (body.action === "grantLinks" && body.workerId) {
+      const worker = await grantFeedScoutWorkerLinks(
+        body.workerId,
+        Number(body.addLinks),
+      );
+      if (!worker) {
+        return NextResponse.json({ error: "worker not found" }, { status: 404 });
+      }
+      return NextResponse.json({ worker });
+    }
+
+    if (body.action === "setRemaining" && body.workerId) {
+      const worker = await setFeedScoutWorkerRemaining(
+        body.workerId,
+        Number(body.remaining),
+      );
+      if (!worker) {
+        return NextResponse.json({ error: "worker not found" }, { status: 404 });
+      }
+      return NextResponse.json({ worker });
+    }
+
+    if (body.action === "setWorkerNote" && body.workerId) {
+      const worker = await updateFeedScoutWorkerNote(
+        body.workerId,
+        body.adminNote ?? "",
+      );
+      if (!worker) {
+        return NextResponse.json({ error: "worker not found" }, { status: 404 });
+      }
+      return NextResponse.json({ worker });
+    }
+
+    if (body.action === "zeroAllQuotas") {
+      const count = await zeroAllFeedScoutQuotas();
+      return NextResponse.json({ count });
+    }
+
+    if (body.action === "retryAllFailed") {
+      const result = await retryAllFailedFeedScoutPayouts();
+      return NextResponse.json({ result });
     }
 
     if (body.action === "retryPayout" && body.submissionId) {

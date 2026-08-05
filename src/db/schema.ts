@@ -799,6 +799,8 @@ export const feedScoutWorkers = pgTable(
      * null = unlimited; 0 = cannot submit until admin grants quota.
      */
     linkQuota: integer("link_quota"),
+    /** Free-form admin note (who is this scout, contacts, etc.). */
+    adminNote: text("admin_note").notNull().default(""),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
   },
