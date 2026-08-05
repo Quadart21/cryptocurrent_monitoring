@@ -450,6 +450,18 @@ function emptyButton(): TelegramUrlButton {
   return { text: "", url: "" };
 }
 
+const BUTTON_PRESETS: Array<{ label: string; text: string; path: string }> = [
+  { label: "Курсы", text: "Сравнить курсы", path: "/" },
+  { label: "Каталог", text: "Каталог обменников", path: "/exchangers" },
+  { label: "Новости", text: "Читать новости", path: "/blog" },
+  { label: "ЧС", text: "Чёрный список", path: "/blacklist" },
+  { label: "Реклама", text: "Реклама на GapSnap", path: "/advertise" },
+  { label: "Добавить", text: "Добавить обменник", path: "/apply" },
+  { label: "Кабинет", text: "Кабинет владельца", path: "/cabinet" },
+  { label: "API", text: "Документация API", path: "/api-docs" },
+  { label: "Партнёры", text: "Партнёрская программа", path: "/partners" },
+];
+
 function ButtonsEditor({
   rows,
   onChange,
@@ -526,24 +538,22 @@ function ButtonsEditor({
           </p>
         </div>
         <div className="flex flex-wrap gap-1.5">
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={() => addPreset("Сравнить курсы", `${base}/`)}
-            className="rounded-lg border border-line px-2.5 py-1 text-[11px] font-medium text-ink-muted transition hover:border-accent/40 hover:text-ink disabled:opacity-60"
-          >
-            + Курсы
-          </button>
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={() =>
-              addPreset("Каталог обменников", `${base}/exchangers`)
-            }
-            className="rounded-lg border border-line px-2.5 py-1 text-[11px] font-medium text-ink-muted transition hover:border-accent/40 hover:text-ink disabled:opacity-60"
-          >
-            + Каталог
-          </button>
+          {BUTTON_PRESETS.map((preset) => (
+            <button
+              key={preset.label}
+              type="button"
+              disabled={disabled}
+              onClick={() =>
+                addPreset(
+                  preset.text,
+                  preset.path === "/" ? `${base}/` : `${base}${preset.path}`,
+                )
+              }
+              className="rounded-lg border border-line px-2.5 py-1 text-[11px] font-medium text-ink-muted transition hover:border-accent/40 hover:text-ink disabled:opacity-60"
+            >
+              + {preset.label}
+            </button>
+          ))}
         </div>
       </div>
 
