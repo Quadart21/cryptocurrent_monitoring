@@ -81,7 +81,7 @@ async function resolveProxy(
 
 async function codexFetch(
   path: string,
-  init?: RequestInit & { timeoutMs?: number },
+  init?: RequestInit & { timeoutMs?: number; preferDirect?: boolean },
 ): Promise<Response> {
   const key = apiKey();
   if (!key) {
@@ -90,11 +90,14 @@ async function codexFetch(
   const timeoutMs = init?.timeoutMs ?? FETCH_TIMEOUT_MS;
   let lastError: unknown;
   let rotateNext = false;
+  // Large image responses often break through residential proxies — prefer direct.
+  const preferDirect = Boolean(init?.preferDirect);
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt += 1) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
-    const proxy = await resolveProxy(rotateNext);
+    const useProxy = !preferDirect || attempt > 0;
+    const proxy = useProxy ? await resolveProxy(rotateNext) : null;
     rotateNext = false;
 
     try {
@@ -110,19 +113,33 @@ async function codexFetch(
         const agent = new ProxyAgent(proxy.url);
         try {
           // undici fetch + ProxyAgent for HTTP CONNECT through residential/ISP pool
-          res = (await undiciFetch(`${apiBase()}${path}`, {
+          const raw = (await undiciFetch(`${apiBase()}${path}`, {
             method: init?.method ?? "GET",
             body: init?.body as string | undefined,
             headers,
             signal: controller.signal,
             dispatcher: agent,
           })) as unknown as Response;
+          // CRITICAL: fully buffer the body BEFORE closing the proxy agent.
+          // Closing early aborts large image payloads mid-stream ("operation was aborted")
+          // even though Codex already finished generation successfully.
+          const buf = Buffer.from(await raw.arrayBuffer());
+          const outHeaders = new Headers();
+          raw.headers.forEach((value, name) => {
+            outHeaders.set(name, value);
+          });
+          res = new Response(buf, {
+            status: raw.status,
+            statusText: raw.statusText,
+            headers: outHeaders,
+          });
         } finally {
           await agent.close().catch(() => undefined);
         }
       } else {
         res = await fetch(`${apiBase()}${path}`, {
-          ...init,
+          method: init?.method ?? "GET",
+          body: init?.body,
           signal: controller.signal,
           headers,
           cache: "no-store",
@@ -135,7 +152,7 @@ async function codexFetch(
           `Codex HTTP ${res.status}${proxy ? ` via ${proxy.host}` : ""}: ${body.slice(0, 200)}`,
         );
         console.warn(
-          `[gapsnap] codex ${res.status} attempt ${attempt + 1}/${MAX_RETRIES}${proxy ? ` via ${proxy.host}` : ""} — retry`,
+          `[gapsnap] codex ${res.status} attempt ${attempt + 1}/${MAX_RETRIES}${proxy ? ` via ${proxy.host}` : " direct"} — retry`,
         );
         if (res.status === 429) rotateNext = true;
         await sleep(backoffMs(attempt, res.status === 429));
@@ -145,6 +162,10 @@ async function codexFetch(
     } catch (err) {
       lastError = err;
       rotateNext = Boolean(proxy);
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(
+        `[gapsnap] codex fetch error attempt ${attempt + 1}/${MAX_RETRIES}${proxy ? ` via ${proxy.host}` : " direct"}: ${msg.slice(0, 180)}`,
+      );
       await sleep(backoffMs(attempt, false));
     } finally {
       clearTimeout(timer);
@@ -229,7 +250,9 @@ export async function generateImage(input: {
 
   const res = await codexFetch("/images/generations", {
     method: "POST",
-    timeoutMs: 180_000,
+    // Image payloads are large (b64) and often go through residential proxy — allow more time.
+    timeoutMs: 300_000,
+    preferDirect: true,
     body: JSON.stringify({
       model,
       prompt: prompt.slice(0, 4000),

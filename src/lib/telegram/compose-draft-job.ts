@@ -93,26 +93,43 @@ async function runComposeDraftJob(postId: string): Promise<void> {
     });
 
     let photoUrl = row.photoUrl || "";
+    let imageError: string | null = null;
     if (withImage) {
-      const image = await composeTelegramPostImage({
-        postText: composed.text,
-        topic,
-        siteName,
-      });
-      photoUrl = image.photoUrl;
-      await patchPost(postId, {
-        photoUrl,
-        progress: "Картинка готова",
-      });
+      try {
+        const image = await composeTelegramPostImage({
+          postText: composed.text,
+          topic,
+          siteName,
+        });
+        photoUrl = image.photoUrl;
+        await patchPost(postId, {
+          photoUrl,
+          progress: "Картинка готова",
+        });
+      } catch (error) {
+        imageError =
+          error instanceof Error ? error.message : "Ошибка генерации картинки";
+        console.warn(
+          `[gapsnap] telegram compose draft image failed id=${postId}:`,
+          imageError,
+        );
+        // Keep text draft even if image download was aborted after Codex finished.
+        await patchPost(postId, {
+          progress: "Текст готов, картинка не скачалась — можно перегенерировать",
+          error: imageError,
+        });
+      }
     }
 
     await patchPost(postId, {
       status: "draft",
-      progress: withImage
-        ? "Черновик готов — откройте и опубликуйте"
-        : "Черновик готов — откройте и опубликуйте",
+      progress: imageError
+        ? "Черновик без картинки — откройте и перегенерируйте обложку"
+        : withImage
+          ? "Черновик готов — откройте и опубликуйте"
+          : "Черновик готов — откройте и опубликуйте",
       photoUrl,
-      error: null,
+      error: imageError,
     });
     console.info(`[gapsnap] telegram compose draft ready id=${postId}`);
   } catch (error) {
