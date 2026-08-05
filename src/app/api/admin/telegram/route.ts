@@ -100,7 +100,8 @@ export async function PUT(request: Request) {
       const composed = await generateTelegramPostFromTopic({
         topic: body.topic ?? "",
         model: body.model,
-        withImage: body.withImage !== false,
+        // Image is a separate client step (compose-image) to avoid nginx 60s HTML timeouts.
+        withImage: body.withImage === true,
       });
       return NextResponse.json({ composed });
     }

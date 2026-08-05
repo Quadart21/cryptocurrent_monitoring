@@ -49,6 +49,109 @@ const PARSE_MODES: Array<{ id: TelegramParseMode; label: string }> = [
   { id: "Markdown", label: "Markdown" },
 ];
 
+type ComposePhase = "idle" | "text" | "image" | "done";
+
+type ComposeProgress = {
+  phase: ComposePhase;
+  label: string;
+  /** 0–100 */
+  percent: number;
+  startedAt: number | null;
+  withImage: boolean;
+  /** false for «только картинка» — не показываем шаг «Текст» */
+  includeTextStep: boolean;
+};
+
+const COMPOSE_IDLE: ComposeProgress = {
+  phase: "idle",
+  label: "",
+  percent: 0,
+  startedAt: null,
+  withImage: false,
+  includeTextStep: true,
+};
+
+async function readTelegramApiJson<T>(res: Response): Promise<T> {
+  const raw = await res.text();
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    throw new Error(`Пустой ответ сервера (HTTP ${res.status})`);
+  }
+  if (trimmed.startsWith("<!") || trimmed.startsWith("<html")) {
+    throw new Error(
+      res.status === 504 || res.status === 502 || res.status === 524
+        ? "Прокси оборвал долгий запрос (таймаут). Текст и картинка теперь генерируются по шагам — попробуйте ещё раз."
+        : `Сервер вернул HTML вместо JSON (HTTP ${res.status}). Часто это таймаут nginx/Cloudflare.`,
+    );
+  }
+  try {
+    return JSON.parse(trimmed) as T;
+  } catch {
+    throw new Error(
+      `Невалидный JSON (HTTP ${res.status}): ${trimmed.slice(0, 160)}`,
+    );
+  }
+}
+
+function ComposeStatusBar({
+  progress,
+  elapsedSec,
+}: {
+  progress: ComposeProgress;
+  elapsedSec: number;
+}) {
+  if (progress.phase === "idle") return null;
+  const steps = [
+    ...(progress.includeTextStep
+      ? [{ id: "text" as const, label: "Текст" }]
+      : []),
+    ...(progress.withImage
+      ? [{ id: "image" as const, label: "Картинка" }]
+      : []),
+    { id: "done" as const, label: "Готово" },
+  ];
+  const activeIdx = steps.findIndex((s) => s.id === progress.phase);
+
+  return (
+    <div className="space-y-2.5 rounded-xl border border-accent/25 bg-accent/5 px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-medium text-ink">{progress.label}</p>
+        <p className="tabular-nums text-xs text-ink-muted">
+          {elapsedSec}с · {progress.percent}%
+        </p>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-line/70">
+        <div
+          className="h-full rounded-full bg-accent transition-[width] duration-500 ease-out"
+          style={{ width: `${Math.min(100, Math.max(4, progress.percent))}%` }}
+        />
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {steps.map((step, i) => {
+          const done =
+            progress.phase === "done" || (activeIdx >= 0 && i < activeIdx);
+          const active = step.id === progress.phase && progress.phase !== "done";
+          return (
+            <span
+              key={step.id}
+              className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold ${
+                done
+                  ? "bg-ok/15 text-ok"
+                  : active
+                    ? "bg-accent/20 text-accent-deep"
+                    : "bg-bg-soft text-ink-muted"
+              }`}
+            >
+              {done ? "✓ " : active ? "… " : ""}
+              {step.label}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 const inputClass =
   "w-full rounded-xl border border-line bg-input px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-ink-muted/60 focus:border-accent focus:ring-2 focus:ring-accent/15";
 const areaClass = `${inputClass} min-h-[160px] resize-y font-mono text-[13px] leading-relaxed`;
@@ -483,9 +586,30 @@ export function TelegramModule() {
   const [composing, setComposing] = useState(false);
   const [composingImage, setComposingImage] = useState(false);
   const [withImage, setWithImage] = useState(true);
+  const [composeProgress, setComposeProgress] =
+    useState<ComposeProgress>(COMPOSE_IDLE);
+  const [composeElapsed, setComposeElapsed] = useState(0);
   const [buttonRows, setButtonRows] = useState<TelegramButtonRow[]>([]);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (!composeProgress.startedAt || composeProgress.phase === "idle") {
+      setComposeElapsed(0);
+      return;
+    }
+    const tick = () => {
+      setComposeElapsed(
+        Math.max(
+          0,
+          Math.floor((Date.now() - (composeProgress.startedAt as number)) / 1000),
+        ),
+      );
+    };
+    tick();
+    const id = window.setInterval(tick, 500);
+    return () => window.clearInterval(id);
+  }, [composeProgress.startedAt, composeProgress.phase]);
 
   const load = useCallback(async () => {
     setError(null);
@@ -644,10 +768,21 @@ export function TelegramModule() {
       setError("Опишите тему или обновление");
       return;
     }
+    const wantImage = withImage;
+    const startedAt = Date.now();
     setComposing(true);
     setBusy(true);
     setError(null);
+    setComposeProgress({
+      phase: "text",
+      label: "Пишу текст поста…",
+      percent: wantImage ? 12 : 25,
+      startedAt,
+      withImage: wantImage,
+      includeTextStep: true,
+    });
     try {
+      // Step 1: text only — keeps each request under proxy timeout.
       const res = await fetch("/api/admin/telegram", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -655,10 +790,10 @@ export function TelegramModule() {
           action: "compose",
           topic,
           model: settings?.composeModel || undefined,
-          withImage,
+          withImage: false,
         }),
       });
-      const body = (await res.json()) as {
+      const body = await readTelegramApiJson<{
         composed?: {
           text: string;
           parseMode: TelegramParseMode;
@@ -666,26 +801,75 @@ export function TelegramModule() {
           imageError?: string | null;
         };
         error?: string;
-      };
+      }>(res);
       if (!res.ok) throw new Error(body.error ?? "Не удалось сгенерировать");
-      if (body.composed) {
-        setText(body.composed.text);
-        setParseMode(body.composed.parseMode || "HTML");
-        if (body.composed.photoUrl) {
-          setPhotoUrl(body.composed.photoUrl);
-          flash("Пост и картинка готовы — можно править и публиковать");
-        } else if (withImage && body.composed.imageError) {
-          setError(`Текст готов, картинка: ${body.composed.imageError}`);
-          flash("Текст сгенерирован — картинку можно сгенерировать отдельно");
-        } else {
-          flash("Текст сгенерирован — можно править и публиковать");
-        }
+      if (!body.composed) throw new Error("Пустой ответ compose");
+
+      setText(body.composed.text);
+      setParseMode(body.composed.parseMode || "HTML");
+
+      if (!wantImage) {
+        setComposeProgress({
+          phase: "done",
+          label: "Текст готов",
+          percent: 100,
+          startedAt,
+          withImage: false,
+          includeTextStep: true,
+        });
+        flash("Текст сгенерирован — можно править и публиковать");
+        return;
+      }
+
+      setComposeProgress({
+        phase: "image",
+        label: "Рисую обложку по тексту поста…",
+        percent: 55,
+        startedAt,
+        withImage: true,
+        includeTextStep: true,
+      });
+      setComposingImage(true);
+
+      const imgRes = await fetch("/api/admin/telegram", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "compose-image",
+          text: body.composed.text,
+          topic,
+          model: settings?.composeModel || undefined,
+        }),
+      });
+      const imgBody = await readTelegramApiJson<{
+        image?: { photoUrl: string };
+        error?: string;
+      }>(imgRes);
+      if (!imgRes.ok) {
+        throw new Error(imgBody.error ?? "Не удалось сгенерировать картинку");
+      }
+      if (imgBody.image?.photoUrl) {
+        setPhotoUrl(imgBody.image.photoUrl);
+        setComposeProgress({
+          phase: "done",
+          label: "Пост и картинка готовы",
+          percent: 100,
+          startedAt,
+          withImage: true,
+          includeTextStep: true,
+        });
+        flash("Пост и картинка готовы — можно править и публиковать");
+      } else {
+        throw new Error("Картинка не вернулась");
       }
     } catch (err) {
+      setComposeProgress(COMPOSE_IDLE);
       setError(err instanceof Error ? err.message : "Ошибка");
     } finally {
       setComposing(false);
+      setComposingImage(false);
       setBusy(false);
+      window.setTimeout(() => setComposeProgress(COMPOSE_IDLE), 2800);
     }
   };
 
@@ -698,9 +882,18 @@ export function TelegramModule() {
       setError("Сначала нужен текст поста");
       return;
     }
+    const startedAt = Date.now();
     setComposingImage(true);
     setBusy(true);
     setError(null);
+    setComposeProgress({
+      phase: "image",
+      label: "Рисую обложку по тексту поста…",
+      percent: 35,
+      startedAt,
+      withImage: true,
+      includeTextStep: false,
+    });
     try {
       const res = await fetch("/api/admin/telegram", {
         method: "PUT",
@@ -712,20 +905,30 @@ export function TelegramModule() {
           model: settings?.composeModel || undefined,
         }),
       });
-      const body = (await res.json()) as {
+      const body = await readTelegramApiJson<{
         image?: { photoUrl: string };
         error?: string;
-      };
+      }>(res);
       if (!res.ok) throw new Error(body.error ?? "Не удалось сгенерировать картинку");
       if (body.image?.photoUrl) {
         setPhotoUrl(body.image.photoUrl);
+        setComposeProgress({
+          phase: "done",
+          label: "Картинка готова",
+          percent: 100,
+          startedAt,
+          withImage: true,
+          includeTextStep: false,
+        });
         flash("Картинка сгенерирована");
       }
     } catch (err) {
+      setComposeProgress(COMPOSE_IDLE);
       setError(err instanceof Error ? err.message : "Ошибка");
     } finally {
       setComposingImage(false);
       setBusy(false);
+      window.setTimeout(() => setComposeProgress(COMPOSE_IDLE), 2800);
     }
   };
 
@@ -897,6 +1100,13 @@ export function TelegramModule() {
           }
         >
           <div className="space-y-4 p-5">
+            {editingId &&
+            (composing || composingImage || composeProgress.phase !== "idle") ? (
+              <ComposeStatusBar
+                progress={composeProgress}
+                elapsedSec={composeElapsed}
+              />
+            ) : null}
             {editingId ? (
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 <Pill className="bg-warn/20 text-warn">Редактирование</Pill>
@@ -928,6 +1138,10 @@ export function TelegramModule() {
                     disabled={!canWrite || composing}
                   />
                 </Field>
+                <ComposeStatusBar
+                  progress={composeProgress}
+                  elapsedSec={composeElapsed}
+                />
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs text-ink-muted">
                     Модель:{" "}
@@ -945,22 +1159,26 @@ export function TelegramModule() {
                         className="size-3.5 rounded border-line accent-[var(--accent)]"
                         checked={withImage}
                         onChange={(e) => setWithImage(e.target.checked)}
-                        disabled={!canWrite || composing}
+                        disabled={!canWrite || composing || composingImage}
                       />
                       С картинкой
                     </label>
                     <button
                       type="button"
                       disabled={
-                        busy || !canWrite || !topic.trim() || composing
+                        busy ||
+                        !canWrite ||
+                        !topic.trim() ||
+                        composing ||
+                        composingImage
                       }
                       onClick={() => void runCompose()}
                       className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-60"
                     >
                       {composing
-                        ? withImage
-                          ? "Генерирую пост и картинку…"
-                          : "Генерирую…"
+                        ? composeProgress.phase === "image"
+                          ? "Рисую картинку…"
+                          : "Пишу текст…"
                         : "Сгенерировать пост"}
                     </button>
                   </div>
@@ -1006,6 +1224,14 @@ export function TelegramModule() {
 
             {!editingId ? (
               <div className="space-y-3">
+                {composingImage &&
+                composeProgress.phase !== "idle" &&
+                !composeProgress.includeTextStep ? (
+                  <ComposeStatusBar
+                    progress={composeProgress}
+                    elapsedSec={composeElapsed}
+                  />
+                ) : null}
                 <Field
                   label="Картинка"
                   hint="ИИ генерирует обложку по тексту поста. Можно вставить свой URL."

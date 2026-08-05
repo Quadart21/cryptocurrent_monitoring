@@ -1,7 +1,6 @@
 import "server-only";
 
-import { chatCompletion, generateImage } from "@/lib/ai/codex-client";
-import { DEFAULT_TELEGRAM_IMAGE_PROMPT } from "@/lib/telegram/default-prompt";
+import { generateImage } from "@/lib/ai/codex-client";
 import { saveGeneratedTgImage } from "@/lib/telegram/tg-image";
 
 function stripTelegramMarkup(raw: string): string {
@@ -17,71 +16,51 @@ function stripTelegramMarkup(raw: string): string {
     .trim();
 }
 
-function applyPlaceholders(
-  template: string,
-  vars: Record<string, string>,
-): string {
-  return template.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key: string) => {
-    return vars[key] ?? "";
-  });
-}
-
-async function buildImagePrompt(input: {
+/** Fast local prompt — no extra chat round-trip (avoids proxy timeouts). */
+function buildImagePrompt(input: {
   postText: string;
   topic?: string;
   siteName: string;
-  textModel: string;
-}): Promise<string> {
-  const plain = stripTelegramMarkup(input.postText).slice(0, 2500);
+}): string {
+  const plain = stripTelegramMarkup(input.postText).slice(0, 900);
   if (!plain) throw new Error("Нет текста для картинки");
+  const topic = (input.topic ?? "").trim().slice(0, 240);
+  const site = input.siteName.trim() || "GapSnap";
 
-  const userPrompt = applyPlaceholders(DEFAULT_TELEGRAM_IMAGE_PROMPT, {
-    postText: plain,
-    topic: (input.topic ?? "").trim().slice(0, 800),
-    siteName: input.siteName.trim() || "GapSnap",
-  });
+  const focus = topic
+    ? `Topic: ${topic}. Post summary: ${plain}`
+    : `Post summary: ${plain}`;
 
-  const raw = await chatCompletion({
-    model: input.textModel,
-    messages: [
-      {
-        role: "system",
-        content:
-          "You write a single English image-generation prompt. Return only the prompt text, no quotes or markdown.",
-      },
-      { role: "user", content: userPrompt },
-    ],
-    temperature: 0.6,
-  });
-
-  const prompt = raw
-    .replace(/^```[\s\S]*?```$/g, (m) => m.replace(/```(?:\w+)?/g, "").trim())
-    .replace(/^["'«»]+|["'«»]+$/g, "")
-    .trim();
-  if (!prompt) throw new Error("Модель вернула пустой image-промпт");
-  return prompt.slice(0, 3500);
+  return [
+    `Square cover illustration for the ${site} Telegram channel (crypto exchanger monitoring).`,
+    focus,
+    "Style: modern flat tech illustration, clean composition, teal/cyan accents,",
+    "soft gradient background, subtle charts/coins/arrows only if they fit the topic.",
+    "No photorealism, no clutter, no text, letters, numbers, logos, watermarks, brands, or UI screenshots.",
+  ].join(" ");
 }
 
 export async function composeTelegramPostImage(input: {
   postText: string;
   topic?: string;
   siteName: string;
-  textModel: string;
+  /** @deprecated unused — prompt is built locally for speed */
+  textModel?: string;
   imageModel?: string;
 }): Promise<{ photoUrl: string; imagePrompt: string }> {
   const t0 = Date.now();
-  const imagePrompt = await buildImagePrompt({
+  const imagePrompt = buildImagePrompt({
     postText: input.postText,
     topic: input.topic,
     siteName: input.siteName,
-    textModel: input.textModel,
   });
 
   const image = await generateImage({
     model: input.imageModel,
     prompt: imagePrompt,
     size: "1024x1024",
-    quality: "medium",
+    // low is much faster on gpt-image-2 and fine for TG covers
+    quality: "low",
   });
 
   const saved = await saveGeneratedTgImage({

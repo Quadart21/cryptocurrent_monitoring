@@ -292,7 +292,7 @@ export async function getTelegramAdminSnapshot(): Promise<{
 export async function generateTelegramPostFromTopic(input: {
   topic: string;
   model?: string;
-  /** Generate cover image from the composed text (default true). */
+  /** Generate cover image from the composed text (default false — client runs image as a separate request). */
   withImage?: boolean;
 }): Promise<{
   text: string;
@@ -334,8 +334,8 @@ export async function generateTelegramPostFromTopic(input: {
     siteUrl,
   });
 
-  const withImage = input.withImage !== false;
-  if (!withImage) {
+  // Prefer client-side two-step compose (text → image) to stay under proxy timeouts.
+  if (!input.withImage) {
     return { ...composed, photoUrl: "", imageError: null };
   }
 
