@@ -97,7 +97,9 @@ async function codexFetch(
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     const useProxy = !preferDirect || attempt > 0;
-    const proxy = useProxy ? await resolveProxy(rotateNext) : null;
+    const proxy: ProxyEndpoint | null = useProxy
+      ? await resolveProxy(rotateNext)
+      : null;
     rotateNext = false;
 
     try {
