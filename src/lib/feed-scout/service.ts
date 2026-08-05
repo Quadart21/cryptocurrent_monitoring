@@ -405,7 +405,7 @@ async function assertWorkerHasQuota(
   if (remaining <= 0) {
     return {
       ok: false,
-      reason: `Лимит ссылок исчерпан (${accepted}/${linkQuota}). Дождитесь новой квоты от администратора.`,
+      reason: `Лимит ссылок исчерпан. Остаток квоты: <b>0</b> из ${linkQuota}. Дождитесь новой квоты от администратора (/quota).`,
     };
   }
   return { ok: true, remaining };
@@ -1151,29 +1151,40 @@ function escapeHtml(text: string): string {
     .replace(/>/g, "&gt;");
 }
 
+function formatQuotaLine(quota: {
+  linkQuota: number | null;
+  linksRemaining: number | null;
+}): string {
+  if (quota.linkQuota === null) {
+    return "Остаток квоты: <b>без лимита</b>";
+  }
+  const left = quota.linksRemaining ?? 0;
+  if (left <= 0) {
+    return `Остаток квоты: <b>0</b> из ${quota.linkQuota} (лимит исчерпан)`;
+  }
+  return `Остаток квоты: <b>${left}</b> из ${quota.linkQuota}`;
+}
+
 function helpText(
   settings: FeedScoutSettings,
   quota?: { linkQuota: number | null; linksRemaining: number | null },
 ): string {
-  const quotaLine =
-    quota?.linkQuota === null
-      ? "Квота: без лимита"
-      : quota
-        ? `Квота: осталось <b>${quota.linksRemaining ?? 0}</b> из ${quota.linkQuota} ссылок`
-        : "Квота выдаётся администратором";
   return [
     "<b>GapSnap Feed Scout</b>",
     "",
     "Пришлите одну или несколько ссылок на XML-фиды обменников.",
     `Ставка: <b>${settings.payoutAmount} ${settings.payoutCurrency}</b> за принятую ссылку.`,
-    quotaLine,
+    quota
+      ? formatQuotaLine(quota)
+      : "Квота выдаётся администратором",
     "",
     "Принимаем только валидные новые фиды (которых ещё нет в GapSnap).",
     "Выплата на ваш Telegram через @xRocket — откройте бота хотя бы раз.",
     "",
     "Команды:",
     "/start — это сообщение",
-    "/stats — ваша статистика",
+    "/quota — текущий остаток квоты",
+    "/stats — статистика",
     "/retry — повторить неудачные выплаты",
     "/help — справка",
   ].join("\n");
@@ -1249,19 +1260,36 @@ export async function handleFeedScoutUpdate(
     return;
   }
 
+  if (command === "/quota" || command === "/квота") {
+    const stats = await getWorkerStatsByTgUserId(String(message.from.id));
+    await scoutTgSendMessage(
+      token,
+      message.chat.id,
+      [
+        "<b>Ваша квота</b>",
+        formatQuotaLine({
+          linkQuota: stats.linkQuota,
+          linksRemaining: stats.linksRemaining,
+        }),
+        `Принято всего: <b>${stats.acceptedCount}</b>`,
+        `Ставка: ${settings.payoutAmount} ${settings.payoutCurrency} за ссылку`,
+      ].join("\n"),
+    );
+    return;
+  }
+
   if (command === "/stats") {
     const stats = await getWorkerStatsByTgUserId(String(message.from.id));
-    const quotaLine =
-      stats.linkQuota === null
-        ? "Квота: без лимита"
-        : `Квота: <b>${stats.linksRemaining ?? 0}</b> осталось из ${stats.linkQuota}`;
     await scoutTgSendMessage(
       token,
       message.chat.id,
       [
         "<b>Ваша статистика</b>",
+        formatQuotaLine({
+          linkQuota: stats.linkQuota,
+          linksRemaining: stats.linksRemaining,
+        }),
         `Принято ссылок: <b>${stats.acceptedCount}</b>`,
-        quotaLine,
         `Выплачено: <b>${stats.paidTotal} ${settings.payoutCurrency}</b>`,
         `Неудачных выплат: <b>${stats.failedPayouts}</b>`,
         stats.failedPayouts > 0
@@ -1359,6 +1387,21 @@ export async function handleFeedScoutUpdate(
     lines.push(
       "\nОткройте @xRocket (/start), затем пришлите /retry для повторной выплаты.",
     );
+  }
+
+  const afterStats = await getWorkerStatsByTgUserId(String(message.from.id));
+  lines.push(
+    "",
+    formatQuotaLine({
+      linkQuota: afterStats.linkQuota,
+      linksRemaining: afterStats.linksRemaining,
+    }),
+  );
+  if (
+    afterStats.linkQuota !== null &&
+    (afterStats.linksRemaining ?? 0) <= 0
+  ) {
+    lines.push("Новые ссылки пока не принимаются — дождитесь квоты от админа.");
   }
 
   await scoutTgSendMessage(token, message.chat.id, lines.join("\n"));
