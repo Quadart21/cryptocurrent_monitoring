@@ -103,7 +103,11 @@ export function ExchangersModule() {
           (e.inviteEmailTo || "").toLowerCase().includes(needle),
       );
     }
-    return list;
+    // Newest added first (createdAt DESC).
+    return [...list].sort(
+      (a, b) =>
+        b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id),
+    );
   }, [overview, filter, inviteFilter, q]);
 
   const invitePendingCount = useMemo(() => {

@@ -592,7 +592,10 @@ export async function listExchangers(options?: {
 }): Promise<FeedExchanger[]> {
   const db = getDb();
   const [exRows, blRows] = await Promise.all([
-    db.select().from(exchangers),
+    db
+      .select()
+      .from(exchangers)
+      .orderBy(desc(exchangers.createdAt), desc(exchangers.id)),
     db.select().from(blacklist),
   ]);
   const list = exRows.map(mapExchanger);
