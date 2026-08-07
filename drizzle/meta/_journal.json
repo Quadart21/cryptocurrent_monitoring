@@ -253,6 +253,13 @@
       "when": 1785590000000,
       "tag": "0035_telegram_compose_drafts",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1785600000000,
+      "tag": "0036_telegram_content_machine",
+      "breakpoints": true
     }
   ]
 }

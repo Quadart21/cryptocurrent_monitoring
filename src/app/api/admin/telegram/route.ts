@@ -17,6 +17,10 @@ import {
   testTelegramConnection,
   updateTelegramSettings,
 } from "@/lib/telegram/service";
+import {
+  discardTelegramContentJob,
+  runTelegramContentCycle,
+} from "@/lib/telegram/content/engine";
 import { DEFAULT_TELEGRAM_COMPOSE_PROMPT } from "@/lib/telegram/default-prompt";
 import type {
   TelegramButtonRow,
@@ -72,6 +76,13 @@ export async function PUT(request: Request) {
       composeModel?: string;
       composePrompt?: string;
       resetComposePrompt?: boolean;
+      contentEnabled?: boolean;
+      contentSpreadEnabled?: boolean;
+      contentNewsEnabled?: boolean;
+      contentMinSpreadPct?: number;
+      contentMinOffers?: number;
+      contentMaxSpreadPerRun?: number;
+      contentSpreadCooldownHours?: number;
     };
     text?: string;
     photoUrl?: string;
@@ -84,6 +95,7 @@ export async function PUT(request: Request) {
     topic?: string;
     model?: string;
     withImage?: boolean;
+    force?: boolean;
   };
 
   try {
@@ -124,6 +136,29 @@ export async function PUT(request: Request) {
     if (body.action === "discard-draft" && body.id) {
       const post = await discardTelegramDraft(body.id);
       return NextResponse.json({ post });
+    }
+
+    if (body.action === "content-run") {
+      const result = await runTelegramContentCycle({
+        force: body.force === true,
+      });
+      const snapshot = await getTelegramAdminSnapshot();
+      return NextResponse.json({
+        result,
+        contentJobs: snapshot.contentJobs,
+        posts: snapshot.posts,
+        settings: snapshot.settings,
+      });
+    }
+
+    if (body.action === "content-discard" && body.id) {
+      const job = await discardTelegramContentJob(body.id);
+      const snapshot = await getTelegramAdminSnapshot();
+      return NextResponse.json({
+        job,
+        contentJobs: snapshot.contentJobs,
+        posts: snapshot.posts,
+      });
     }
 
     if (body.action === "publish") {

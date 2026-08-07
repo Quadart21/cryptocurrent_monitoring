@@ -21,12 +21,14 @@ import type {
   TelegramSettingsPublic,
   TelegramUrlButton,
 } from "@/lib/telegram/types";
+import type { TelegramContentJob } from "@/lib/telegram/content/types";
 
-type TabId = "compose" | "history" | "settings";
+type TabId = "compose" | "history" | "queue" | "settings";
 
 type Snapshot = {
   settings: TelegramSettingsPublic;
   posts: TelegramPost[];
+  contentJobs: TelegramContentJob[];
   env: { hasBotToken: boolean; hasChannelId: boolean };
   defaultComposePrompt: string;
   composePlaceholders: string[];
@@ -40,6 +42,7 @@ type Snapshot = {
 const TABS: Array<{ id: TabId; label: string }> = [
   { id: "compose", label: "Написать" },
   { id: "history", label: "Журнал" },
+  { id: "queue", label: "Очередь" },
   { id: "settings", label: "Настройки" },
 ];
 
@@ -432,6 +435,19 @@ function statusLabel(status: TelegramPost["status"]): string {
   return "Удалён";
 }
 
+function contentJobStatusLabel(status: TelegramContentJob["status"]): string {
+  if (status === "queued") return "В очереди";
+  if (status === "drafted") return "Черновик";
+  if (status === "failed") return "Ошибка";
+  if (status === "skipped") return "Пропуск";
+  if (status === "discarded") return "Отменена";
+  return status;
+}
+
+function contentJobKindLabel(kind: TelegramContentJob["kind"]): string {
+  return kind === "news" ? "Новость" : "Спред";
+}
+
 function Pill({
   children,
   className,
@@ -790,6 +806,13 @@ export function TelegramModule() {
             silent: settings.silent,
             composeModel: settings.composeModel,
             composePrompt: settings.composePrompt,
+            contentEnabled: settings.contentEnabled,
+            contentSpreadEnabled: settings.contentSpreadEnabled,
+            contentNewsEnabled: settings.contentNewsEnabled,
+            contentMinSpreadPct: settings.contentMinSpreadPct,
+            contentMinOffers: settings.contentMinOffers,
+            contentMaxSpreadPerRun: settings.contentMaxSpreadPerRun,
+            contentSpreadCooldownHours: settings.contentSpreadCooldownHours,
           },
         }),
       });
@@ -809,6 +832,79 @@ export function TelegramModule() {
         setSilent(body.settings.silent);
       }
       flash("Настройки сохранены");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ошибка");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const runContentCycle = async (force = false) => {
+    if (!canWrite) {
+      setError("Недостаточно прав");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/telegram", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "content-run", force }),
+      });
+      const body = (await res.json()) as {
+        result?: { message?: string };
+        contentJobs?: TelegramContentJob[];
+        posts?: TelegramPost[];
+        settings?: TelegramSettingsPublic;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(body.error ?? "Ошибка запуска");
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              contentJobs: body.contentJobs ?? prev.contentJobs,
+              posts: body.posts ?? prev.posts,
+              settings: body.settings ?? prev.settings,
+            }
+          : prev,
+      );
+      if (body.settings) setSettings(body.settings);
+      flash(body.result?.message ?? "Цикл выполнен");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ошибка");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const discardContentJob = async (id: string) => {
+    if (!canWrite) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/telegram", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "content-discard", id }),
+      });
+      const body = (await res.json()) as {
+        contentJobs?: TelegramContentJob[];
+        posts?: TelegramPost[];
+        error?: string;
+      };
+      if (!res.ok) throw new Error(body.error ?? "Ошибка");
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              contentJobs: body.contentJobs ?? prev.contentJobs,
+              posts: body.posts ?? prev.posts,
+            }
+          : prev,
+      );
+      flash("Задача отменена");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ошибка");
     } finally {
@@ -1083,6 +1179,17 @@ export function TelegramModule() {
     setTopic(post.topic || "");
     setTab("compose");
     flash("Черновик открыт — правьте и публикуйте");
+  };
+
+  const openDraftFromJob = (job: TelegramContentJob) => {
+    if (!job.postId || !data) return;
+    const post = data.posts.find((p) => p.id === job.postId);
+    if (!post) {
+      setTab("history");
+      flash("Черновик не найден в журнале — обновите страницу");
+      return;
+    }
+    openDraft(post);
   };
 
   const discardDraft = async (id: string) => {
@@ -1642,6 +1749,113 @@ export function TelegramModule() {
         </AdminSection>
       )}
 
+      {tab === "queue" && (
+        <AdminSection
+          title="Контент-машина"
+          description={
+            settings.contentEnabled
+              ? `Включена · ${settings.contentLastRunResult || "ещё не запускалась"}${
+                  settings.contentLastRunAt
+                    ? ` · ${formatWhen(settings.contentLastRunAt)}`
+                    : ""
+                }`
+              : "Выключена — включите в настройках или запустите принудительно"
+          }
+        >
+          <div className="space-y-4 p-5">
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={!canWrite || busy}
+                onClick={() => void runContentCycle(false)}
+                className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-deep disabled:opacity-60"
+              >
+                Запустить цикл
+              </button>
+              <button
+                type="button"
+                disabled={!canWrite || busy}
+                onClick={() => void runContentCycle(true)}
+                className="rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink transition hover:border-accent/40 disabled:opacity-60"
+              >
+                Принудительно (даже если выкл.)
+              </button>
+            </div>
+            <p className="text-xs text-ink-muted">
+              Детекторы: разброс курсов (≥{settings.contentMinSpreadPct}% · ≥
+              {settings.contentMinOffers} офферов) и зеркало новостей блога.
+              Черновики появляются в журнале с автором content-bot — публикуйте
+              вручную.
+            </p>
+            {(data.contentJobs ?? []).length === 0 ? (
+              <p className="py-6 text-center text-sm text-ink-muted">
+                Очередь пуста — запустите цикл или дождитесь поллера (каждые
+                ~15 мин на worker)
+              </p>
+            ) : (
+              <div className="divide-y divide-line/70 rounded-xl border border-line">
+                {(data.contentJobs ?? []).map((job) => (
+                  <div
+                    key={job.id}
+                    className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Pill className="bg-bg-soft text-ink">
+                          {contentJobKindLabel(job.kind)}
+                        </Pill>
+                        <Pill
+                          className={
+                            job.status === "drafted"
+                              ? "bg-accent/15 text-accent-deep"
+                              : job.status === "failed"
+                                ? "bg-danger/10 text-danger"
+                                : job.status === "discarded"
+                                  ? "bg-bg-soft text-ink-muted"
+                                  : "bg-warn/15 text-warn"
+                          }
+                        >
+                          {contentJobStatusLabel(job.status)}
+                        </Pill>
+                        <span className="text-xs text-ink-muted">
+                          {formatWhen(job.updatedAt || job.createdAt)}
+                        </span>
+                      </div>
+                      <p className="truncate text-sm text-ink">{job.title}</p>
+                      {job.error ? (
+                        <p className="text-xs text-danger">{job.error}</p>
+                      ) : null}
+                    </div>
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      {job.postId && job.status === "drafted" ? (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => openDraftFromJob(job)}
+                          className="rounded-lg border border-accent/40 px-3 py-1.5 text-xs font-medium text-accent-deep transition hover:bg-accent/5 disabled:opacity-60"
+                        >
+                          Открыть черновик
+                        </button>
+                      ) : null}
+                      {job.status !== "discarded" ? (
+                        <button
+                          type="button"
+                          disabled={!canWrite || busy}
+                          onClick={() => void discardContentJob(job.id)}
+                          className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink-muted transition hover:border-danger/40 hover:text-danger disabled:opacity-60"
+                        >
+                          Отменить
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </AdminSection>
+      )}
+
       {tab === "settings" && (
         <form onSubmit={(e) => void saveSettings(e)} className="space-y-4">
           <AdminSection
@@ -1720,6 +1934,114 @@ export function TelegramModule() {
                   onChange={(v) => setSettings({ ...settings, silent: v })}
                 />
               </div>
+            </div>
+          </AdminSection>
+
+          <AdminSection
+            title="Контент-машина"
+            description="Авточерновики из спредов курсов и новостей блога. Публикация только вручную."
+          >
+            <div className="space-y-4 p-5">
+              <Toggle
+                label="Включить автоочередь"
+                hint="Worker запускает цикл примерно раз в 15 минут"
+                checked={settings.contentEnabled}
+                onChange={(v) =>
+                  setSettings({ ...settings, contentEnabled: v })
+                }
+              />
+              <Toggle
+                label="Детектор спредов"
+                checked={settings.contentSpreadEnabled}
+                onChange={(v) =>
+                  setSettings({ ...settings, contentSpreadEnabled: v })
+                }
+              />
+              <Toggle
+                label="Зеркало новостей"
+                checked={settings.contentNewsEnabled}
+                onChange={(v) =>
+                  setSettings({ ...settings, contentNewsEnabled: v })
+                }
+              />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Мин. разброс, %">
+                  <input
+                    className={inputClass}
+                    type="number"
+                    min={0.1}
+                    max={50}
+                    step={0.1}
+                    value={settings.contentMinSpreadPct}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        contentMinSpreadPct: Number(e.target.value) || 1.5,
+                      })
+                    }
+                    disabled={!canWrite}
+                  />
+                </Field>
+                <Field label="Мин. офферов по паре">
+                  <input
+                    className={inputClass}
+                    type="number"
+                    min={2}
+                    max={50}
+                    step={1}
+                    value={settings.contentMinOffers}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        contentMinOffers: Number(e.target.value) || 3,
+                      })
+                    }
+                    disabled={!canWrite}
+                  />
+                </Field>
+                <Field label="Макс. спредов за цикл">
+                  <input
+                    className={inputClass}
+                    type="number"
+                    min={1}
+                    max={20}
+                    step={1}
+                    value={settings.contentMaxSpreadPerRun}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        contentMaxSpreadPerRun: Number(e.target.value) || 3,
+                      })
+                    }
+                    disabled={!canWrite}
+                  />
+                </Field>
+                <Field label="Кулдаун пары, часов">
+                  <input
+                    className={inputClass}
+                    type="number"
+                    min={1}
+                    max={168}
+                    step={1}
+                    value={settings.contentSpreadCooldownHours}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        contentSpreadCooldownHours: Number(e.target.value) || 6,
+                      })
+                    }
+                    disabled={!canWrite}
+                  />
+                </Field>
+              </div>
+              {settings.contentLastRunAt ? (
+                <p className="text-xs text-ink-muted">
+                  Последний цикл: {formatWhen(settings.contentLastRunAt)}
+                  {settings.contentLastRunResult
+                    ? ` — ${settings.contentLastRunResult}`
+                    : ""}
+                </p>
+              ) : null}
             </div>
           </AdminSection>
 

@@ -741,6 +741,22 @@ export const telegramSettings = pgTable("telegram_settings", {
   lastPostAt: text("last_post_at"),
   composeModel: text("compose_model").notNull().default(""),
   composePrompt: text("compose_prompt").notNull().default(""),
+  /** Auto content machine (spread alerts + news mirror → drafts). */
+  contentEnabled: boolean("content_enabled").notNull().default(false),
+  contentSpreadEnabled: boolean("content_spread_enabled").notNull().default(true),
+  contentNewsEnabled: boolean("content_news_enabled").notNull().default(true),
+  contentMinSpreadPct: doublePrecision("content_min_spread_pct")
+    .notNull()
+    .default(1.5),
+  contentMinOffers: integer("content_min_offers").notNull().default(3),
+  contentMaxSpreadPerRun: integer("content_max_spread_per_run")
+    .notNull()
+    .default(3),
+  contentSpreadCooldownHours: integer("content_spread_cooldown_hours")
+    .notNull()
+    .default(6),
+  contentLastRunAt: text("content_last_run_at"),
+  contentLastRunResult: text("content_last_run_result").notNull().default(""),
   updatedAt: text("updated_at").notNull().default(""),
 });
 
@@ -774,6 +790,28 @@ export const telegramPosts = pgTable(
   (t) => [
     index("telegram_posts_created_at_idx").on(t.createdAt),
     index("telegram_posts_status_idx").on(t.status),
+  ],
+);
+
+/** Auto content pipeline jobs (detectors → draft posts). */
+export const telegramContentJobs = pgTable(
+  "telegram_content_jobs",
+  {
+    id: text("id").primaryKey(),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+    kind: text("kind").notNull(),
+    dedupeKey: text("dedupe_key").notNull(),
+    status: text("status").notNull().default("queued"),
+    title: text("title").notNull().default(""),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+    postId: text("post_id"),
+    error: text("error"),
+  },
+  (t) => [
+    uniqueIndex("telegram_content_jobs_dedupe_uidx").on(t.dedupeKey),
+    index("telegram_content_jobs_status_idx").on(t.status),
+    index("telegram_content_jobs_created_at_idx").on(t.createdAt),
   ],
 );
 

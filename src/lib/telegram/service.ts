@@ -56,23 +56,40 @@ function mapSettings(
     lastPostAt: row?.lastPostAt ?? null,
     composeModel: row?.composeModel ?? "",
     composePrompt: row?.composePrompt ?? "",
+    contentEnabled: Boolean(row?.contentEnabled),
+    contentSpreadEnabled: row?.contentSpreadEnabled !== false,
+    contentNewsEnabled: row?.contentNewsEnabled !== false,
+    contentMinSpreadPct:
+      typeof row?.contentMinSpreadPct === "number" &&
+      Number.isFinite(row.contentMinSpreadPct)
+        ? row.contentMinSpreadPct
+        : 1.5,
+    contentMinOffers:
+      typeof row?.contentMinOffers === "number" && row.contentMinOffers >= 2
+        ? Math.floor(row.contentMinOffers)
+        : 3,
+    contentMaxSpreadPerRun:
+      typeof row?.contentMaxSpreadPerRun === "number" &&
+      row.contentMaxSpreadPerRun >= 1
+        ? Math.floor(row.contentMaxSpreadPerRun)
+        : 3,
+    contentSpreadCooldownHours:
+      typeof row?.contentSpreadCooldownHours === "number" &&
+      row.contentSpreadCooldownHours >= 1
+        ? Math.floor(row.contentSpreadCooldownHours)
+        : 6,
+    contentLastRunAt: row?.contentLastRunAt ?? null,
+    contentLastRunResult: row?.contentLastRunResult ?? "",
     updatedAt: row?.updatedAt ?? "",
   };
 }
 
 function toPublic(settings: TelegramSettings): TelegramSettingsPublic {
   const token = settings.botToken.trim();
+  const { botToken: _omit, ...rest } = settings;
+  void _omit;
   return {
-    channelId: settings.channelId,
-    parseMode: settings.parseMode,
-    disablePreview: settings.disablePreview,
-    silent: settings.silent,
-    botUsername: settings.botUsername,
-    channelTitle: settings.channelTitle,
-    lastPostAt: settings.lastPostAt,
-    composeModel: settings.composeModel,
-    composePrompt: settings.composePrompt,
-    updatedAt: settings.updatedAt,
+    ...rest,
     hasBotToken: Boolean(token),
     botTokenHint: maskBotToken(token),
   };
@@ -166,6 +183,13 @@ export async function updateTelegramSettings(patch: {
   lastPostAt?: string | null;
   composeModel?: string;
   composePrompt?: string;
+  contentEnabled?: boolean;
+  contentSpreadEnabled?: boolean;
+  contentNewsEnabled?: boolean;
+  contentMinSpreadPct?: number;
+  contentMinOffers?: number;
+  contentMaxSpreadPerRun?: number;
+  contentSpreadCooldownHours?: number;
 }): Promise<TelegramSettingsPublic> {
   await ensureSettingsRow();
   const current = await getTelegramSettings();
@@ -175,6 +199,13 @@ export async function updateTelegramSettings(patch: {
     typeof patch.botToken === "string" && patch.botToken.trim()
       ? patch.botToken.trim()
       : current.botToken;
+
+  const clampPct = (n: number) =>
+    Math.min(50, Math.max(0.1, Number.isFinite(n) ? n : current.contentMinSpreadPct));
+  const clampInt = (n: number, min: number, max: number, fallback: number) => {
+    if (!Number.isFinite(n)) return fallback;
+    return Math.min(max, Math.max(min, Math.floor(n)));
+  };
 
   const next = {
     botToken: nextToken,
@@ -209,6 +240,46 @@ export async function updateTelegramSettings(patch: {
       typeof patch.composePrompt === "string"
         ? patch.composePrompt
         : current.composePrompt,
+    contentEnabled:
+      typeof patch.contentEnabled === "boolean"
+        ? patch.contentEnabled
+        : current.contentEnabled,
+    contentSpreadEnabled:
+      typeof patch.contentSpreadEnabled === "boolean"
+        ? patch.contentSpreadEnabled
+        : current.contentSpreadEnabled,
+    contentNewsEnabled:
+      typeof patch.contentNewsEnabled === "boolean"
+        ? patch.contentNewsEnabled
+        : current.contentNewsEnabled,
+    contentMinSpreadPct:
+      typeof patch.contentMinSpreadPct === "number"
+        ? clampPct(patch.contentMinSpreadPct)
+        : current.contentMinSpreadPct,
+    contentMinOffers:
+      typeof patch.contentMinOffers === "number"
+        ? clampInt(patch.contentMinOffers, 2, 50, current.contentMinOffers)
+        : current.contentMinOffers,
+    contentMaxSpreadPerRun:
+      typeof patch.contentMaxSpreadPerRun === "number"
+        ? clampInt(
+            patch.contentMaxSpreadPerRun,
+            1,
+            20,
+            current.contentMaxSpreadPerRun,
+          )
+        : current.contentMaxSpreadPerRun,
+    contentSpreadCooldownHours:
+      typeof patch.contentSpreadCooldownHours === "number"
+        ? clampInt(
+            patch.contentSpreadCooldownHours,
+            1,
+            168,
+            current.contentSpreadCooldownHours,
+          )
+        : current.contentSpreadCooldownHours,
+    contentLastRunAt: current.contentLastRunAt,
+    contentLastRunResult: current.contentLastRunResult,
     updatedAt: now,
   };
 
@@ -243,6 +314,7 @@ export async function listTelegramPosts(limit = 50): Promise<TelegramPost[]> {
 export async function getTelegramAdminSnapshot(): Promise<{
   settings: TelegramSettingsPublic;
   posts: TelegramPost[];
+  contentJobs: import("@/lib/telegram/content/types").TelegramContentJob[];
   env: { hasBotToken: boolean; hasChannelId: boolean };
   defaultComposePrompt: string;
   composePlaceholders: string[];
@@ -259,10 +331,14 @@ export async function getTelegramAdminSnapshot(): Promise<{
   const { codexConfigured, listCodexModels } = await import(
     "@/lib/ai/codex-client"
   );
+  const { listTelegramContentJobs } = await import(
+    "@/lib/telegram/content/engine"
+  );
 
-  const [settings, posts, news, seo] = await Promise.all([
+  const [settings, posts, contentJobs, news, seo] = await Promise.all([
     getTelegramSettingsPublic(),
     listTelegramPosts(50),
+    listTelegramContentJobs(40).catch(() => []),
     getNewsSettings().catch(() => null),
     getSeoSettings().catch(() => null),
   ]);
@@ -289,6 +365,7 @@ export async function getTelegramAdminSnapshot(): Promise<{
   return {
     settings: publicSettings,
     posts,
+    contentJobs,
     env: {
       hasBotToken: Boolean(process.env.TELEGRAM_BOT_TOKEN?.trim()),
       hasChannelId: Boolean(process.env.TELEGRAM_CHANNEL_ID?.trim()),

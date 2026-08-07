@@ -264,7 +264,7 @@ async function runNewsSyncJob(input: {
       setProgress(`Скачиваю обложку: ${item.title.slice(0, 50)}…`);
       const coverImageUrl = await resolveCoverUrl(item);
       setProgress(`Сохранение в БД: ${rewritten.title.slice(0, 60)}…`);
-      await createBlogPost({
+      const createdPost = await createBlogPost({
         title: rewritten.title,
         slug: rewritten.slug || undefined,
         excerpt: rewritten.excerpt,
@@ -280,6 +280,20 @@ async function runNewsSyncJob(input: {
         sourceUrl: item.link,
       });
       created += 1;
+      try {
+        const { enqueueTelegramNewsFromBlog } = await import(
+          "@/lib/telegram/content/engine"
+        );
+        await enqueueTelegramNewsFromBlog({
+          id: createdPost.id,
+          slug: createdPost.slug,
+          title: createdPost.title,
+          excerpt: createdPost.excerpt,
+          coverImageUrl: createdPost.coverImageUrl,
+        });
+      } catch (tgErr) {
+        console.warn("[gapsnap] telegram news enqueue skipped", tgErr);
+      }
     } catch (err) {
       failed += 1;
       const msg = err instanceof Error ? err.message : String(err);

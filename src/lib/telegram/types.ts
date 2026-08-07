@@ -20,6 +20,15 @@ export type TelegramSettings = {
   lastPostAt: string | null;
   composeModel: string;
   composePrompt: string;
+  contentEnabled: boolean;
+  contentSpreadEnabled: boolean;
+  contentNewsEnabled: boolean;
+  contentMinSpreadPct: number;
+  contentMinOffers: number;
+  contentMaxSpreadPerRun: number;
+  contentSpreadCooldownHours: number;
+  contentLastRunAt: string | null;
+  contentLastRunResult: string;
   updatedAt: string;
 };
 

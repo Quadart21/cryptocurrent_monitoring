@@ -42,4 +42,8 @@ export async function register() {
   startNewsPoller();
   const { startAchievementPoller } = await import("@/lib/achievements-auto");
   startAchievementPoller();
+  const { startTelegramContentPoller } = await import(
+    "@/lib/telegram/content/poller"
+  );
+  startTelegramContentPoller();
 }
