@@ -3,6 +3,10 @@ import "server-only";
 import { ensureCatalogsHydrated } from "@/lib/bestchange/catalog-store";
 import { pairPath } from "@/lib/bestchange/pair-slug";
 import { getActiveRates } from "@/lib/store";
+import {
+  parsePairFilter,
+  pairAllowed,
+} from "@/lib/telegram/content/pair-filter";
 import type { SpreadPayload } from "@/lib/telegram/content/types";
 
 export type SpreadCandidate = SpreadPayload & {
@@ -17,7 +21,7 @@ function cooldownBucket(cooldownHours: number): string {
 }
 
 /**
- * Find online pairs with a large best/worst rate spread.
+ * Find pairs with a large best/worst rate spread.
  * Uses one rates scan (no per-pair queryRates).
  */
 export async function findSpreadCandidates(input: {
@@ -25,20 +29,29 @@ export async function findSpreadCandidates(input: {
   minOffers: number;
   maxResults: number;
   cooldownHours: number;
+  includeCash?: boolean;
+  allowlist?: string;
+  blocklist?: string;
 }): Promise<SpreadCandidate[]> {
   await ensureCatalogsHydrated();
   const rates = await getActiveRates();
+  const allow = parsePairFilter(input.allowlist ?? "");
+  const block = parsePairFilter(input.blocklist ?? "");
+  const includeCash = Boolean(input.includeCash);
   const groups = new Map<
     string,
     { from: string; to: string; values: number[] }
   >();
 
   for (const r of rates) {
-    if (r.city && r.city.trim()) continue;
+    if (!includeCash && r.city && r.city.trim()) continue;
     const from = r.from.trim().toUpperCase();
     const to = r.to.trim().toUpperCase();
     if (!from || !to) continue;
-    if (from.startsWith("CASH") || to.startsWith("CASH")) continue;
+    if (!includeCash && (from.startsWith("CASH") || to.startsWith("CASH"))) {
+      continue;
+    }
+    if (!pairAllowed(from, to, allow, block)) continue;
     if (!Number.isFinite(r.rate) || r.rate <= 0) continue;
     const key = `${from}:${to}`;
     const cur = groups.get(key);

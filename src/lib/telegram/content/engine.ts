@@ -113,6 +113,17 @@ async function getContentFlags(): Promise<{
   minIntervalMinutes: number;
   quietStartHour: number;
   quietEndHour: number;
+  intervalMinutes: number;
+  maxNewsPerRun: number;
+  newsLookbackHours: number;
+  includeCash: boolean;
+  pairAllowlist: string;
+  pairBlocklist: string;
+  footer: string;
+  spreadButtonText: string;
+  newsButtonText: string;
+  utmCampaign: string;
+  withNewsImage: boolean;
   channelId: string;
   disablePreview: boolean;
   silent: boolean;
@@ -147,9 +158,37 @@ async function getContentFlags(): Promise<{
       typeof row?.contentQuietEndHour === "number"
         ? Math.min(23, Math.max(0, Math.floor(row.contentQuietEndHour)))
         : 8,
+    intervalMinutes:
+      typeof row?.contentIntervalMinutes === "number" &&
+      row.contentIntervalMinutes >= 5
+        ? Math.min(180, Math.floor(row.contentIntervalMinutes))
+        : 15,
+    maxNewsPerRun:
+      typeof row?.contentMaxNewsPerRun === "number" &&
+      row.contentMaxNewsPerRun >= 1
+        ? Math.min(20, Math.floor(row.contentMaxNewsPerRun))
+        : 5,
+    newsLookbackHours:
+      typeof row?.contentNewsLookbackHours === "number" &&
+      row.contentNewsLookbackHours >= 1
+        ? Math.min(336, Math.floor(row.contentNewsLookbackHours))
+        : 48,
+    includeCash: Boolean(row?.contentIncludeCash),
+    pairAllowlist: row?.contentPairAllowlist ?? "",
+    pairBlocklist: row?.contentPairBlocklist ?? "",
+    footer: row?.contentFooter ?? "",
+    spreadButtonText:
+      (row?.contentSpreadButtonText ?? "").trim() || "Смотреть курсы",
+    newsButtonText:
+      (row?.contentNewsButtonText ?? "").trim() || "Читать статью",
+    utmCampaign: (row?.contentUtmCampaign ?? "").trim() || "content",
+    withNewsImage: row?.contentWithNewsImage !== false,
     channelId: row?.channelId ?? "",
-    disablePreview: Boolean(row?.disablePreview),
-    silent: Boolean(row?.silent),
+    disablePreview:
+      row?.contentDisablePreview !== undefined
+        ? Boolean(row.contentDisablePreview)
+        : true,
+    silent: Boolean(row?.contentPostSilent),
     lastPostAt: row?.lastPostAt ?? null,
   };
 }
@@ -290,6 +329,11 @@ async function draftFromJob(
     channelId: string;
     disablePreview: boolean;
     silent: boolean;
+    footer: string;
+    spreadButtonText: string;
+    newsButtonText: string;
+    utmCampaign: string;
+    withNewsImage: boolean;
   },
 ): Promise<{ postId: string }> {
   const db = getDb();
@@ -301,12 +345,21 @@ async function draftFromJob(
   let photoUrl = "";
   let buttons: Array<Array<{ text: string; url: string }>> = [];
 
+  const templateOpts = {
+    siteName: opts.siteName,
+    siteUrl: opts.siteUrl,
+    footer: opts.footer,
+    spreadButtonText: opts.spreadButtonText,
+    newsButtonText: opts.newsButtonText,
+    utmCampaign: opts.utmCampaign,
+    withNewsImage: opts.withNewsImage,
+  };
+
   if (job.kind === "spread") {
     const payload = job.payload as unknown as SpreadPayload;
     const built = buildSpreadDraft({
       payload,
-      siteName: opts.siteName,
-      siteUrl: opts.siteUrl,
+      ...templateOpts,
     });
     text = built.text;
     topic = built.topic;
@@ -315,8 +368,7 @@ async function draftFromJob(
     const payload = job.payload as unknown as NewsPayload;
     const built = buildNewsDraft({
       payload,
-      siteName: opts.siteName,
-      siteUrl: opts.siteUrl,
+      ...templateOpts,
     });
     text = built.text;
     topic = built.topic;
@@ -370,6 +422,9 @@ async function enqueueDetectors(flags: Awaited<ReturnType<typeof getContentFlags
       minOffers: flags.minOffers,
       maxResults: Math.max(flags.maxSpreadPerRun * 3, 12),
       cooldownHours: flags.cooldownHours,
+      includeCash: flags.includeCash,
+      allowlist: flags.pairAllowlist,
+      blocklist: flags.pairBlocklist,
     });
     const known = await existingDedupeKeys(candidates.map((c) => c.dedupeKey));
     for (const c of candidates) {
@@ -398,7 +453,10 @@ async function enqueueDetectors(flags: Awaited<ReturnType<typeof getContentFlags
   }
 
   if (flags.newsEnabled) {
-    const candidates = await findNewsCandidates({ limit: 10 });
+    const candidates = await findNewsCandidates({
+      limit: flags.maxNewsPerRun,
+      lookbackMs: flags.newsLookbackHours * 3_600_000,
+    });
     const known = await existingDedupeKeys(candidates.map((c) => c.dedupeKey));
     for (const c of candidates) {
       if (known.has(c.dedupeKey)) continue;
@@ -464,6 +522,11 @@ async function processQueued(flags: Awaited<ReturnType<typeof getContentFlags>>)
         channelId: flags.channelId,
         disablePreview: flags.disablePreview,
         silent: flags.silent,
+        footer: flags.footer,
+        spreadButtonText: flags.spreadButtonText,
+        newsButtonText: flags.newsButtonText,
+        utmCampaign: flags.utmCampaign,
+        withNewsImage: flags.withNewsImage,
       });
       drafted += 1;
 

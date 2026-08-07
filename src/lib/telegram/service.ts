@@ -97,6 +97,33 @@ function mapSettings(
       typeof row?.contentQuietEndHour === "number"
         ? Math.min(23, Math.max(0, Math.floor(row.contentQuietEndHour)))
         : 8,
+    contentIntervalMinutes:
+      typeof row?.contentIntervalMinutes === "number" &&
+      row.contentIntervalMinutes >= 5
+        ? Math.min(180, Math.floor(row.contentIntervalMinutes))
+        : 15,
+    contentMaxNewsPerRun:
+      typeof row?.contentMaxNewsPerRun === "number" &&
+      row.contentMaxNewsPerRun >= 1
+        ? Math.min(20, Math.floor(row.contentMaxNewsPerRun))
+        : 5,
+    contentNewsLookbackHours:
+      typeof row?.contentNewsLookbackHours === "number" &&
+      row.contentNewsLookbackHours >= 1
+        ? Math.min(336, Math.floor(row.contentNewsLookbackHours))
+        : 48,
+    contentIncludeCash: Boolean(row?.contentIncludeCash),
+    contentPairAllowlist: row?.contentPairAllowlist ?? "",
+    contentPairBlocklist: row?.contentPairBlocklist ?? "",
+    contentFooter: row?.contentFooter ?? "",
+    contentSpreadButtonText:
+      (row?.contentSpreadButtonText ?? "").trim() || "Смотреть курсы",
+    contentNewsButtonText:
+      (row?.contentNewsButtonText ?? "").trim() || "Читать статью",
+    contentUtmCampaign: (row?.contentUtmCampaign ?? "").trim() || "content",
+    contentWithNewsImage: row?.contentWithNewsImage !== false,
+    contentPostSilent: Boolean(row?.contentPostSilent),
+    contentDisablePreview: row?.contentDisablePreview !== false,
     contentLastRunAt: row?.contentLastRunAt ?? null,
     contentLastRunResult: row?.contentLastRunResult ?? "",
     updatedAt: row?.updatedAt ?? "",
@@ -214,6 +241,19 @@ export async function updateTelegramSettings(patch: {
   contentMinIntervalMinutes?: number;
   contentQuietStartHour?: number;
   contentQuietEndHour?: number;
+  contentIntervalMinutes?: number;
+  contentMaxNewsPerRun?: number;
+  contentNewsLookbackHours?: number;
+  contentIncludeCash?: boolean;
+  contentPairAllowlist?: string;
+  contentPairBlocklist?: string;
+  contentFooter?: string;
+  contentSpreadButtonText?: string;
+  contentNewsButtonText?: string;
+  contentUtmCampaign?: string;
+  contentWithNewsImage?: boolean;
+  contentPostSilent?: boolean;
+  contentDisablePreview?: boolean;
 }): Promise<TelegramSettingsPublic> {
   await ensureSettingsRow();
   const current = await getTelegramSettings();
@@ -229,6 +269,10 @@ export async function updateTelegramSettings(patch: {
   const clampInt = (n: number, min: number, max: number, fallback: number) => {
     if (!Number.isFinite(n)) return fallback;
     return Math.min(max, Math.max(min, Math.floor(n)));
+  };
+  const clampStr = (v: unknown, max: number, fallback: string) => {
+    if (typeof v !== "string") return fallback;
+    return v.slice(0, max);
   };
 
   const next = {
@@ -332,6 +376,74 @@ export async function updateTelegramSettings(patch: {
       typeof patch.contentQuietEndHour === "number"
         ? clampInt(patch.contentQuietEndHour, 0, 23, current.contentQuietEndHour)
         : current.contentQuietEndHour,
+    contentIntervalMinutes:
+      typeof patch.contentIntervalMinutes === "number"
+        ? clampInt(
+            patch.contentIntervalMinutes,
+            5,
+            180,
+            current.contentIntervalMinutes,
+          )
+        : current.contentIntervalMinutes,
+    contentMaxNewsPerRun:
+      typeof patch.contentMaxNewsPerRun === "number"
+        ? clampInt(
+            patch.contentMaxNewsPerRun,
+            1,
+            20,
+            current.contentMaxNewsPerRun,
+          )
+        : current.contentMaxNewsPerRun,
+    contentNewsLookbackHours:
+      typeof patch.contentNewsLookbackHours === "number"
+        ? clampInt(
+            patch.contentNewsLookbackHours,
+            1,
+            336,
+            current.contentNewsLookbackHours,
+          )
+        : current.contentNewsLookbackHours,
+    contentIncludeCash:
+      typeof patch.contentIncludeCash === "boolean"
+        ? patch.contentIncludeCash
+        : current.contentIncludeCash,
+    contentPairAllowlist: clampStr(
+      patch.contentPairAllowlist,
+      4000,
+      current.contentPairAllowlist,
+    ),
+    contentPairBlocklist: clampStr(
+      patch.contentPairBlocklist,
+      4000,
+      current.contentPairBlocklist,
+    ),
+    contentFooter: clampStr(patch.contentFooter, 2000, current.contentFooter),
+    contentSpreadButtonText:
+      typeof patch.contentSpreadButtonText === "string"
+        ? patch.contentSpreadButtonText.trim().slice(0, 64) ||
+          current.contentSpreadButtonText
+        : current.contentSpreadButtonText,
+    contentNewsButtonText:
+      typeof patch.contentNewsButtonText === "string"
+        ? patch.contentNewsButtonText.trim().slice(0, 64) ||
+          current.contentNewsButtonText
+        : current.contentNewsButtonText,
+    contentUtmCampaign:
+      typeof patch.contentUtmCampaign === "string"
+        ? patch.contentUtmCampaign.trim().slice(0, 64) || "content"
+        : current.contentUtmCampaign,
+    contentWithNewsImage:
+      typeof patch.contentWithNewsImage === "boolean"
+        ? patch.contentWithNewsImage
+        : current.contentWithNewsImage,
+    contentPostSilent:
+      typeof patch.contentPostSilent === "boolean"
+        ? patch.contentPostSilent
+        : current.contentPostSilent,
+    contentDisablePreview:
+      typeof patch.contentDisablePreview === "boolean"
+        ? patch.contentDisablePreview
+        : current.contentDisablePreview,
     contentLastRunAt: current.contentLastRunAt,
     contentLastRunResult: current.contentLastRunResult,
     updatedAt: now,

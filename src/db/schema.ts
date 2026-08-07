@@ -766,6 +766,28 @@ export const telegramSettings = pgTable("telegram_settings", {
   /** Quiet hours in Europe/Moscow (start inclusive, end exclusive). Equal = off. */
   contentQuietStartHour: integer("content_quiet_start_hour").notNull().default(1),
   contentQuietEndHour: integer("content_quiet_end_hour").notNull().default(8),
+  /** Poller interval (minutes). Env TELEGRAM_CONTENT_INTERVAL_MS overrides if set. */
+  contentIntervalMinutes: integer("content_interval_minutes").notNull().default(15),
+  contentMaxNewsPerRun: integer("content_max_news_per_run").notNull().default(5),
+  contentNewsLookbackHours: integer("content_news_lookback_hours")
+    .notNull()
+    .default(48),
+  contentIncludeCash: boolean("content_include_cash").notNull().default(false),
+  /** Comma-separated codes (BTC) or pairs (BTC-SBPRUB / BTC:SBPRUB). Empty = all. */
+  contentPairAllowlist: text("content_pair_allowlist").notNull().default(""),
+  contentPairBlocklist: text("content_pair_blocklist").notNull().default(""),
+  /** Optional footer appended to every auto post (plain / Telegram HTML). */
+  contentFooter: text("content_footer").notNull().default(""),
+  contentSpreadButtonText: text("content_spread_button_text")
+    .notNull()
+    .default("Смотреть курсы"),
+  contentNewsButtonText: text("content_news_button_text")
+    .notNull()
+    .default("Читать статью"),
+  contentUtmCampaign: text("content_utm_campaign").notNull().default("content"),
+  contentWithNewsImage: boolean("content_with_news_image").notNull().default(true),
+  contentPostSilent: boolean("content_post_silent").notNull().default(false),
+  contentDisablePreview: boolean("content_disable_preview").notNull().default(true),
   contentLastRunAt: text("content_last_run_at"),
   contentLastRunResult: text("content_last_run_result").notNull().default(""),
   updatedAt: text("updated_at").notNull().default(""),

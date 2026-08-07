@@ -819,6 +819,19 @@ export function TelegramModule() {
             contentMinIntervalMinutes: settings.contentMinIntervalMinutes,
             contentQuietStartHour: settings.contentQuietStartHour,
             contentQuietEndHour: settings.contentQuietEndHour,
+            contentIntervalMinutes: settings.contentIntervalMinutes,
+            contentMaxNewsPerRun: settings.contentMaxNewsPerRun,
+            contentNewsLookbackHours: settings.contentNewsLookbackHours,
+            contentIncludeCash: settings.contentIncludeCash,
+            contentPairAllowlist: settings.contentPairAllowlist,
+            contentPairBlocklist: settings.contentPairBlocklist,
+            contentFooter: settings.contentFooter,
+            contentSpreadButtonText: settings.contentSpreadButtonText,
+            contentNewsButtonText: settings.contentNewsButtonText,
+            contentUtmCampaign: settings.contentUtmCampaign,
+            contentWithNewsImage: settings.contentWithNewsImage,
+            contentPostSilent: settings.contentPostSilent,
+            contentDisablePreview: settings.contentDisablePreview,
           },
         }),
       });
@@ -1789,11 +1802,14 @@ export function TelegramModule() {
             </div>
             <p className="text-xs text-ink-muted">
               Спреды (≥{settings.contentMinSpreadPct}% · ≥
-              {settings.contentMinOffers} офферов) и новости блога. Автопост: до{" "}
-              {settings.contentMaxPostsPerDay}/день, интервал{" "}
-              {settings.contentMinIntervalMinutes} мин, тихие часы{" "}
+              {settings.contentMinOffers} офферов
+              {settings.contentIncludeCash ? " · +CASH" : ""}) и новости (≤
+              {settings.contentMaxNewsPerRun}/цикл · {settings.contentNewsLookbackHours}
+              ч). Автопост: до {settings.contentMaxPostsPerDay}/день, интервал{" "}
+              {settings.contentMinIntervalMinutes} мин, цикл каждые{" "}
+              {settings.contentIntervalMinutes} мин, тихие{" "}
               {settings.contentQuietStartHour}:00–
-              {settings.contentQuietEndHour}:00 МСК (если начало≠конец).
+              {settings.contentQuietEndHour}:00 МСК.
             </p>
             {(data.contentJobs ?? []).length === 0 ? (
               <p className="py-6 text-center text-sm text-ink-muted">
@@ -1949,188 +1965,413 @@ export function TelegramModule() {
 
           <AdminSection
             title="Контент-машина"
-            description="Спреды и новости → черновики → автопост в канал (без ручной публикации)."
+            description="Спреды и новости → черновики → автопост. Все пороги и шаблоны ниже."
           >
-            <div className="space-y-4 p-5">
-              <Toggle
-                label="Включить контент-машину"
-                hint="Worker крутит цикл ~раз в 15 минут"
-                checked={settings.contentEnabled}
-                onChange={(v) =>
-                  setSettings({
-                    ...settings,
-                    contentEnabled: v,
-                    // when turning on — ensure auto-publish stays on
-                    contentAutoPublish: v ? true : settings.contentAutoPublish,
-                  })
-                }
-              />
-              <Toggle
-                label="Автопостинг в канал"
-                hint="Без вашего участия: черновик сразу уходит в Telegram"
-                checked={settings.contentAutoPublish}
-                onChange={(v) =>
-                  setSettings({ ...settings, contentAutoPublish: v })
-                }
-              />
-              <Toggle
-                label="Детектор спредов"
-                checked={settings.contentSpreadEnabled}
-                onChange={(v) =>
-                  setSettings({ ...settings, contentSpreadEnabled: v })
-                }
-              />
-              <Toggle
-                label="Зеркало новостей"
-                checked={settings.contentNewsEnabled}
-                onChange={(v) =>
-                  setSettings({ ...settings, contentNewsEnabled: v })
-                }
-              />
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Мин. разброс, %">
-                  <input
-                    className={inputClass}
-                    type="number"
-                    min={0.1}
-                    max={50}
-                    step={0.1}
-                    value={settings.contentMinSpreadPct}
+            <div className="space-y-6 p-5">
+              <div className="space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                  Питание
+                </p>
+                <Toggle
+                  label="Включить контент-машину"
+                  hint={`Цикл на worker раз в ${settings.contentIntervalMinutes || 15} мин`}
+                  checked={settings.contentEnabled}
+                  onChange={(v) =>
+                    setSettings({
+                      ...settings,
+                      contentEnabled: v,
+                      contentAutoPublish: v
+                        ? true
+                        : settings.contentAutoPublish,
+                    })
+                  }
+                />
+                <Toggle
+                  label="Автопостинг в канал"
+                  hint="Без ручной публикации"
+                  checked={settings.contentAutoPublish}
+                  onChange={(v) =>
+                    setSettings({ ...settings, contentAutoPublish: v })
+                  }
+                />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field
+                    label="Интервал цикла, мин"
+                    hint="5–180. Env TELEGRAM_CONTENT_INTERVAL_MS перекрывает"
+                  >
+                    <input
+                      className={inputClass}
+                      type="number"
+                      min={5}
+                      max={180}
+                      step={1}
+                      value={settings.contentIntervalMinutes}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          contentIntervalMinutes: Number(e.target.value) || 15,
+                        })
+                      }
+                      disabled={!canWrite}
+                    />
+                  </Field>
+                </div>
+              </div>
+
+              <div className="space-y-3 border-t border-line/70 pt-5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                  Спреды
+                </p>
+                <Toggle
+                  label="Детектор спредов"
+                  checked={settings.contentSpreadEnabled}
+                  onChange={(v) =>
+                    setSettings({ ...settings, contentSpreadEnabled: v })
+                  }
+                />
+                <Toggle
+                  label="Включать CASH / city-пары"
+                  hint="По умолчанию только online без CASH*"
+                  checked={settings.contentIncludeCash}
+                  onChange={(v) =>
+                    setSettings({ ...settings, contentIncludeCash: v })
+                  }
+                />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Мин. разброс, %">
+                    <input
+                      className={inputClass}
+                      type="number"
+                      min={0.1}
+                      max={50}
+                      step={0.1}
+                      value={settings.contentMinSpreadPct}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          contentMinSpreadPct: Number(e.target.value) || 1.5,
+                        })
+                      }
+                      disabled={!canWrite}
+                    />
+                  </Field>
+                  <Field label="Мин. офферов по паре">
+                    <input
+                      className={inputClass}
+                      type="number"
+                      min={2}
+                      max={50}
+                      step={1}
+                      value={settings.contentMinOffers}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          contentMinOffers: Number(e.target.value) || 3,
+                        })
+                      }
+                      disabled={!canWrite}
+                    />
+                  </Field>
+                  <Field label="Макс. спредов за цикл">
+                    <input
+                      className={inputClass}
+                      type="number"
+                      min={1}
+                      max={20}
+                      step={1}
+                      value={settings.contentMaxSpreadPerRun}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          contentMaxSpreadPerRun:
+                            Number(e.target.value) || 3,
+                        })
+                      }
+                      disabled={!canWrite}
+                    />
+                  </Field>
+                  <Field label="Кулдаун пары, часов">
+                    <input
+                      className={inputClass}
+                      type="number"
+                      min={1}
+                      max={168}
+                      step={1}
+                      value={settings.contentSpreadCooldownHours}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          contentSpreadCooldownHours:
+                            Number(e.target.value) || 6,
+                        })
+                      }
+                      disabled={!canWrite}
+                    />
+                  </Field>
+                </div>
+                <Field
+                  label="Allowlist пар"
+                  hint="Пусто = все. Коды (BTC) или пары (BTC-SBPRUB), через запятую"
+                >
+                  <textarea
+                    className={areaClass}
+                    rows={2}
+                    value={settings.contentPairAllowlist}
                     onChange={(e) =>
                       setSettings({
                         ...settings,
-                        contentMinSpreadPct: Number(e.target.value) || 1.5,
+                        contentPairAllowlist: e.target.value,
                       })
                     }
-                    disabled={!canWrite}
-                  />
-                </Field>
-                <Field label="Мин. офферов по паре">
-                  <input
-                    className={inputClass}
-                    type="number"
-                    min={2}
-                    max={50}
-                    step={1}
-                    value={settings.contentMinOffers}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        contentMinOffers: Number(e.target.value) || 3,
-                      })
-                    }
-                    disabled={!canWrite}
-                  />
-                </Field>
-                <Field label="Макс. спредов за цикл">
-                  <input
-                    className={inputClass}
-                    type="number"
-                    min={1}
-                    max={20}
-                    step={1}
-                    value={settings.contentMaxSpreadPerRun}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        contentMaxSpreadPerRun: Number(e.target.value) || 3,
-                      })
-                    }
-                    disabled={!canWrite}
-                  />
-                </Field>
-                <Field label="Кулдаун пары, часов">
-                  <input
-                    className={inputClass}
-                    type="number"
-                    min={1}
-                    max={168}
-                    step={1}
-                    value={settings.contentSpreadCooldownHours}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        contentSpreadCooldownHours: Number(e.target.value) || 6,
-                      })
-                    }
-                    disabled={!canWrite}
-                  />
-                </Field>
-                <Field label="Макс. постов / день">
-                  <input
-                    className={inputClass}
-                    type="number"
-                    min={1}
-                    max={48}
-                    step={1}
-                    value={settings.contentMaxPostsPerDay}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        contentMaxPostsPerDay: Number(e.target.value) || 12,
-                      })
-                    }
-                    disabled={!canWrite}
-                  />
-                </Field>
-                <Field label="Мин. интервал, мин">
-                  <input
-                    className={inputClass}
-                    type="number"
-                    min={0}
-                    max={720}
-                    step={1}
-                    value={settings.contentMinIntervalMinutes}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        contentMinIntervalMinutes:
-                          Number(e.target.value) || 0,
-                      })
-                    }
-                    disabled={!canWrite}
-                  />
-                </Field>
-                <Field label="Тихие часы с (МСК)">
-                  <input
-                    className={inputClass}
-                    type="number"
-                    min={0}
-                    max={23}
-                    step={1}
-                    value={settings.contentQuietStartHour}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        contentQuietStartHour: Number(e.target.value) || 0,
-                      })
-                    }
+                    placeholder="BTC, USDTTRC20, BTC-SBPRUB"
                     disabled={!canWrite}
                   />
                 </Field>
                 <Field
-                  label="Тихие часы до (МСК)"
-                  hint="Равны start = тихие часы выкл."
+                  label="Blocklist пар"
+                  hint="Исключить коды/пары (приоритет над allowlist)"
                 >
-                  <input
-                    className={inputClass}
-                    type="number"
-                    min={0}
-                    max={23}
-                    step={1}
-                    value={settings.contentQuietEndHour}
+                  <textarea
+                    className={areaClass}
+                    rows={2}
+                    value={settings.contentPairBlocklist}
                     onChange={(e) =>
                       setSettings({
                         ...settings,
-                        contentQuietEndHour: Number(e.target.value) || 0,
+                        contentPairBlocklist: e.target.value,
                       })
                     }
+                    placeholder="XMR, CASHUSD"
                     disabled={!canWrite}
                   />
                 </Field>
               </div>
+
+              <div className="space-y-3 border-t border-line/70 pt-5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                  Новости
+                </p>
+                <Toggle
+                  label="Зеркало новостей блога"
+                  checked={settings.contentNewsEnabled}
+                  onChange={(v) =>
+                    setSettings({ ...settings, contentNewsEnabled: v })
+                  }
+                />
+                <Toggle
+                  label="Картинка из обложки статьи"
+                  checked={settings.contentWithNewsImage}
+                  onChange={(v) =>
+                    setSettings({ ...settings, contentWithNewsImage: v })
+                  }
+                />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Макс. новостей за цикл">
+                    <input
+                      className={inputClass}
+                      type="number"
+                      min={1}
+                      max={20}
+                      step={1}
+                      value={settings.contentMaxNewsPerRun}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          contentMaxNewsPerRun: Number(e.target.value) || 5,
+                        })
+                      }
+                      disabled={!canWrite}
+                    />
+                  </Field>
+                  <Field label="Окно свежести, часов">
+                    <input
+                      className={inputClass}
+                      type="number"
+                      min={1}
+                      max={336}
+                      step={1}
+                      value={settings.contentNewsLookbackHours}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          contentNewsLookbackHours:
+                            Number(e.target.value) || 48,
+                        })
+                      }
+                      disabled={!canWrite}
+                    />
+                  </Field>
+                </div>
+              </div>
+
+              <div className="space-y-3 border-t border-line/70 pt-5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                  Лимиты автопоста
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Макс. постов / день">
+                    <input
+                      className={inputClass}
+                      type="number"
+                      min={1}
+                      max={48}
+                      step={1}
+                      value={settings.contentMaxPostsPerDay}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          contentMaxPostsPerDay: Number(e.target.value) || 12,
+                        })
+                      }
+                      disabled={!canWrite}
+                    />
+                  </Field>
+                  <Field label="Мин. интервал, мин">
+                    <input
+                      className={inputClass}
+                      type="number"
+                      min={0}
+                      max={720}
+                      step={1}
+                      value={settings.contentMinIntervalMinutes}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          contentMinIntervalMinutes:
+                            Number(e.target.value) || 0,
+                        })
+                      }
+                      disabled={!canWrite}
+                    />
+                  </Field>
+                  <Field label="Тихие часы с (МСК)">
+                    <input
+                      className={inputClass}
+                      type="number"
+                      min={0}
+                      max={23}
+                      step={1}
+                      value={settings.contentQuietStartHour}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          contentQuietStartHour: Number(e.target.value) || 0,
+                        })
+                      }
+                      disabled={!canWrite}
+                    />
+                  </Field>
+                  <Field
+                    label="Тихие часы до (МСК)"
+                    hint="Равны start = тихие часы выкл."
+                  >
+                    <input
+                      className={inputClass}
+                      type="number"
+                      min={0}
+                      max={23}
+                      step={1}
+                      value={settings.contentQuietEndHour}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          contentQuietEndHour: Number(e.target.value) || 0,
+                        })
+                      }
+                      disabled={!canWrite}
+                    />
+                  </Field>
+                </div>
+                <Toggle
+                  label="Тихая отправка (без звука)"
+                  checked={settings.contentPostSilent}
+                  onChange={(v) =>
+                    setSettings({ ...settings, contentPostSilent: v })
+                  }
+                />
+                <Toggle
+                  label="Без превью ссылок"
+                  checked={settings.contentDisablePreview}
+                  onChange={(v) =>
+                    setSettings({ ...settings, contentDisablePreview: v })
+                  }
+                />
+              </div>
+
+              <div className="space-y-3 border-t border-line/70 pt-5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                  Шаблон / CTA
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Кнопка спреда">
+                    <input
+                      className={inputClass}
+                      value={settings.contentSpreadButtonText}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          contentSpreadButtonText: e.target.value,
+                        })
+                      }
+                      maxLength={64}
+                      disabled={!canWrite}
+                    />
+                  </Field>
+                  <Field label="Кнопка новости">
+                    <input
+                      className={inputClass}
+                      value={settings.contentNewsButtonText}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          contentNewsButtonText: e.target.value,
+                        })
+                      }
+                      maxLength={64}
+                      disabled={!canWrite}
+                    />
+                  </Field>
+                  <Field
+                    label="utm_campaign"
+                    hint="utm_source=telegram&utm_medium=channel"
+                    className="sm:col-span-2"
+                  >
+                    <input
+                      className={inputClass}
+                      value={settings.contentUtmCampaign}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          contentUtmCampaign: e.target.value,
+                        })
+                      }
+                      maxLength={64}
+                      disabled={!canWrite}
+                    />
+                  </Field>
+                </div>
+                <Field
+                  label="Подпись / футер"
+                  hint="Добавляется в конец каждого автопоста (Telegram HTML)"
+                >
+                  <textarea
+                    className={areaClass}
+                    rows={3}
+                    value={settings.contentFooter}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        contentFooter: e.target.value,
+                      })
+                    }
+                    placeholder={'Например: <i>GapSnap — мониторинг курсов</i>'}
+                    disabled={!canWrite}
+                  />
+                </Field>
+              </div>
+
               {settings.contentLastRunAt ? (
-                <p className="text-xs text-ink-muted">
+                <p className="border-t border-line/70 pt-4 text-xs text-ink-muted">
                   Последний цикл: {formatWhen(settings.contentLastRunAt)}
                   {settings.contentLastRunResult
                     ? ` — ${settings.contentLastRunResult}`

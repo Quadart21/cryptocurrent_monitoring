@@ -12,20 +12,57 @@ export function escapeTelegramHtml(raw: string): string {
     .replace(/>/g, "&gt;");
 }
 
-export function buildSpreadDraft(input: {
-  payload: SpreadPayload;
+export type ContentTemplateOptions = {
   siteName: string;
   siteUrl: string;
-}): { text: string; buttons: TelegramButtonRow[]; topic: string } {
+  footer?: string;
+  spreadButtonText?: string;
+  newsButtonText?: string;
+  utmCampaign?: string;
+  withNewsImage?: boolean;
+};
+
+function appendFooter(text: string, footer?: string): string {
+  const f = (footer ?? "").trim();
+  if (!f) return text;
+  return `${text}\n\n${f}`;
+}
+
+function withUtm(
+  siteUrl: string,
+  path: string,
+  campaign: string,
+  content: string,
+): string {
+  const base = siteUrl.replace(/\/+$/, "");
+  const camp = encodeURIComponent(campaign.trim() || "content");
+  const c = encodeURIComponent(content);
+  return `${base}${path}?utm_source=telegram&utm_medium=channel&utm_campaign=${camp}&utm_content=${c}`;
+}
+
+export function buildSpreadDraft(input: {
+  payload: SpreadPayload;
+} & ContentTemplateOptions): {
+  text: string;
+  buttons: TelegramButtonRow[];
+  topic: string;
+} {
   const { payload, siteName, siteUrl } = input;
   const fromL = currencyLabel(payload.from);
   const toL = currencyLabel(payload.to);
   const spread = payload.spreadPct.toFixed(2);
   const best = formatRate(payload.bestRate);
   const worst = formatRate(payload.worstRate);
-  const url = `${siteUrl.replace(/\/+$/, "")}${payload.pairPath}?utm_source=telegram&utm_medium=channel&utm_campaign=spread`;
+  const url = withUtm(
+    siteUrl,
+    payload.pairPath,
+    input.utmCampaign || "content",
+    "spread",
+  );
+  const btn =
+    (input.spreadButtonText || "").trim() || "Смотреть курсы";
 
-  const text = [
+  const body = [
     `<b>Разброс ${escapeTelegramHtml(spread)}% — ${escapeTelegramHtml(fromL)} → ${escapeTelegramHtml(toL)}</b>`,
     "",
     `Сейчас в мониторинге ${payload.offerCount} обменников по паре <code>${escapeTelegramHtml(payload.from)}→${escapeTelegramHtml(payload.to)}</code>.`,
@@ -38,46 +75,50 @@ export function buildSpreadDraft(input: {
   ].join("\n");
 
   return {
-    text,
-    buttons: [[{ text: "Смотреть курсы", url }]],
+    text: appendFooter(body, input.footer),
+    buttons: [[{ text: btn.slice(0, 64), url }]],
     topic: `[spread] ${payload.from} → ${payload.to} · ${spread}%`,
   };
 }
 
 export function buildNewsDraft(input: {
   payload: NewsPayload;
-  siteName: string;
-  siteUrl: string;
-}): {
+} & ContentTemplateOptions): {
   text: string;
   buttons: TelegramButtonRow[];
   topic: string;
   photoUrl: string;
 } {
   const { payload, siteName, siteUrl } = input;
-  const url = `${siteUrl.replace(/\/+$/, "")}${payload.blogPath}?utm_source=telegram&utm_medium=channel&utm_campaign=news`;
+  const url = withUtm(
+    siteUrl,
+    payload.blogPath,
+    input.utmCampaign || "content",
+    "news",
+  );
   const excerpt = payload.excerpt.trim().slice(0, 500);
   const title = payload.title.trim().slice(0, 200);
+  const btn = (input.newsButtonText || "").trim() || "Читать статью";
 
-  const lines = [
-    `<b>${escapeTelegramHtml(title)}</b>`,
-    "",
-  ];
+  const lines = [`<b>${escapeTelegramHtml(title)}</b>`, ""];
   if (excerpt) {
     lines.push(escapeTelegramHtml(excerpt));
     lines.push("");
   }
   lines.push(`Читать на ${escapeTelegramHtml(siteName)} ↓`);
 
-  let photoUrl = (payload.coverImageUrl || "").trim();
-  if (photoUrl && !/^https?:\/\//i.test(photoUrl)) {
-    const base = siteUrl.replace(/\/+$/, "");
-    photoUrl = `${base}${photoUrl.startsWith("/") ? "" : "/"}${photoUrl}`;
+  let photoUrl = "";
+  if (input.withNewsImage !== false) {
+    photoUrl = (payload.coverImageUrl || "").trim();
+    if (photoUrl && !/^https?:\/\//i.test(photoUrl)) {
+      const base = siteUrl.replace(/\/+$/, "");
+      photoUrl = `${base}${photoUrl.startsWith("/") ? "" : "/"}${photoUrl}`;
+    }
   }
 
   return {
-    text: lines.join("\n"),
-    buttons: [[{ text: "Читать статью", url }]],
+    text: appendFooter(lines.join("\n"), input.footer),
+    buttons: [[{ text: btn.slice(0, 64), url }]],
     topic: `[news] ${title}`,
     photoUrl,
   };

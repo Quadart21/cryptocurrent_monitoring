@@ -267,6 +267,13 @@
       "when": 1785610000000,
       "tag": "0037_telegram_auto_publish",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1785620000000,
+      "tag": "0038_telegram_content_settings",
+      "breakpoints": true
     }
   ]
 }
