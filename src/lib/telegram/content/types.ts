@@ -3,6 +3,7 @@ export type TelegramContentJobKind = "spread" | "news";
 export type TelegramContentJobStatus =
   | "queued"
   | "drafted"
+  | "published"
   | "skipped"
   | "failed"
   | "discarded";
@@ -28,6 +29,11 @@ export type TelegramContentSettings = {
   contentMinOffers: number;
   contentMaxSpreadPerRun: number;
   contentSpreadCooldownHours: number;
+  contentAutoPublish: boolean;
+  contentMaxPostsPerDay: number;
+  contentMinIntervalMinutes: number;
+  contentQuietStartHour: number;
+  contentQuietEndHour: number;
   contentLastRunAt: string | null;
   contentLastRunResult: string;
 };
@@ -38,6 +44,7 @@ export type TelegramContentRunResult = {
   spreadEnqueued: number;
   newsEnqueued: number;
   drafted: number;
+  published: number;
   failed: number;
   skipped: number;
   message: string;

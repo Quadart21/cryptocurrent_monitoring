@@ -40,6 +40,7 @@ function mapJob(row: typeof telegramContentJobs.$inferSelect): TelegramContentJo
   const statusRaw = (row.status || "queued") as string;
   const status: TelegramContentJobStatus =
     statusRaw === "drafted" ||
+    statusRaw === "published" ||
     statusRaw === "skipped" ||
     statusRaw === "failed" ||
     statusRaw === "discarded" ||
@@ -107,9 +108,15 @@ async function getContentFlags(): Promise<{
   minOffers: number;
   maxSpreadPerRun: number;
   cooldownHours: number;
+  autoPublish: boolean;
+  maxPostsPerDay: number;
+  minIntervalMinutes: number;
+  quietStartHour: number;
+  quietEndHour: number;
   channelId: string;
   disablePreview: boolean;
   silent: boolean;
+  lastPostAt: string | null;
 }> {
   await runMigrations();
   const db = getDb();
@@ -126,10 +133,141 @@ async function getContentFlags(): Promise<{
     minOffers: Number(row?.contentMinOffers) || 3,
     maxSpreadPerRun: Number(row?.contentMaxSpreadPerRun) || 3,
     cooldownHours: Number(row?.contentSpreadCooldownHours) || 6,
+    autoPublish: row?.contentAutoPublish !== false,
+    maxPostsPerDay: Number(row?.contentMaxPostsPerDay) || 12,
+    minIntervalMinutes:
+      typeof row?.contentMinIntervalMinutes === "number"
+        ? Math.max(0, Math.floor(row.contentMinIntervalMinutes))
+        : 20,
+    quietStartHour:
+      typeof row?.contentQuietStartHour === "number"
+        ? Math.min(23, Math.max(0, Math.floor(row.contentQuietStartHour)))
+        : 1,
+    quietEndHour:
+      typeof row?.contentQuietEndHour === "number"
+        ? Math.min(23, Math.max(0, Math.floor(row.contentQuietEndHour)))
+        : 8,
     channelId: row?.channelId ?? "",
     disablePreview: Boolean(row?.disablePreview),
     silent: Boolean(row?.silent),
+    lastPostAt: row?.lastPostAt ?? null,
   };
+}
+
+/** Current hour in Europe/Moscow (0–23). */
+function moscowHourNow(): number {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Moscow",
+    hour: "numeric",
+    hour12: false,
+  }).formatToParts(new Date());
+  const hour = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
+  return Number.isFinite(hour) ? hour % 24 : 0;
+}
+
+function moscowDayPrefix(): string {
+  // YYYY-MM-DD in Moscow for counting today's publishes
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Moscow",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function inQuietHours(startHour: number, endHour: number): boolean {
+  if (startHour === endHour) return false;
+  const h = moscowHourNow();
+  if (startHour < endHour) return h >= startHour && h < endHour;
+  // wraps midnight, e.g. 23→8
+  return h >= startHour || h < endHour;
+}
+
+async function countPublishedToday(): Promise<number> {
+  const db = getDb();
+  const day = moscowDayPrefix();
+  const rows = await db
+    .select({ id: telegramContentJobs.id, updatedAt: telegramContentJobs.updatedAt })
+    .from(telegramContentJobs)
+    .where(eq(telegramContentJobs.status, "published"));
+  // Compare via Moscow calendar day of updatedAt
+  let n = 0;
+  for (const r of rows) {
+    const d = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Moscow",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date(r.updatedAt));
+    if (d === day) n += 1;
+  }
+  return n;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+type PublishGate =
+  | { ok: true }
+  | { ok: false; reason: string };
+
+function checkPublishGate(
+  flags: Awaited<ReturnType<typeof getContentFlags>>,
+  publishedToday: number,
+  lastPostAt: string | null,
+): PublishGate {
+  if (!flags.channelId.trim()) {
+    return { ok: false, reason: "Канал не задан" };
+  }
+  if (inQuietHours(flags.quietStartHour, flags.quietEndHour)) {
+    return {
+      ok: false,
+      reason: `Тихие часы ${flags.quietStartHour}:00–${flags.quietEndHour}:00 МСК`,
+    };
+  }
+  if (publishedToday >= flags.maxPostsPerDay) {
+    return {
+      ok: false,
+      reason: `Дневной лимит ${flags.maxPostsPerDay}`,
+    };
+  }
+  if (flags.minIntervalMinutes > 0 && lastPostAt) {
+    const elapsed = Date.now() - Date.parse(lastPostAt);
+    const need = flags.minIntervalMinutes * 60_000;
+    if (Number.isFinite(elapsed) && elapsed < need) {
+      const waitMin = Math.ceil((need - elapsed) / 60_000);
+      return {
+        ok: false,
+        reason: `Интервал: ещё ~${waitMin} мин`,
+      };
+    }
+  }
+  return { ok: true };
+}
+
+async function publishDraftPost(postId: string): Promise<void> {
+  const db = getDb();
+  const [post] = await db
+    .select()
+    .from(telegramPosts)
+    .where(eq(telegramPosts.id, postId))
+    .limit(1);
+  if (!post) throw new Error("Черновик не найден");
+  if (post.status !== "draft" && post.status !== "failed") {
+    throw new Error(`Статус поста ${post.status}, публикация пропущена`);
+  }
+  const { publishTelegramPost } = await import("@/lib/telegram/service");
+  await publishTelegramPost({
+    draftId: post.id,
+    text: post.text,
+    photoUrl: post.photoUrl || undefined,
+    parseMode: (post.parseMode as "HTML" | "MarkdownV2" | "Markdown") || "HTML",
+    disablePreview: Boolean(post.disablePreview),
+    silent: Boolean(post.silent),
+    buttons: normalizeTelegramButtons(post.buttons ?? []),
+    adminLogin: "content-bot",
+  });
 }
 
 async function writeRunResult(result: TelegramContentRunResult): Promise<void> {
@@ -290,7 +428,9 @@ async function enqueueDetectors(flags: Awaited<ReturnType<typeof getContentFlags
 
 async function processQueued(flags: Awaited<ReturnType<typeof getContentFlags>>): Promise<{
   drafted: number;
+  published: number;
   failed: number;
+  skipped: number;
 }> {
   const seo = await getSeoSettings();
   const siteName = seo.siteName?.trim() || "GapSnap";
@@ -309,12 +449,16 @@ async function processQueued(flags: Awaited<ReturnType<typeof getContentFlags>>)
     .limit(20);
 
   let drafted = 0;
+  let published = 0;
   let failed = 0;
+  let skipped = 0;
+  let publishedToday = await countPublishedToday();
+  let lastPostAt = flags.lastPostAt;
 
   for (const row of rows) {
     const job = mapJob(row);
     try {
-      await draftFromJob(job, {
+      const { postId } = await draftFromJob(job, {
         siteName,
         siteUrl,
         channelId: flags.channelId,
@@ -322,6 +466,52 @@ async function processQueued(flags: Awaited<ReturnType<typeof getContentFlags>>)
         silent: flags.silent,
       });
       drafted += 1;
+
+      if (!flags.autoPublish) continue;
+
+      const gate = checkPublishGate(flags, publishedToday, lastPostAt);
+      if (!gate.ok) {
+        skipped += 1;
+        console.info(
+          `[gapsnap] telegram content auto-publish deferred ${job.id}: ${gate.reason}`,
+        );
+        continue;
+      }
+
+      try {
+        await publishDraftPost(postId);
+        const now = new Date().toISOString();
+        await db
+          .update(telegramContentJobs)
+          .set({
+            status: "published",
+            updatedAt: now,
+            error: null,
+          })
+          .where(eq(telegramContentJobs.id, job.id));
+        published += 1;
+        publishedToday += 1;
+        lastPostAt = now;
+        // small pause between channel posts
+        await sleep(1500);
+      } catch (pubErr) {
+        failed += 1;
+        const message =
+          pubErr instanceof Error ? pubErr.message : String(pubErr);
+        const now = new Date().toISOString();
+        await db
+          .update(telegramContentJobs)
+          .set({
+            status: "drafted",
+            error: `Автопост: ${message}`.slice(0, 500),
+            updatedAt: now,
+          })
+          .where(eq(telegramContentJobs.id, job.id));
+        console.error(
+          `[gapsnap] telegram content auto-publish failed ${job.id}`,
+          pubErr,
+        );
+      }
     } catch (err) {
       failed += 1;
       const message = err instanceof Error ? err.message : String(err);
@@ -338,10 +528,99 @@ async function processQueued(flags: Awaited<ReturnType<typeof getContentFlags>>)
     }
   }
 
-  return { drafted, failed };
+  return { drafted, published, failed, skipped };
 }
 
-/** Full content-machine cycle: detect → enqueue → draft. */
+/** Publish leftover drafts (status=drafted) when auto-publish is on. */
+async function publishPendingDrafts(
+  flags: Awaited<ReturnType<typeof getContentFlags>>,
+): Promise<{ published: number; failed: number; skipped: number }> {
+  if (!flags.autoPublish) {
+    return { published: 0, failed: 0, skipped: 0 };
+  }
+
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(telegramContentJobs)
+    .where(eq(telegramContentJobs.status, "drafted"))
+    .orderBy(telegramContentJobs.createdAt)
+    .limit(15);
+
+  let published = 0;
+  let failed = 0;
+  let skipped = 0;
+  let publishedToday = await countPublishedToday();
+  let lastPostAt = flags.lastPostAt;
+
+  // refresh lastPostAt from settings in case processQueued already posted
+  const [settingsRow] = await db
+    .select({ lastPostAt: telegramSettings.lastPostAt })
+    .from(telegramSettings)
+    .where(eq(telegramSettings.id, 1))
+    .limit(1);
+  if (settingsRow?.lastPostAt) lastPostAt = settingsRow.lastPostAt;
+
+  for (const row of rows) {
+    const job = mapJob(row);
+    if (!job.postId) {
+      skipped += 1;
+      continue;
+    }
+
+    const gate = checkPublishGate(flags, publishedToday, lastPostAt);
+    if (!gate.ok) {
+      skipped += 1;
+      console.info(
+        `[gapsnap] telegram content pending publish deferred ${job.id}: ${gate.reason}`,
+      );
+      // if quiet hours / daily limit — stop trying more this cycle
+      if (
+        gate.reason.startsWith("Тихие") ||
+        gate.reason.startsWith("Дневной")
+      ) {
+        break;
+      }
+      continue;
+    }
+
+    try {
+      await publishDraftPost(job.postId);
+      const now = new Date().toISOString();
+      await db
+        .update(telegramContentJobs)
+        .set({
+          status: "published",
+          updatedAt: now,
+          error: null,
+        })
+        .where(eq(telegramContentJobs.id, job.id));
+      published += 1;
+      publishedToday += 1;
+      lastPostAt = now;
+      await sleep(1500);
+    } catch (err) {
+      failed += 1;
+      const message = err instanceof Error ? err.message : String(err);
+      const now = new Date().toISOString();
+      await db
+        .update(telegramContentJobs)
+        .set({
+          error: `Автопост: ${message}`.slice(0, 500),
+          updatedAt: now,
+        })
+        .where(eq(telegramContentJobs.id, job.id));
+      console.error(
+        `[gapsnap] telegram content pending publish failed ${job.id}`,
+        err,
+      );
+    }
+  }
+
+  return { published, failed, skipped };
+}
+
+/** Full content-machine cycle: detect → enqueue → draft → auto-publish. */
 export async function runTelegramContentCycle(options?: {
   force?: boolean;
 }): Promise<TelegramContentRunResult> {
@@ -361,6 +640,7 @@ export async function runTelegramContentCycle(options?: {
         spreadEnqueued: 0,
         newsEnqueued: 0,
         drafted: 0,
+        published: 0,
         failed: 0,
         skipped: 0,
         message: "Контент-машина выключена",
@@ -371,16 +651,34 @@ export async function runTelegramContentCycle(options?: {
     }
 
     const { spreadEnqueued, newsEnqueued } = await enqueueDetectors(flags);
-    const { drafted, failed } = await processQueued(flags);
-    const message = `spread +${spreadEnqueued}, news +${newsEnqueued}, drafts ${drafted}, fail ${failed}`;
+    const queued = await processQueued(flags);
+    const pending = await publishPendingDrafts({
+      ...flags,
+      lastPostAt: (await getContentFlags()).lastPostAt,
+    });
+    const published = queued.published + pending.published;
+    const failed = queued.failed + pending.failed;
+    const skipped = queued.skipped + pending.skipped;
+    const message = [
+      `spread +${spreadEnqueued}`,
+      `news +${newsEnqueued}`,
+      `drafts ${queued.drafted}`,
+      `sent ${published}`,
+      skipped ? `skip ${skipped}` : null,
+      failed ? `fail ${failed}` : null,
+      flags.autoPublish ? "auto" : "manual",
+    ]
+      .filter(Boolean)
+      .join(", ");
     const result: TelegramContentRunResult = {
       ok: failed === 0,
       enabled: true,
       spreadEnqueued,
       newsEnqueued,
-      drafted,
+      drafted: queued.drafted,
+      published,
       failed,
-      skipped: 0,
+      skipped,
       message,
       ranAt,
     };

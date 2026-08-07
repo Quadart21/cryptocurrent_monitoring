@@ -755,6 +755,17 @@ export const telegramSettings = pgTable("telegram_settings", {
   contentSpreadCooldownHours: integer("content_spread_cooldown_hours")
     .notNull()
     .default(6),
+  /** Publish content-bot drafts to the channel without admin review. */
+  contentAutoPublish: boolean("content_auto_publish").notNull().default(true),
+  contentMaxPostsPerDay: integer("content_max_posts_per_day")
+    .notNull()
+    .default(12),
+  contentMinIntervalMinutes: integer("content_min_interval_minutes")
+    .notNull()
+    .default(20),
+  /** Quiet hours in Europe/Moscow (start inclusive, end exclusive). Equal = off. */
+  contentQuietStartHour: integer("content_quiet_start_hour").notNull().default(1),
+  contentQuietEndHour: integer("content_quiet_end_hour").notNull().default(8),
   contentLastRunAt: text("content_last_run_at"),
   contentLastRunResult: text("content_last_run_result").notNull().default(""),
   updatedAt: text("updated_at").notNull().default(""),

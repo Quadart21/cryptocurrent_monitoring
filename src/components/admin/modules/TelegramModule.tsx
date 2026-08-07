@@ -438,6 +438,7 @@ function statusLabel(status: TelegramPost["status"]): string {
 function contentJobStatusLabel(status: TelegramContentJob["status"]): string {
   if (status === "queued") return "В очереди";
   if (status === "drafted") return "Черновик";
+  if (status === "published") return "Опубликован";
   if (status === "failed") return "Ошибка";
   if (status === "skipped") return "Пропуск";
   if (status === "discarded") return "Отменена";
@@ -813,6 +814,11 @@ export function TelegramModule() {
             contentMinOffers: settings.contentMinOffers,
             contentMaxSpreadPerRun: settings.contentMaxSpreadPerRun,
             contentSpreadCooldownHours: settings.contentSpreadCooldownHours,
+            contentAutoPublish: settings.contentAutoPublish,
+            contentMaxPostsPerDay: settings.contentMaxPostsPerDay,
+            contentMinIntervalMinutes: settings.contentMinIntervalMinutes,
+            contentQuietStartHour: settings.contentQuietStartHour,
+            contentQuietEndHour: settings.contentQuietEndHour,
           },
         }),
       });
@@ -1754,12 +1760,12 @@ export function TelegramModule() {
           title="Контент-машина"
           description={
             settings.contentEnabled
-              ? `Включена · ${settings.contentLastRunResult || "ещё не запускалась"}${
+              ? `${settings.contentAutoPublish ? "Автопост включён" : "Только черновики"} · ${settings.contentLastRunResult || "ещё не запускалась"}${
                   settings.contentLastRunAt
                     ? ` · ${formatWhen(settings.contentLastRunAt)}`
                     : ""
                 }`
-              : "Выключена — включите в настройках или запустите принудительно"
+              : "Выключена — включите в настройках (автопост пойдёт сам)"
           }
         >
           <div className="space-y-4 p-5">
@@ -1782,10 +1788,12 @@ export function TelegramModule() {
               </button>
             </div>
             <p className="text-xs text-ink-muted">
-              Детекторы: разброс курсов (≥{settings.contentMinSpreadPct}% · ≥
-              {settings.contentMinOffers} офферов) и зеркало новостей блога.
-              Черновики появляются в журнале с автором content-bot — публикуйте
-              вручную.
+              Спреды (≥{settings.contentMinSpreadPct}% · ≥
+              {settings.contentMinOffers} офферов) и новости блога. Автопост: до{" "}
+              {settings.contentMaxPostsPerDay}/день, интервал{" "}
+              {settings.contentMinIntervalMinutes} мин, тихие часы{" "}
+              {settings.contentQuietStartHour}:00–
+              {settings.contentQuietEndHour}:00 МСК (если начало≠конец).
             </p>
             {(data.contentJobs ?? []).length === 0 ? (
               <p className="py-6 text-center text-sm text-ink-muted">
@@ -1806,7 +1814,9 @@ export function TelegramModule() {
                         </Pill>
                         <Pill
                           className={
-                            job.status === "drafted"
+                            job.status === "published"
+                              ? "bg-ok/15 text-ok"
+                              : job.status === "drafted"
                               ? "bg-accent/15 text-accent-deep"
                               : job.status === "failed"
                                 ? "bg-danger/10 text-danger"
@@ -1939,15 +1949,28 @@ export function TelegramModule() {
 
           <AdminSection
             title="Контент-машина"
-            description="Авточерновики из спредов курсов и новостей блога. Публикация только вручную."
+            description="Спреды и новости → черновики → автопост в канал (без ручной публикации)."
           >
             <div className="space-y-4 p-5">
               <Toggle
-                label="Включить автоочередь"
-                hint="Worker запускает цикл примерно раз в 15 минут"
+                label="Включить контент-машину"
+                hint="Worker крутит цикл ~раз в 15 минут"
                 checked={settings.contentEnabled}
                 onChange={(v) =>
-                  setSettings({ ...settings, contentEnabled: v })
+                  setSettings({
+                    ...settings,
+                    contentEnabled: v,
+                    // when turning on — ensure auto-publish stays on
+                    contentAutoPublish: v ? true : settings.contentAutoPublish,
+                  })
+                }
+              />
+              <Toggle
+                label="Автопостинг в канал"
+                hint="Без вашего участия: черновик сразу уходит в Telegram"
+                checked={settings.contentAutoPublish}
+                onChange={(v) =>
+                  setSettings({ ...settings, contentAutoPublish: v })
                 }
               />
               <Toggle
@@ -2028,6 +2051,78 @@ export function TelegramModule() {
                       setSettings({
                         ...settings,
                         contentSpreadCooldownHours: Number(e.target.value) || 6,
+                      })
+                    }
+                    disabled={!canWrite}
+                  />
+                </Field>
+                <Field label="Макс. постов / день">
+                  <input
+                    className={inputClass}
+                    type="number"
+                    min={1}
+                    max={48}
+                    step={1}
+                    value={settings.contentMaxPostsPerDay}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        contentMaxPostsPerDay: Number(e.target.value) || 12,
+                      })
+                    }
+                    disabled={!canWrite}
+                  />
+                </Field>
+                <Field label="Мин. интервал, мин">
+                  <input
+                    className={inputClass}
+                    type="number"
+                    min={0}
+                    max={720}
+                    step={1}
+                    value={settings.contentMinIntervalMinutes}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        contentMinIntervalMinutes:
+                          Number(e.target.value) || 0,
+                      })
+                    }
+                    disabled={!canWrite}
+                  />
+                </Field>
+                <Field label="Тихие часы с (МСК)">
+                  <input
+                    className={inputClass}
+                    type="number"
+                    min={0}
+                    max={23}
+                    step={1}
+                    value={settings.contentQuietStartHour}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        contentQuietStartHour: Number(e.target.value) || 0,
+                      })
+                    }
+                    disabled={!canWrite}
+                  />
+                </Field>
+                <Field
+                  label="Тихие часы до (МСК)"
+                  hint="Равны start = тихие часы выкл."
+                >
+                  <input
+                    className={inputClass}
+                    type="number"
+                    min={0}
+                    max={23}
+                    step={1}
+                    value={settings.contentQuietEndHour}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        contentQuietEndHour: Number(e.target.value) || 0,
                       })
                     }
                     disabled={!canWrite}

@@ -27,6 +27,11 @@ export type TelegramSettings = {
   contentMinOffers: number;
   contentMaxSpreadPerRun: number;
   contentSpreadCooldownHours: number;
+  contentAutoPublish: boolean;
+  contentMaxPostsPerDay: number;
+  contentMinIntervalMinutes: number;
+  contentQuietStartHour: number;
+  contentQuietEndHour: number;
   contentLastRunAt: string | null;
   contentLastRunResult: string;
   updatedAt: string;

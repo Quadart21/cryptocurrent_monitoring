@@ -83,6 +83,11 @@ export async function PUT(request: Request) {
       contentMinOffers?: number;
       contentMaxSpreadPerRun?: number;
       contentSpreadCooldownHours?: number;
+      contentAutoPublish?: boolean;
+      contentMaxPostsPerDay?: number;
+      contentMinIntervalMinutes?: number;
+      contentQuietStartHour?: number;
+      contentQuietEndHour?: number;
     };
     text?: string;
     photoUrl?: string;

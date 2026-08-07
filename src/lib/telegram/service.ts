@@ -78,6 +78,25 @@ function mapSettings(
       row.contentSpreadCooldownHours >= 1
         ? Math.floor(row.contentSpreadCooldownHours)
         : 6,
+    contentAutoPublish: row?.contentAutoPublish !== false,
+    contentMaxPostsPerDay:
+      typeof row?.contentMaxPostsPerDay === "number" &&
+      row.contentMaxPostsPerDay >= 1
+        ? Math.floor(row.contentMaxPostsPerDay)
+        : 12,
+    contentMinIntervalMinutes:
+      typeof row?.contentMinIntervalMinutes === "number" &&
+      row.contentMinIntervalMinutes >= 0
+        ? Math.floor(row.contentMinIntervalMinutes)
+        : 20,
+    contentQuietStartHour:
+      typeof row?.contentQuietStartHour === "number"
+        ? Math.min(23, Math.max(0, Math.floor(row.contentQuietStartHour)))
+        : 1,
+    contentQuietEndHour:
+      typeof row?.contentQuietEndHour === "number"
+        ? Math.min(23, Math.max(0, Math.floor(row.contentQuietEndHour)))
+        : 8,
     contentLastRunAt: row?.contentLastRunAt ?? null,
     contentLastRunResult: row?.contentLastRunResult ?? "",
     updatedAt: row?.updatedAt ?? "",
@@ -190,6 +209,11 @@ export async function updateTelegramSettings(patch: {
   contentMinOffers?: number;
   contentMaxSpreadPerRun?: number;
   contentSpreadCooldownHours?: number;
+  contentAutoPublish?: boolean;
+  contentMaxPostsPerDay?: number;
+  contentMinIntervalMinutes?: number;
+  contentQuietStartHour?: number;
+  contentQuietEndHour?: number;
 }): Promise<TelegramSettingsPublic> {
   await ensureSettingsRow();
   const current = await getTelegramSettings();
@@ -278,6 +302,36 @@ export async function updateTelegramSettings(patch: {
             current.contentSpreadCooldownHours,
           )
         : current.contentSpreadCooldownHours,
+    contentAutoPublish:
+      typeof patch.contentAutoPublish === "boolean"
+        ? patch.contentAutoPublish
+        : current.contentAutoPublish,
+    contentMaxPostsPerDay:
+      typeof patch.contentMaxPostsPerDay === "number"
+        ? clampInt(
+            patch.contentMaxPostsPerDay,
+            1,
+            48,
+            current.contentMaxPostsPerDay,
+          )
+        : current.contentMaxPostsPerDay,
+    contentMinIntervalMinutes:
+      typeof patch.contentMinIntervalMinutes === "number"
+        ? clampInt(
+            patch.contentMinIntervalMinutes,
+            0,
+            720,
+            current.contentMinIntervalMinutes,
+          )
+        : current.contentMinIntervalMinutes,
+    contentQuietStartHour:
+      typeof patch.contentQuietStartHour === "number"
+        ? clampInt(patch.contentQuietStartHour, 0, 23, current.contentQuietStartHour)
+        : current.contentQuietStartHour,
+    contentQuietEndHour:
+      typeof patch.contentQuietEndHour === "number"
+        ? clampInt(patch.contentQuietEndHour, 0, 23, current.contentQuietEndHour)
+        : current.contentQuietEndHour,
     contentLastRunAt: current.contentLastRunAt,
     contentLastRunResult: current.contentLastRunResult,
     updatedAt: now,
